@@ -1,6 +1,6 @@
 # AmiVM roadmap
 
-## M0 — Architecture & feasibility
+## M0 — Architecture & feasibility — COMPLETE
 
 - Define project scope and non-goals.
 - Define the initial `Hyper/040` machine contract.
@@ -14,31 +14,30 @@
 - Establish repository structure, build system and CI baseline.
 - Produce an M0 feasibility decision for implementation.
 
-### M0 exit criteria
+## M1 — VM core skeleton — COMPLETE
 
-M0 is complete when:
-
-- the machine model is documented well enough to implement without redesigning fundamentals;
-- the first CPU backend approach is selected;
-- the first boot path is selected;
-- virtual device discovery and interrupt delivery have a documented contract;
-- Linux/m68k and Amiga-compatible guest paths are explicitly separated where required;
-- the project has a minimal buildable host skeleton and CI smoke test.
-
-## M1 — VM core skeleton
-
-- Host executable and configuration parser.
+- Host executable and configuration parser (`--ram-mib`, `--rom`).
 - Guest physical address space.
-- ROM/bootstrap region.
-- RAM mapping.
-- Interrupt controller/timer baseline.
-- Serial console.
-- Deterministic machine description dump.
-- Unit tests for memory map and device registration.
+- 1 MiB ROM/bootstrap region at `0x00f00000`.
+- contiguous RAM mapping from `0x10000000`.
+- MMIO window at `0xff000000`.
+- explicit device registry.
+- interrupt-controller baseline.
+- monotonic timer baseline.
+- `vmserial` output/status registers.
+- deterministic machine-description dump.
+- unit tests for RAM boundaries, ROM protection, configuration, device registration, interrupts, timer and serial status.
+- Release-build self-test suitable for CI.
+
+### M1 exit criteria
+
+M1 is complete when the host can instantiate the Hyper/040 machine model without a CPU backend, expose its deterministic physical map and registered devices, load a bootstrap ROM, exercise RAM/MMIO safely, and pass the VM-core test suite in CI.
 
 ## M2 — 68k execution
 
 - Integrate initial 68040-class execution backend.
+- Define the internal CPU-backend API independently from the chosen implementation.
+- Reset vector and first-instruction execution from the bootstrap region.
 - Supervisor/user state transitions.
 - Exceptions and interrupt injection.
 - MMU support required for Linux/m68k.
@@ -72,6 +71,7 @@ M0 is complete when:
 - FastRAM/RTG-oriented machine profile.
 - Amiga-style device drivers for selected paravirtual devices.
 - Determine the minimum legacy chipset surface required by supported guests.
+- Add workstation qualification workloads such as rendering/animation software where legally available.
 
 ## M6 — Compatibility profile
 
@@ -88,6 +88,7 @@ M0 is complete when:
 - reduced interrupt overhead.
 - zero-copy opportunities.
 - benchmark against Amiberry, FS-UAE, ARAnyM and QEMU/m68k where comparisons are meaningful.
+- add CPU/rendering workstation benchmarks representative of Vista/VistaPro, Scenery Animator and similar applications when suitable test material is available.
 
 ## M8 — Developer and automation platform
 
