@@ -6,12 +6,22 @@
 
 struct amivm_vm;
 
+enum amivm_cpu_fault {
+    AMIVM_CPU_FAULT_NONE = 0,
+    AMIVM_CPU_FAULT_BUS,
+    AMIVM_CPU_FAULT_ADDRESS,
+    AMIVM_CPU_FAULT_ILLEGAL,
+};
+
 struct amivm_cpu_state {
     uint32_t d[8];
     uint32_t a[8];
     uint32_t pc;
     uint16_t sr;
     bool stopped;
+    enum amivm_cpu_fault last_fault;
+    uint32_t fault_address;
+    uint16_t fault_opcode;
 };
 
 struct amivm_cpu_backend {
