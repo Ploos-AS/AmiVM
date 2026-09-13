@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 static void test_memory_map(void)
 {
@@ -28,7 +29,21 @@ static void test_devices(void)
 {
     struct amivm_config config;
     struct amivm_vm vm;
+    const struct amivm_device_desc *dev;
     uint8_t value = 0;
+
+    assert(amivm_device_count() == 3u);
+
+    dev = amivm_device_at(0u);
+    assert(dev != NULL);
+    assert(strcmp(dev->name, "vmserial") == 0);
+    assert(dev->base == AMIVM_VMSERIAL_BASE);
+    assert(dev->size == AMIVM_MMIO_PAGE_SIZE);
+    assert(amivm_device_at(amivm_device_count()) == NULL);
+
+    dev = amivm_find_device("timer");
+    assert(dev != NULL && dev->base == AMIVM_TIMER_BASE);
+    assert(amivm_find_device("missing") == NULL);
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -59,6 +74,8 @@ static void test_config(void)
     assert(!amivm_parse_size_mib("0", &bytes));
     assert(!amivm_parse_size_mib("4096", &bytes));
     assert(!amivm_parse_size_mib("abc", &bytes));
+    assert(!amivm_parse_size_mib(NULL, &bytes));
+    assert(!amivm_parse_size_mib("128", NULL));
 }
 
 int main(void)
