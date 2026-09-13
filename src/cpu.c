@@ -5,11 +5,13 @@
 
 #define M68K_SR_TRACE_MASK 0xc000u
 #define M68K_SR_SUPERVISOR 0x2000u
+#define M68K_SR_INTERRUPT_MASK 0x0700u
 #define M68K_SR_N 0x0008u
 #define M68K_SR_Z 0x0004u
 #define M68K_SR_V 0x0002u
 #define M68K_SR_C 0x0001u
 #define M68K_OPCODE_NOP 0x4e71u
+#define M68K_OPCODE_RTE 0x4e73u
 #define M68K_OPCODE_RTS 0x4e75u
 #define M68K_OPCODE_JMP_ABSL 0x4ef9u
 #define M68K_OPCODE_JSR_ABSL 0x4eb9u
@@ -96,10 +98,8 @@ static int enter_exception(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     cpu->sr = (uint16_t)((cpu->sr | M68K_SR_SUPERVISOR) & ~M68K_SR_TRACE_MASK);
 
     /*
-     * M2.3 uses a 68020+-style format-0 short frame:
+     * M2.3/M2.4 use a 68020+-style format-0 short frame:
      *   +0 SR, +2 PC, +6 format/vector-offset word.
-     * More detailed 68040 access-error frames are deferred until the
-     * architecture needs their additional status words.
      */
     new_sp = cpu->a[7] - 8u;
     format_vector = (uint16_t)((vector * 4u) & 0x0fffu);
@@ -132,6 +132,36 @@ static int deliver_fault(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 }
 
+static unsigned highest_pending_irq(uint32_t pending)
+{
+    unsigned level;
+
+    for (level = 7u; level > 0u; --level) {
+        if ((pending & (1u << level)) != 0u) {
+            return level;
+        }
+    }
+    return 0u;
+}
+
+static int service_interrupt(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+{
+    unsigned level = highest_pending_irq(vm->irq_pending);
+    unsigned mask = (unsigned)((cpu->sr & M68K_SR_INTERRUPT_MASK) >> 8u);
+    int rc;
+
+    if (level == 0u || level <= mask) {
+        return 0;
+    }
+
+    rc = enter_exception(cpu, vm, AMIVM_VECTOR_AUTOVECTOR_BASE + level, cpu->pc);
+    if (rc > 0) {
+        cpu->sr = (uint16_t)((cpu->sr & ~M68K_SR_INTERRUPT_MASK) | (level << 8u));
+        amivm_clear_irq(vm, level);
+    }
+    return rc;
+}
+
 static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
     uint32_t initial_sp;
@@ -153,7 +183,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->a[7] = initial_sp;
     cpu->pc = initial_pc;
     cpu->vbr = AMIVM_ROM_BASE;
-    cpu->sr = M68K_SR_SUPERVISOR;
+    cpu->sr = (uint16_t)(M68K_SR_SUPERVISOR | M68K_SR_INTERRUPT_MASK);
     cpu->stopped = false;
     cpu->last_fault = AMIVM_CPU_FAULT_NONE;
     cpu->fault_address = 0u;
@@ -195,6 +225,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     uint16_t opcode;
     uint32_t next_pc;
     uint32_t instruction_pc;
+    int irq_rc;
 
     if (cpu == NULL || vm == NULL || cpu->stopped) {
         return -1;
@@ -203,8 +234,13 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->fault_address = 0u;
     cpu->fault_opcode = 0u;
     cpu->last_exception_vector = 0u;
-    instruction_pc = cpu->pc;
 
+    irq_rc = service_interrupt(cpu, vm);
+    if (irq_rc != 0) {
+        return irq_rc;
+    }
+
+    instruction_pc = cpu->pc;
     if (fetch16(cpu, vm, cpu->pc, &opcode) != 0) {
         return deliver_fault(cpu, vm, instruction_pc);
     }
@@ -212,6 +248,30 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 
     if (opcode == M68K_OPCODE_NOP) {
         cpu->pc = next_pc;
+        return 1;
+    }
+    if (opcode == M68K_OPCODE_RTE) {
+        uint16_t restored_sr;
+        uint32_t restored_pc;
+        uint16_t format_vector;
+
+        if ((cpu->sr & M68K_SR_SUPERVISOR) == 0u) {
+            return -6;
+        }
+        if (!read16_be(vm, cpu->a[7], &restored_sr) ||
+            !read32_be(vm, cpu->a[7] + 2u, &restored_pc) ||
+            !read16_be(vm, cpu->a[7] + 6u, &format_vector)) {
+            set_fault(cpu, (cpu->a[7] & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
+                      cpu->a[7], opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
+        }
+        if ((format_vector & 0xf000u) != 0u) {
+            cpu->stopped = true;
+            return -6;
+        }
+        cpu->a[7] += 8u;
+        cpu->sr = restored_sr;
+        cpu->pc = restored_pc;
         return 1;
     }
     if (opcode == M68K_OPCODE_RTS) {
