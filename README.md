@@ -14,6 +14,7 @@ AmiVM is intended for:
 - AROS/m68k
 - Linux/m68k, including m68kDeb development and qualification
 - high-performance 68k development and CI workloads
+- workstation applications such as rendering, scenery generation and animation
 - future workstation-style and appliance use
 
 AmiVM is **not** primarily intended to replace cycle-accurate Amiga emulators for games, demos or hardware-timing validation.
@@ -50,9 +51,18 @@ The initial reference machine.
 
 A later profile providing additional Amiga-compatible devices and conventions for AmigaOS software that cannot use the Hyper profile directly.
 
-## Planned virtual devices
+## Current M1 machine map
 
-Names are provisional during M0:
+- ROM/bootstrap: `0x00f00000`, 1 MiB
+- RAM: starts at `0x10000000`, configurable with `--ram-mib`
+- MMIO: starts at `0xff000000`
+- `vmserial`: `0xff000000`
+- timer: `0xff001000`
+- interrupt controller: `0xff002000`
+
+The M1 device registry and map are intentionally small and deterministic. They may evolve before the stable guest ABI milestone.
+
+## Planned virtual devices
 
 - `vmblock.device` — high-throughput block storage
 - `vmnet.device` — host-backed networking
@@ -73,9 +83,11 @@ ARAnyM is an important architectural reference because it demonstrates the value
 
 ## Status
 
-**M0 — Architecture & Feasibility: complete.**
+**M1 — VM core skeleton: complete.**
 
-The repository now contains the initial machine contract, roadmap, buildable host skeleton and GitHub Actions smoke-test baseline. M1 starts the real VM core: address space, RAM mapping, interrupt/timer baseline and serial device.
+The host now has configurable RAM and ROM loading, a guest physical memory map, explicit MMIO device registration, interrupt/timer baselines, `vmserial`, deterministic machine description and Release-safe VM-core tests.
+
+**Next: M2 — 68k execution.** The next proof point is a CPU-backend abstraction followed by reset-vector and first-instruction execution for the Hyper/040 guest.
 
 See [ROADMAP.md](ROADMAP.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
