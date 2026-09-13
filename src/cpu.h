@@ -11,18 +11,22 @@ enum amivm_cpu_fault {
     AMIVM_CPU_FAULT_BUS,
     AMIVM_CPU_FAULT_ADDRESS,
     AMIVM_CPU_FAULT_ILLEGAL,
+    AMIVM_CPU_FAULT_PRIVILEGE,
 };
 
 enum amivm_cpu_exception_vector {
     AMIVM_VECTOR_BUS_ERROR = 2,
     AMIVM_VECTOR_ADDRESS_ERROR = 3,
     AMIVM_VECTOR_ILLEGAL_INSTRUCTION = 4,
+    AMIVM_VECTOR_PRIVILEGE_VIOLATION = 8,
     AMIVM_VECTOR_AUTOVECTOR_BASE = 24,
 };
 
 struct amivm_cpu_state {
     uint32_t d[8];
     uint32_t a[8];
+    uint32_t usp;
+    uint32_t isp;
     uint32_t pc;
     uint32_t vbr;
     uint16_t sr;
