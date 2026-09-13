@@ -22,13 +22,32 @@ enum amivm_cpu_exception_vector {
     AMIVM_VECTOR_AUTOVECTOR_BASE = 24,
 };
 
+enum amivm_control_register {
+    AMIVM_CR_SFC = 0x000,
+    AMIVM_CR_DFC = 0x001,
+    AMIVM_CR_CACR = 0x002,
+    AMIVM_CR_TC = 0x003,
+    AMIVM_CR_VBR = 0x801,
+    AMIVM_CR_MSP = 0x803,
+    AMIVM_CR_ISP = 0x804,
+    AMIVM_CR_URP = 0x806,
+    AMIVM_CR_SRP = 0x807,
+};
+
 struct amivm_cpu_state {
     uint32_t d[8];
     uint32_t a[8];
     uint32_t usp;
     uint32_t isp;
+    uint32_t msp;
     uint32_t pc;
     uint32_t vbr;
+    uint32_t cacr;
+    uint32_t tc;
+    uint32_t urp;
+    uint32_t srp;
+    uint8_t sfc;
+    uint8_t dfc;
     uint16_t sr;
     bool stopped;
     enum amivm_cpu_fault last_fault;
