@@ -73,7 +73,9 @@ ARAnyM is an important architectural reference because it demonstrates the value
 
 ## Status
 
-**M0 — Architecture & Feasibility: in progress.**
+**M0 — Architecture & Feasibility: complete.**
+
+The repository now contains the initial machine contract, roadmap, buildable host skeleton and GitHub Actions smoke-test baseline. M1 starts the real VM core: address space, RAM mapping, interrupt/timer baseline and serial device.
 
 See [ROADMAP.md](ROADMAP.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
