@@ -17,6 +17,7 @@ enum amivm_cpu_exception_vector {
     AMIVM_VECTOR_BUS_ERROR = 2,
     AMIVM_VECTOR_ADDRESS_ERROR = 3,
     AMIVM_VECTOR_ILLEGAL_INSTRUCTION = 4,
+    AMIVM_VECTOR_AUTOVECTOR_BASE = 24,
 };
 
 struct amivm_cpu_state {
