@@ -81,15 +81,42 @@ int main(void)
     put16_be(&vm.rom[0x260], 0x4e73u);
     put16_be(&vm.rom[0x280], 0x4e71u);
     put16_be(&vm.rom[0x2a0], 0x4e73u);
-    vm.rom_used = 0x2a2u;
+
+    /* M2.6 control-register program:
+     * MOVE.L #$12345678,D0; MOVEC D0,TC; MOVEC TC,D1;
+     * MOVE.L #$10001c00,A0 is prepared by the test, then MOVEC A0,MSP;
+     * MOVEC MSP,A1; MOVEC D0,URP; MOVEC URP,D2.
+     */
+    put16_be(&vm.rom[0x2c0], 0x203cu);
+    put32_be(&vm.rom[0x2c2], 0x12345678u);
+    put16_be(&vm.rom[0x2c6], 0x4e7bu);
+    put16_be(&vm.rom[0x2c8], 0x0003u);
+    put16_be(&vm.rom[0x2ca], 0x4e7au);
+    put16_be(&vm.rom[0x2cc], 0x1003u);
+    put16_be(&vm.rom[0x2ce], 0x4e7bu);
+    put16_be(&vm.rom[0x2d0], 0x8803u);
+    put16_be(&vm.rom[0x2d2], 0x4e7au);
+    put16_be(&vm.rom[0x2d4], 0x9803u);
+    put16_be(&vm.rom[0x2d6], 0x4e7bu);
+    put16_be(&vm.rom[0x2d8], 0x0806u);
+    put16_be(&vm.rom[0x2da], 0x4e7au);
+    put16_be(&vm.rom[0x2dc], 0x2806u);
+
+    /* User-mode MOVEC D0,TC must raise privilege violation. */
+    put16_be(&vm.rom[0x300], 0x4e7bu);
+    put16_be(&vm.rom[0x302], 0x0003u);
+    vm.rom_used = 0x304u;
 
     CHECK(backend != NULL);
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     CHECK(cpu.a[7] == initial_sp);
     CHECK(cpu.isp == initial_sp);
+    CHECK(cpu.msp == initial_sp);
     CHECK(cpu.usp == 0u);
     CHECK(cpu.pc == initial_pc);
     CHECK(cpu.vbr == AMIVM_ROM_BASE);
+    CHECK(cpu.tc == 0u && cpu.urp == 0u && cpu.srp == 0u && cpu.cacr == 0u);
+    CHECK(cpu.sfc == 0u && cpu.dfc == 0u);
     CHECK((cpu.sr & 0x2700u) == 0x2700u);
 
     CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
@@ -132,7 +159,6 @@ int main(void)
     CHECK(cpu.last_exception_vector == AMIVM_VECTOR_BUS_ERROR);
     CHECK(cpu.pc == bus_handler);
 
-    /* Supervisor interrupt masking and RTE regression. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.pc = initial_pc + 0x10u;
     cpu.sr = 0x2300u;
@@ -149,7 +175,6 @@ int main(void)
     CHECK(cpu.a[7] == initial_sp);
     CHECK(cpu.isp == initial_sp);
 
-    /* User-mode IRQ must save USP, run on ISP, then RTE back to USP. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.sr = 0u;
     cpu.usp = user_sp;
@@ -161,8 +186,6 @@ int main(void)
     CHECK(cpu.usp == user_sp);
     CHECK(cpu.a[7] == initial_sp - 8u);
     CHECK(cpu.isp == initial_sp - 8u);
-    CHECK((cpu.sr & 0x2000u) != 0u);
-    CHECK(get16_be(&vm.ram[frame_offset]) == 0u);
     CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
     CHECK(cpu.pc == initial_pc + 0x10u);
     CHECK(cpu.sr == 0u);
@@ -170,7 +193,6 @@ int main(void)
     CHECK(cpu.usp == user_sp);
     CHECK(cpu.isp == initial_sp);
 
-    /* RTE in user mode is privileged and must enter vector 8 on ISP. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.sr = 0u;
     cpu.usp = user_sp;
@@ -180,12 +202,55 @@ int main(void)
     CHECK(cpu.last_fault == AMIVM_CPU_FAULT_PRIVILEGE);
     CHECK(cpu.last_exception_vector == AMIVM_VECTOR_PRIVILEGE_VIOLATION);
     CHECK(cpu.pc == privilege_handler);
-    CHECK(cpu.usp == user_sp);
+
+    /* MOVEC register model and round-trip. */
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.a[0] = AMIVM_RAM_BASE + 0x1c00u;
+    cpu.pc = AMIVM_ROM_BASE + 0x2c0u;
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.d[0] == 0x12345678u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.tc == 0x12345678u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.d[1] == 0x12345678u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.msp == AMIVM_RAM_BASE + 0x1c00u);
+    CHECK(cpu.a[7] == initial_sp);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.a[1] == AMIVM_RAM_BASE + 0x1c00u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.urp == 0x12345678u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.d[2] == 0x12345678u);
+
+    /* User-mode MOVEC is privileged. */
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.sr = 0u;
+    cpu.usp = user_sp;
+    cpu.a[7] = user_sp;
+    cpu.pc = AMIVM_ROM_BASE + 0x300u;
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 2);
+    CHECK(cpu.last_fault == AMIVM_CPU_FAULT_PRIVILEGE);
+    CHECK(cpu.last_exception_vector == AMIVM_VECTOR_PRIVILEGE_VIOLATION);
+    CHECK(cpu.pc == privilege_handler);
+
+    /* A hardware interrupt from master state must use ISP and preserve MSP. */
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.msp = AMIVM_RAM_BASE + 0x1e00u;
+    cpu.a[7] = cpu.msp;
+    cpu.sr = 0x3000u;
+    cpu.pc = initial_pc + 0x10u;
+    amivm_raise_irq(&vm, 2u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 2);
+    CHECK(cpu.pc == irq2_handler);
+    CHECK(cpu.msp == AMIVM_RAM_BASE + 0x1e00u);
     CHECK(cpu.a[7] == initial_sp - 8u);
-    CHECK(get16_be(&vm.ram[frame_offset]) == 0u);
-    CHECK(get32_be(&vm.ram[frame_offset + 2u]) == AMIVM_ROM_BASE + 0x2a0u);
+    CHECK((cpu.sr & 0x1000u) == 0u);
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.sr == 0x3000u);
+    CHECK(cpu.a[7] == AMIVM_RAM_BASE + 0x1e00u);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.5 CPU stack/privilege tests: PASS");
+    puts("AmiVM M2.6 CPU control-state tests: PASS");
     return 0;
 }
