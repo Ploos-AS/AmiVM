@@ -35,32 +35,37 @@ Later hosts may be added after the guest ABI stabilizes.
 
 AmiVM does not reproduce historical Amiga RAM ceilings unless a compatibility profile explicitly requests them.
 
-The initial model provides:
+The M1 provisional physical map is:
 
-- a low bootstrap/ROM area;
-- guest RAM in large contiguous regions;
-- an MMIO window reserved for AmiVM devices;
-- optional framebuffer memory;
-- explicit machine-description data available to the guest bootstrap.
+| Region | Base | Initial size |
+| --- | ---: | ---: |
+| ROM/bootstrap | `0x00f00000` | 1 MiB |
+| RAM | `0x10000000` | configurable, 128 MiB default |
+| MMIO | `0xff000000` | device pages |
+| `vmserial` | `0xff000000` | 4 KiB |
+| timer | `0xff001000` | 4 KiB |
+| interrupt controller | `0xff002000` | 4 KiB |
 
-The exact physical addresses are deliberately deferred until M1 so they can be validated against Linux/m68k bootstrap constraints and Amiga compatibility requirements before becoming ABI.
+RAM is a contiguous host-backed region. ROM is readable but guest writes are rejected. The current host CLI can load a ROM/bootstrap image with `--rom PATH` and configure RAM with `--ram-mib N`.
+
+These addresses are deterministic for M1 qualification, but remain provisional until the stable guest ABI milestone.
 
 ## 4. Device model
 
 AmiVM devices use a simple versioned paravirtual bus rather than pretending to be historical Zorro, SCSI or Ethernet hardware.
 
-Each device exposes:
+M1 introduces an explicit host-side device registry. Each registered device currently has:
 
-- vendor/device identifier;
-- ABI version;
-- MMIO register region;
-- feature bits;
-- interrupt source;
-- optional shared-memory queues.
+- stable logical name;
+- MMIO base;
+- MMIO region size;
+- interrupt line.
+
+The first registered devices are `vmserial`, `timer` and `irq`. Future devices will extend the descriptor with vendor/device identifiers, ABI version and feature bits before guest-driver ABI freeze.
 
 The design should allow efficient descriptor-ring or shared-buffer I/O without requiring one guest trap per byte or sector.
 
-Initial logical devices:
+Planned logical devices:
 
 - `vmserial` — console/debug/control transport;
 - `vmblock` — block storage;
@@ -69,11 +74,11 @@ Initial logical devices:
 - `vmfs` — host/shared filesystem transport;
 - `vmaudio` — optional audio transport.
 
-Names and IDs remain provisional until the M1 ABI freeze point.
-
 ## 5. Interrupts and timing
 
 Hyper/040 gets a virtual interrupt controller and monotonic timer rather than cycle-derived chipset timing.
+
+M1 provides a 32-bit pending-interrupt bitmap plus explicit raise/clear operations and a monotonic 64-bit tick counter. This is intentionally a minimal host-side contract; M2 will connect interrupt injection to the CPU backend.
 
 Goals:
 
@@ -90,7 +95,7 @@ Compatibility mode may later add legacy-facing timing surfaces separately.
 
 Linux is the preferred first bring-up guest because it gives clear kernel-level validation of CPU, MMU, exceptions, interrupts, timers and I/O.
 
-The M0/M1 boot contract should support:
+The boot contract should support:
 
 - kernel image;
 - optional initrd;
@@ -107,9 +112,11 @@ These guests are not required to use the Linux boot contract.
 
 AmiVM will provide a separate compatibility/bootstrap layer and native guest drivers where necessary. The Hyper machine should not become coupled to undocumented historical hardware behaviour merely to make this path work.
 
+CPU-heavy workstation applications are an explicit future use case for the Amiga-compatible path. That includes rendering, scenery generation and animation software where software availability permits qualification.
+
 ## 7. CPU execution strategy
 
-M0 does not mandate writing a 68k CPU core from scratch.
+M0/M1 do not mandate writing a 68k CPU core from scratch.
 
 Preferred evaluation order:
 
@@ -118,6 +125,8 @@ Preferred evaluation order:
 3. establish a reference/debug execution path;
 4. prioritize JIT/dynamic translation on x86-64 and AArch64;
 5. keep the CPU backend behind an internal interface so it can be replaced or supplemented.
+
+M2 starts by defining that internal CPU-backend API, reset semantics and interrupt/exception boundary before coupling AmiVM to one implementation.
 
 Raw benchmark speed is not sufficient if exception/MMU behaviour prevents modern kernels from running correctly.
 
@@ -173,8 +182,18 @@ AmiVM remains a focused Amiga-class 68k VM rather than a general system emulator
 
 Existing emulators remain the correct tool for those workloads.
 
-## 10. M0 feasibility decision
+## 10. M1 implementation state
 
-The project is considered feasible if a reusable or implementable 68040-class execution path can satisfy MMU/FPU/kernel requirements and the virtual machine can expose a small, stable device ABI without depending on legacy chipset emulation.
+The M1 VM skeleton now provides:
 
-The first proof point after M0 is therefore not Workbench graphics. It is a deterministic VM skeleton capable of exposing RAM, timer, interrupts and serial I/O to a 68k guest, followed by Linux/m68k kernel bring-up.
+- configurable RAM allocation;
+- ROM/bootstrap loading and write protection;
+- deterministic physical-address map;
+- explicit core-device registration;
+- `vmserial` host output/status baseline;
+- interrupt pending/clear baseline;
+- monotonic timer baseline;
+- deterministic machine-description output;
+- VM-core tests that remain active in Release builds.
+
+M2 begins at the CPU boundary: reset vector, register state, instruction stepping, exceptions, interrupts, MMU and FPU integration.
