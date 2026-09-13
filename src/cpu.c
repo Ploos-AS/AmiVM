@@ -16,6 +16,11 @@
 #define M68K_OPCODE_JMP_ABSL 0x4ef9u
 #define M68K_OPCODE_JSR_ABSL 0x4eb9u
 
+static bool is_supervisor(const struct amivm_cpu_state *cpu)
+{
+    return (cpu->sr & M68K_SR_SUPERVISOR) != 0u;
+}
+
 static void set_fault(struct amivm_cpu_state *cpu, enum amivm_cpu_fault fault,
                       uint32_t address, uint16_t opcode)
 {
@@ -95,12 +100,15 @@ static int enter_exception(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 
     old_sr = cpu->sr;
+    if (!is_supervisor(cpu)) {
+        cpu->usp = cpu->a[7];
+        cpu->a[7] = cpu->isp;
+    } else {
+        cpu->isp = cpu->a[7];
+    }
     cpu->sr = (uint16_t)((cpu->sr | M68K_SR_SUPERVISOR) & ~M68K_SR_TRACE_MASK);
 
-    /*
-     * M2.3/M2.4 use a 68020+-style format-0 short frame:
-     *   +0 SR, +2 PC, +6 format/vector-offset word.
-     */
+    /* 68020+-style format-0 short frame: SR, PC, format/vector word. */
     new_sp = cpu->a[7] - 8u;
     format_vector = (uint16_t)((vector * 4u) & 0x0fffu);
     if (!write16_be(vm, new_sp, old_sr) ||
@@ -111,6 +119,7 @@ static int enter_exception(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 
     cpu->a[7] = new_sp;
+    cpu->isp = new_sp;
     cpu->pc = handler_pc;
     cpu->last_exception_vector = (uint8_t)vector;
     return 2;
@@ -126,6 +135,8 @@ static int deliver_fault(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return enter_exception(cpu, vm, AMIVM_VECTOR_ADDRESS_ERROR, saved_pc);
     case AMIVM_CPU_FAULT_ILLEGAL:
         return enter_exception(cpu, vm, AMIVM_VECTOR_ILLEGAL_INSTRUCTION, saved_pc);
+    case AMIVM_CPU_FAULT_PRIVILEGE:
+        return enter_exception(cpu, vm, AMIVM_VECTOR_PRIVILEGE_VIOLATION, saved_pc);
     case AMIVM_CPU_FAULT_NONE:
     default:
         return -1;
@@ -180,6 +191,8 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         cpu->d[i] = 0u;
         cpu->a[i] = 0u;
     }
+    cpu->usp = 0u;
+    cpu->isp = initial_sp;
     cpu->a[7] = initial_sp;
     cpu->pc = initial_pc;
     cpu->vbr = AMIVM_ROM_BASE;
@@ -254,9 +267,11 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         uint16_t restored_sr;
         uint32_t restored_pc;
         uint16_t format_vector;
+        uint32_t frame_end;
 
-        if ((cpu->sr & M68K_SR_SUPERVISOR) == 0u) {
-            return -6;
+        if (!is_supervisor(cpu)) {
+            set_fault(cpu, AMIVM_CPU_FAULT_PRIVILEGE, instruction_pc, opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
         }
         if (!read16_be(vm, cpu->a[7], &restored_sr) ||
             !read32_be(vm, cpu->a[7] + 2u, &restored_pc) ||
@@ -269,9 +284,25 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             cpu->stopped = true;
             return -6;
         }
-        cpu->a[7] += 8u;
+        frame_end = cpu->a[7] + 8u;
+        cpu->isp = frame_end;
         cpu->sr = restored_sr;
         cpu->pc = restored_pc;
+        cpu->a[7] = is_supervisor(cpu) ? cpu->isp : cpu->usp;
+        return 1;
+    }
+    if ((opcode & 0xfff8u) == 0x4e60u || (opcode & 0xfff8u) == 0x4e68u) {
+        unsigned reg = (unsigned)(opcode & 7u);
+        if (!is_supervisor(cpu)) {
+            set_fault(cpu, AMIVM_CPU_FAULT_PRIVILEGE, instruction_pc, opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
+        }
+        if ((opcode & 0xfff8u) == 0x4e60u) {
+            cpu->usp = cpu->a[reg];
+        } else {
+            cpu->a[reg] = cpu->usp;
+        }
+        cpu->pc = next_pc;
         return 1;
     }
     if (opcode == M68K_OPCODE_RTS) {
@@ -280,6 +311,11 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             return deliver_fault(cpu, vm, instruction_pc);
         }
         cpu->a[7] += 4u;
+        if (is_supervisor(cpu)) {
+            cpu->isp = cpu->a[7];
+        } else {
+            cpu->usp = cpu->a[7];
+        }
         cpu->pc = target;
         return 1;
     }
@@ -296,6 +332,11 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
                 return deliver_fault(cpu, vm, instruction_pc);
             }
             cpu->a[7] = new_sp;
+            if (is_supervisor(cpu)) {
+                cpu->isp = new_sp;
+            } else {
+                cpu->usp = new_sp;
+            }
         }
         cpu->pc = target;
         return 1;
@@ -353,6 +394,11 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
                 return deliver_fault(cpu, vm, instruction_pc);
             }
             cpu->a[7] = new_sp;
+            if (is_supervisor(cpu)) {
+                cpu->isp = new_sp;
+            } else {
+                cpu->usp = new_sp;
+            }
         }
         cpu->pc = (uint32_t)((int64_t)base + disp);
         return 1;
