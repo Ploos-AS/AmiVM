@@ -80,11 +80,37 @@ int main(void)
     CHECK(exec.stats.jit_chain_hits == 198u);
     CHECK(exec.stats.cache_hits == 198u);
 
+    /*
+     * M2.32: global invalidation must release published native mappings and
+     * discard chain links.  The same hot loop must then rebuild both blocks
+     * and reproduce the exact chaining profile without stale pointers.
+     */
+    amivm_exec_invalidate_all(&exec);
+    CHECK(cpu.pc == block_a);
+    CHECK(amivm_exec_run(&exec, &cpu, &vm, 400u) == 1);
+    CHECK(cpu.pc == block_a);
+    CHECK(cpu.d[0] == 0u);
+    CHECK(exec.stats.instructions == 800u);
+    CHECK(exec.stats.jit_instructions == 800u);
+    CHECK(exec.stats.jit_blocks == 400u);
+    CHECK(exec.stats.ir_instructions == 0u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.fallbacks == 0u);
+    CHECK(exec.stats.jit_fallbacks == 0u);
+    CHECK(exec.stats.cache_misses == 4u);
+    CHECK(exec.stats.dispatches == 4u);
+    CHECK(exec.stats.jit_prepares == 4u);
+    CHECK(exec.stats.chain_misses == 2u);
+    CHECK(exec.stats.jit_chain_misses == 2u);
+    CHECK(exec.stats.chain_hits == 396u);
+    CHECK(exec.stats.jit_chain_hits == 396u);
+    CHECK(exec.stats.cache_hits == 396u);
+
     amivm_exec_reset(&exec);
     CHECK(exec.stats.jit_chain_hits == 0u);
     CHECK(exec.stats.jit_chain_misses == 0u);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.31 JIT branch chaining tests: PASS");
+    puts("AmiVM M2.32 JIT chain invalidation lifecycle tests: PASS");
     return 0;
 }
