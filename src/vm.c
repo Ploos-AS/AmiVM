@@ -18,10 +18,18 @@ static bool in_range(uint32_t addr, uint32_t base, size_t size)
     return a >= b && a < e;
 }
 
-static void bump_write_generation(struct amivm_vm *vm)
+static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
 {
+    size_t page;
+
     vm->memory_write_generation++;
     if (vm->memory_write_generation == 0u) vm->memory_write_generation = 1u;
+
+    page = (size_t)(addr - AMIVM_RAM_BASE) / AMIVM_RAM_PAGE_SIZE;
+    if (page < vm->ram_page_count) {
+        vm->ram_page_generation[page]++;
+        if (vm->ram_page_generation[page] == 0u) vm->ram_page_generation[page] = 1u;
+    }
 }
 
 void amivm_config_init(struct amivm_config *config)
@@ -61,6 +69,13 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->ram_size = config->ram_size;
+    vm->ram_page_count = (config->ram_size + AMIVM_RAM_PAGE_SIZE - 1u) /
+                         AMIVM_RAM_PAGE_SIZE;
+    vm->ram_page_generation = calloc(vm->ram_page_count, sizeof(*vm->ram_page_generation));
+    if (vm->ram_page_generation == NULL) {
+        amivm_vm_destroy(vm);
+        return -1;
+    }
     vm->memory_write_generation = 1u;
     if (config->rom_path != NULL && amivm_vm_load_rom(vm, config->rom_path) != 0) {
         amivm_vm_destroy(vm);
@@ -74,6 +89,7 @@ void amivm_vm_destroy(struct amivm_vm *vm)
     if (vm == NULL) {
         return;
     }
+    free(vm->ram_page_generation);
     free(vm->ram);
     memset(vm, 0, sizeof(*vm));
 }
@@ -172,7 +188,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     }
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         vm->ram[(size_t)(addr - AMIVM_RAM_BASE)] = value;
-        bump_write_generation(vm);
+        bump_write_generation(vm, addr);
         return true;
     }
     if (in_range(addr, AMIVM_ROM_BASE, AMIVM_ROM_SIZE)) {
@@ -188,6 +204,19 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         return true;
     }
     return false;
+}
+
+bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
+                               uint64_t *generation)
+{
+    size_t page;
+
+    if (vm == NULL || generation == NULL ||
+        !in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) return false;
+    page = (size_t)(addr - AMIVM_RAM_BASE) / AMIVM_RAM_PAGE_SIZE;
+    if (page >= vm->ram_page_count) return false;
+    *generation = vm->ram_page_generation[page];
+    return true;
 }
 
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line)
