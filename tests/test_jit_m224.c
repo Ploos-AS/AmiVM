@@ -16,7 +16,7 @@ int main(void)
     struct amivm_jit_code code;
     struct amivm_cpu_state cpu;
     const uint16_t nop_words[] = {0x4e71u, 0x4e71u};
-    const uint16_t moveq_words[] = {0x7001u};
+    const uint16_t tst_words[] = {0x4a80u};
     int rc;
 
     amivm_ir_block_init(&block, 0x00001000u);
@@ -46,9 +46,9 @@ int main(void)
         CHECK(rc == AMIVM_JIT_UNSUPPORTED);
     }
 
-    /* Unsupported guest semantics must remain on the IR interpreter path. */
+    /* Guest semantics not yet lowered must remain on the IR interpreter path. */
     amivm_ir_block_init(&block, 0x00002000u);
-    CHECK(amivm_ir_decode_words(&block, moveq_words, 1u) == 0);
+    CHECK(amivm_ir_decode_words(&block, tst_words, 1u) == 0);
     CHECK(block.op_count == 1u);
     CHECK(amivm_jit_compile(&block, &code) == AMIVM_JIT_UNSUPPORTED);
 
