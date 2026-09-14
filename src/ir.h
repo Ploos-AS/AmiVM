@@ -11,6 +11,9 @@
 enum amivm_ir_opcode {
     AMIVM_IR_NOP = 0,
     AMIVM_IR_MOVEQ,
+    AMIVM_IR_MOVEA_W,
+    AMIVM_IR_MOVEA_L,
+    AMIVM_IR_LEA,
     AMIVM_IR_CLR_L,
     AMIVM_IR_TST_L,
     AMIVM_IR_ADDQ_L,
@@ -56,9 +59,11 @@ enum amivm_ir_ea_mode {
     AMIVM_IR_EA_POSTINC = 3,
     AMIVM_IR_EA_PREDEC = 4,
     AMIVM_IR_EA_D16_AN = 5,
+    AMIVM_IR_EA_D8_AN_XN = 6,
     AMIVM_IR_EA_ABS_W = 8,
     AMIVM_IR_EA_ABS_L = 9,
     AMIVM_IR_EA_PC_D16 = 10,
+    AMIVM_IR_EA_PC_D8_XN = 11,
 };
 
 struct amivm_ir_op {
@@ -67,6 +72,10 @@ struct amivm_ir_op {
     uint8_t src_reg;
     uint8_t condition;
     uint8_t ea_mode;
+    uint8_t index_reg;
+    uint8_t index_is_addr;
+    uint8_t index_long;
+    uint8_t index_scale;
     int32_t imm;
     uint32_t guest_pc;
 };
