@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "cpu.h"
+#include "ea.h"
 
 #define AMIVM_IR_MAX_OPS 64u
 
@@ -76,7 +77,14 @@ struct amivm_ir_op {
     uint8_t index_is_addr;
     uint8_t index_long;
     uint8_t index_scale;
+    uint8_t full_format;
+    uint8_t base_suppress;
+    uint8_t index_suppress;
+    uint8_t instruction_bytes;
+    enum amivm_ea_indirect_mode indirect_mode;
     int32_t imm;
+    int32_t base_displacement;
+    int32_t outer_displacement;
     uint32_t guest_pc;
 };
 
