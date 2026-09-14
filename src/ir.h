@@ -21,6 +21,8 @@ enum amivm_ir_opcode {
     AMIVM_IR_AND_L,
     AMIVM_IR_OR_L,
     AMIVM_IR_EOR_L,
+    AMIVM_IR_LOAD_L,
+    AMIVM_IR_STORE_L,
     AMIVM_IR_BRANCH,
     AMIVM_IR_BRANCH_CC,
     AMIVM_IR_EXIT,
@@ -44,11 +46,20 @@ enum amivm_ir_condition {
     AMIVM_IR_CC_LE = 15,
 };
 
+enum amivm_ir_ea_mode {
+    AMIVM_IR_EA_NONE = 0,
+    AMIVM_IR_EA_AN = 2,
+    AMIVM_IR_EA_POSTINC = 3,
+    AMIVM_IR_EA_PREDEC = 4,
+    AMIVM_IR_EA_D16_AN = 5,
+};
+
 struct amivm_ir_op {
     enum amivm_ir_opcode opcode;
     uint8_t reg;
     uint8_t src_reg;
     uint8_t condition;
+    uint8_t ea_mode;
     int32_t imm;
     uint32_t guest_pc;
 };
@@ -65,6 +76,6 @@ void amivm_ir_block_init(struct amivm_ir_block *block, uint32_t guest_pc);
 int amivm_ir_decode_words(struct amivm_ir_block *block,
                           const uint16_t *words, size_t word_count);
 int amivm_ir_execute(const struct amivm_ir_block *block,
-                     struct amivm_cpu_state *cpu);
+                     struct amivm_cpu_state *cpu, struct amivm_vm *vm);
 
 #endif
