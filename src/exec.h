@@ -33,6 +33,7 @@ struct amivm_exec_cache_entry {
     size_t chain_index;
     struct amivm_ir_block block;
     struct amivm_jit_code jit;
+    struct amivm_jit_runtime jit_runtime;
 };
 
 struct amivm_exec_stats {
@@ -48,6 +49,7 @@ struct amivm_exec_stats {
     uint64_t ir_instructions;
     uint64_t jit_blocks;
     uint64_t jit_instructions;
+    uint64_t jit_prepares;
     uint64_t jit_fallbacks;
     uint64_t fallbacks;
     uint64_t exits;
