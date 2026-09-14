@@ -15,6 +15,7 @@
 #define AMIVM_TIMER_BASE    (AMIVM_MMIO_BASE + 0x1000u)
 #define AMIVM_IRQ_BASE      (AMIVM_MMIO_BASE + 0x2000u)
 #define AMIVM_MMIO_PAGE_SIZE 0x1000u
+#define AMIVM_RAM_PAGE_SIZE 0x1000u
 
 struct amivm_config {
     size_t ram_size;
@@ -31,6 +32,8 @@ struct amivm_device_desc {
 struct amivm_vm {
     uint8_t *ram;
     size_t ram_size;
+    uint64_t *ram_page_generation;
+    size_t ram_page_count;
     uint8_t rom[AMIVM_ROM_SIZE];
     size_t rom_used;
     uint32_t irq_pending;
@@ -50,6 +53,8 @@ const struct amivm_device_desc *amivm_find_device(const char *name);
 
 bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value);
 bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value);
+bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
+                               uint64_t *generation);
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line);
 void amivm_clear_irq(struct amivm_vm *vm, unsigned line);
 void amivm_tick(struct amivm_vm *vm, uint64_t ticks);
