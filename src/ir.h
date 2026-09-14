@@ -6,7 +6,7 @@
 
 #include "cpu.h"
 
-#define AMIVM_IR_MAX_OPS 32u
+#define AMIVM_IR_MAX_OPS 64u
 
 enum amivm_ir_opcode {
     AMIVM_IR_NOP = 0,
