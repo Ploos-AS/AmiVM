@@ -18,6 +18,12 @@ static bool in_range(uint32_t addr, uint32_t base, size_t size)
     return a >= b && a < e;
 }
 
+static void bump_write_generation(struct amivm_vm *vm)
+{
+    vm->memory_write_generation++;
+    if (vm->memory_write_generation == 0u) vm->memory_write_generation = 1u;
+}
+
 void amivm_config_init(struct amivm_config *config)
 {
     config->ram_size = (size_t)AMIVM_DEFAULT_RAM_MIB * 1024u * 1024u;
@@ -55,6 +61,7 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->ram_size = config->ram_size;
+    vm->memory_write_generation = 1u;
     if (config->rom_path != NULL && amivm_vm_load_rom(vm, config->rom_path) != 0) {
         amivm_vm_destroy(vm);
         return -1;
@@ -165,6 +172,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     }
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         vm->ram[(size_t)(addr - AMIVM_RAM_BASE)] = value;
+        bump_write_generation(vm);
         return true;
     }
     if (in_range(addr, AMIVM_ROM_BASE, AMIVM_ROM_SIZE)) {
