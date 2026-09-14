@@ -53,6 +53,7 @@ int main(void)
     CHECK(exec.stats.instructions == 1000u);
     CHECK(exec.stats.cache_misses == 1u);
     CHECK(exec.stats.cache_hits == 999u);
+    CHECK(exec.stats.stale_write_misses == 0u);
     CHECK(exec.stats.ir_blocks == 1000u);
     CHECK(exec.stats.ir_instructions == 1000u);
     CHECK(exec.stats.fallbacks == 0u);
@@ -86,7 +87,50 @@ int main(void)
     CHECK(exec.stats.ir_blocks == 0u);
     CHECK(exec.stats.fallbacks == 0u);
 
+    /* M2.13: translate instruction fetch through the supervisor page tables. */
+    {
+        const uint32_t srp = AMIVM_RAM_BASE + 0x4000u;
+        const uint32_t sl2 = AMIVM_RAM_BASE + 0x5000u;
+        const uint32_t code_page = AMIVM_RAM_BASE + 0x9000u;
+        const uint32_t logical_pc = 0x00400100u;
+        const size_t code_offset = 0x9000u + 0x100u;
+        uint64_t generation_before_write;
+
+        put32_be(&vm.ram[0x4000u + 4u], sl2 | 1u); /* L1[1] -> L2. */
+        put32_be(&vm.ram[0x5000u], code_page | 1u); /* L2[0] -> code page. */
+        put16_be(&vm.ram[code_offset], 0x60feu);    /* BRA -2. */
+        put16_be(&vm.ram[code_offset + 2u], 0x60feu);
+
+        CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+        cpu.srp = srp;
+        cpu.tc = 0x80000000u;
+        cpu.pc = logical_pc;
+        amivm_exec_reset(&exec);
+
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(cpu.pc == logical_pc);
+        CHECK(exec.stats.ir_blocks == 1u);
+        CHECK(exec.stats.fallbacks == 0u);
+        CHECK(exec.stats.cache_misses == 1u);
+
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(exec.stats.cache_hits == 1u);
+        CHECK(exec.stats.ir_blocks == 2u);
+
+        generation_before_write = vm.memory_write_generation;
+        CHECK(amivm_write8(&vm, code_page + 0x100u, 0x70u));
+        CHECK(amivm_write8(&vm, code_page + 0x101u, 0x07u)); /* MOVEQ #7,D0. */
+        CHECK(vm.memory_write_generation > generation_before_write);
+
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(exec.stats.stale_write_misses == 1u);
+        CHECK(exec.stats.cache_misses == 2u);
+        CHECK(exec.stats.fallbacks == 0u);
+        CHECK(cpu.d[0] == 7u);
+        CHECK(cpu.pc == logical_pc + 2u);
+    }
+
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.12 IR block-cache/fallback tests: PASS");
+    puts("AmiVM M2.13 MMU-aware IR/write-invalidation tests: PASS");
     return 0;
 }
