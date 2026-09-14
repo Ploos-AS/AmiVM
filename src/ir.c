@@ -45,6 +45,20 @@ static void set_nz32(struct amivm_cpu_state *cpu, uint32_t value)
     if ((value & 0x80000000u) != 0u) cpu->sr |= SR_N;
 }
 
+static void set_nz16(struct amivm_cpu_state *cpu, uint16_t value)
+{
+    cpu->sr &= (uint16_t)~(SR_N | SR_Z | SR_V | SR_C);
+    if (value == 0u) cpu->sr |= SR_Z;
+    if ((value & 0x8000u) != 0u) cpu->sr |= SR_N;
+}
+
+static void set_nz8(struct amivm_cpu_state *cpu, uint8_t value)
+{
+    cpu->sr &= (uint16_t)~(SR_N | SR_Z | SR_V | SR_C);
+    if (value == 0u) cpu->sr |= SR_Z;
+    if ((value & 0x80u) != 0u) cpu->sr |= SR_N;
+}
+
 static void set_logic32_flags(struct amivm_cpu_state *cpu, uint32_t value)
 {
     set_nz32(cpu, value);
@@ -129,6 +143,31 @@ static int emit_reg_alu(struct amivm_ir_block *block, uint16_t op, uint32_t pc)
     return emit(block, ir_op, dst, src, 0u, AMIVM_IR_EA_NONE, 0, pc) == 0 ? 1 : -1;
 }
 
+static int memory_ea(uint8_t mode, uint8_t reg, int source, uint8_t *ea_mode)
+{
+    if (mode >= 2u && mode <= 5u) {
+        *ea_mode = mode;
+        return 1;
+    }
+    if (mode != 7u) return 0;
+    if (reg == 0u) { *ea_mode = AMIVM_IR_EA_ABS_W; return 1; }
+    if (reg == 1u) { *ea_mode = AMIVM_IR_EA_ABS_L; return 1; }
+    if (source && reg == 2u) { *ea_mode = AMIVM_IR_EA_PC_D16; return 1; }
+    return 0;
+}
+
+static enum amivm_ir_opcode load_opcode(unsigned width)
+{
+    return width == 1u ? AMIVM_IR_LOAD_B :
+           width == 2u ? AMIVM_IR_LOAD_W : AMIVM_IR_LOAD_L;
+}
+
+static enum amivm_ir_opcode store_opcode(unsigned width)
+{
+    return width == 1u ? AMIVM_IR_STORE_B :
+           width == 2u ? AMIVM_IR_STORE_W : AMIVM_IR_STORE_L;
+}
+
 static int emit_move_memory(struct amivm_ir_block *block,
                             const uint16_t *words, size_t word_count,
                             size_t *index, uint32_t pc)
@@ -138,35 +177,58 @@ static int emit_move_memory(struct amivm_ir_block *block,
     uint8_t src_reg = (uint8_t)(op & 7u);
     uint8_t dst_mode = (uint8_t)((op >> 6u) & 7u);
     uint8_t dst_reg = (uint8_t)((op >> 9u) & 7u);
-    enum amivm_ir_opcode ir_op;
-    uint8_t data_reg;
-    uint8_t addr_reg;
     uint8_t ea_mode;
-    int32_t disp = 0;
+    uint8_t data_reg;
+    uint8_t addr_reg = 0u;
+    unsigned width;
+    int source_memory;
+    int32_t imm = 0;
+    enum amivm_ir_opcode ir_op;
 
-    if ((op & 0xf000u) != 0x2000u) return 0;
+    switch ((op >> 12u) & 0x0fu) {
+    case 1u: width = 1u; break;
+    case 2u: width = 4u; break;
+    case 3u: width = 2u; break;
+    default: return 0;
+    }
 
-    if (dst_mode == 0u && src_mode >= 2u && src_mode <= 5u) {
-        ir_op = AMIVM_IR_LOAD_L;
+    if (dst_mode == 0u && memory_ea(src_mode, src_reg, 1, &ea_mode)) {
+        source_memory = 1;
         data_reg = dst_reg;
         addr_reg = src_reg;
-        ea_mode = src_mode;
-    } else if (src_mode == 0u && dst_mode >= 2u && dst_mode <= 5u) {
-        ir_op = AMIVM_IR_STORE_L;
+        ir_op = load_opcode(width);
+    } else if (src_mode == 0u && memory_ea(dst_mode, dst_reg, 0, &ea_mode)) {
+        source_memory = 0;
         data_reg = src_reg;
         addr_reg = dst_reg;
-        ea_mode = dst_mode;
+        ir_op = store_opcode(width);
     } else {
         return 0;
     }
 
-    if (ea_mode == AMIVM_IR_EA_D16_AN) {
+    if (ea_mode == AMIVM_IR_EA_D16_AN || ea_mode == AMIVM_IR_EA_ABS_W ||
+        ea_mode == AMIVM_IR_EA_PC_D16) {
         if (*index + 1u >= word_count) return -1;
         (*index)++;
-        disp = (int16_t)words[*index];
+        imm = (int16_t)words[*index];
+    } else if (ea_mode == AMIVM_IR_EA_ABS_L) {
+        uint32_t value;
+        if (*index + 2u >= word_count) return -1;
+        value = ((uint32_t)words[*index + 1u] << 16u) | words[*index + 2u];
+        *index += 2u;
+        imm = (int32_t)value;
     }
 
-    return emit(block, ir_op, data_reg, addr_reg, 0u, ea_mode, disp, pc) == 0 ? 1 : -1;
+    if (!source_memory && ea_mode == AMIVM_IR_EA_PC_D16) return 0;
+    return emit(block, ir_op, data_reg, addr_reg, 0u, ea_mode, imm, pc) == 0 ? 1 : -1;
+}
+
+static uint32_t instruction_bytes_for_ea(uint8_t ea_mode)
+{
+    if (ea_mode == AMIVM_IR_EA_ABS_L) return 6u;
+    if (ea_mode == AMIVM_IR_EA_D16_AN || ea_mode == AMIVM_IR_EA_ABS_W ||
+        ea_mode == AMIVM_IR_EA_PC_D16) return 4u;
+    return 2u;
 }
 
 int amivm_ir_decode_words(struct amivm_ir_block *block,
@@ -182,14 +244,11 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         uint16_t op = words[i];
         int alu_rc;
         int mem_rc;
-        uint32_t instruction_bytes = 2u;
 
         mem_rc = emit_move_memory(block, words, word_count, &i, pc);
         if (mem_rc < 0) return -3;
         if (mem_rc > 0) {
-            if (block->ops[block->op_count - 1u].ea_mode == AMIVM_IR_EA_D16_AN)
-                instruction_bytes = 4u;
-            pc += instruction_bytes;
+            pc += instruction_bytes_for_ea(block->ops[block->op_count - 1u].ea_mode);
             continue;
         }
 
@@ -198,7 +257,6 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
             pc += 2u;
             continue;
         }
-
         if ((op & 0xf100u) == 0x7000u) {
             uint8_t reg = (uint8_t)((op >> 9u) & 7u);
             int8_t imm8 = (int8_t)(op & 0xffu);
@@ -207,21 +265,18 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
             pc += 2u;
             continue;
         }
-
         if ((op & 0xfff8u) == 0x4280u) {
             if (emit(block, AMIVM_IR_CLR_L, (uint8_t)(op & 7u), 0u, 0u,
                      AMIVM_IR_EA_NONE, 0, pc) != 0) return -2;
             pc += 2u;
             continue;
         }
-
         if ((op & 0xfff8u) == 0x4a80u) {
             if (emit(block, AMIVM_IR_TST_L, (uint8_t)(op & 7u), 0u, 0u,
                      AMIVM_IR_EA_NONE, 0, pc) != 0) return -2;
             pc += 2u;
             continue;
         }
-
         if ((op & 0xf1f8u) == 0x5080u || (op & 0xf1f8u) == 0x5180u) {
             uint8_t reg = (uint8_t)(op & 7u);
             uint8_t quick = (uint8_t)((op >> 9u) & 7u);
@@ -281,12 +336,13 @@ static void sync_a7_bank(struct amivm_cpu_state *cpu)
     else cpu->isp = cpu->a[7];
 }
 
-static int ir_translate4(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                         uint32_t logical, bool write, uint32_t physical[4])
+static int ir_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, bool write, unsigned width,
+                        uint32_t physical[4])
 {
     unsigned i;
-    if ((logical & 1u) != 0u) return -1;
-    for (i = 0u; i < 4u; ++i) {
+    if (width > 1u && (logical & 1u) != 0u) return -1;
+    for (i = 0u; i < width; ++i) {
         if (amivm_mmu_translate(cpu, vm, logical + i, write,
                                 supervisor_mode(cpu), &physical[i]) != AMIVM_MMU_OK)
             return -1;
@@ -294,46 +350,74 @@ static int ir_translate4(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return 0;
 }
 
-static int ir_read32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                     uint32_t logical, uint32_t *value)
+static int ir_read(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                   uint32_t logical, unsigned width, uint32_t *value)
 {
     uint32_t physical[4];
-    uint8_t b[4];
+    uint8_t b[4] = {0u, 0u, 0u, 0u};
     unsigned i;
-    if (value == NULL || ir_translate4(cpu, vm, logical, false, physical) != 0) return -1;
-    for (i = 0u; i < 4u; ++i)
+    uint32_t result = 0u;
+    if (value == NULL || ir_translate(cpu, vm, logical, false, width, physical) != 0) return -1;
+    for (i = 0u; i < width; ++i) {
         if (!amivm_read8(vm, physical[i], &b[i])) return -1;
-    *value = ((uint32_t)b[0] << 24u) | ((uint32_t)b[1] << 16u) |
-             ((uint32_t)b[2] << 8u) | (uint32_t)b[3];
+        result = (result << 8u) | b[i];
+    }
+    *value = result;
     return 0;
 }
 
-static int ir_write32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                      uint32_t logical, uint32_t value)
+static int ir_write(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                    uint32_t logical, unsigned width, uint32_t value)
 {
     uint32_t physical[4];
-    uint8_t b[4];
     unsigned i;
-    if (ir_translate4(cpu, vm, logical, true, physical) != 0) return -1;
-    b[0] = (uint8_t)(value >> 24u);
-    b[1] = (uint8_t)(value >> 16u);
-    b[2] = (uint8_t)(value >> 8u);
-    b[3] = (uint8_t)value;
-    for (i = 0u; i < 4u; ++i)
-        if (!amivm_write8(vm, physical[i], b[i])) return -1;
+    if (ir_translate(cpu, vm, logical, true, width, physical) != 0) return -1;
+    for (i = 0u; i < width; ++i) {
+        unsigned shift = (width - 1u - i) * 8u;
+        if (!amivm_write8(vm, physical[i], (uint8_t)(value >> shift))) return -1;
+    }
     return 0;
+}
+
+static unsigned memory_width(enum amivm_ir_opcode opcode)
+{
+    switch (opcode) {
+    case AMIVM_IR_LOAD_B:
+    case AMIVM_IR_STORE_B: return 1u;
+    case AMIVM_IR_LOAD_W:
+    case AMIVM_IR_STORE_W: return 2u;
+    default: return 4u;
+    }
+}
+
+static unsigned ea_step(const struct amivm_ir_op *op, unsigned width)
+{
+    if (width == 1u && op->src_reg == 7u) return 2u;
+    return width;
 }
 
 static uint32_t ea_address(const struct amivm_ir_op *op,
-                           const struct amivm_cpu_state *cpu)
+                           const struct amivm_cpu_state *cpu, unsigned width)
 {
-    uint32_t base = cpu->a[op->src_reg];
+    uint32_t base;
+    unsigned step = ea_step(op, width);
+    switch (op->ea_mode) {
+    case AMIVM_IR_EA_ABS_W:
+        return (uint32_t)(int32_t)(int16_t)op->imm;
+    case AMIVM_IR_EA_ABS_L:
+        return (uint32_t)op->imm;
+    case AMIVM_IR_EA_PC_D16:
+        return (uint32_t)((int64_t)(op->guest_pc + 2u) + (int64_t)(int16_t)op->imm);
+    default:
+        break;
+    }
+    base = cpu->a[op->src_reg];
     switch (op->ea_mode) {
     case AMIVM_IR_EA_AN:
     case AMIVM_IR_EA_POSTINC:
         return base;
     case AMIVM_IR_EA_PREDEC:
-        return base - 4u;
+        return base - step;
     case AMIVM_IR_EA_D16_AN:
         return (uint32_t)((int64_t)base + (int64_t)(int16_t)op->imm);
     default:
@@ -342,15 +426,29 @@ static uint32_t ea_address(const struct amivm_ir_op *op,
 }
 
 static void finish_ea_update(const struct amivm_ir_op *op,
-                             struct amivm_cpu_state *cpu, uint32_t address)
+                             struct amivm_cpu_state *cpu, uint32_t address,
+                             unsigned width)
 {
+    unsigned step = ea_step(op, width);
     if (op->ea_mode == AMIVM_IR_EA_POSTINC)
-        cpu->a[op->src_reg] += 4u;
+        cpu->a[op->src_reg] += step;
     else if (op->ea_mode == AMIVM_IR_EA_PREDEC)
         cpu->a[op->src_reg] = address;
     if (op->src_reg == 7u &&
         (op->ea_mode == AMIVM_IR_EA_POSTINC || op->ea_mode == AMIVM_IR_EA_PREDEC))
         sync_a7_bank(cpu);
+}
+
+static int is_load(enum amivm_ir_opcode opcode)
+{
+    return opcode == AMIVM_IR_LOAD_B || opcode == AMIVM_IR_LOAD_W ||
+           opcode == AMIVM_IR_LOAD_L;
+}
+
+static int is_store(enum amivm_ir_opcode opcode)
+{
+    return opcode == AMIVM_IR_STORE_B || opcode == AMIVM_IR_STORE_W ||
+           opcode == AMIVM_IR_STORE_L;
 }
 
 int amivm_ir_execute(const struct amivm_ir_block *block,
@@ -364,12 +462,37 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
     for (i = 0u; i < block->op_count; ++i) {
         const struct amivm_ir_op *op = &block->ops[i];
         uint32_t lhs, rhs, result, address;
-        uint32_t instruction_bytes = op->ea_mode == AMIVM_IR_EA_D16_AN ? 4u : 2u;
+        unsigned width;
+        uint32_t instruction_bytes = instruction_bytes_for_ea(op->ea_mode);
         if (op->reg >= 8u || op->src_reg >= 8u) {
             if (op->opcode != AMIVM_IR_NOP && op->opcode != AMIVM_IR_BRANCH &&
                 op->opcode != AMIVM_IR_BRANCH_CC && op->opcode != AMIVM_IR_EXIT)
                 return -2;
         }
+        if (is_load(op->opcode) || is_store(op->opcode)) {
+            if (vm == NULL) return -4;
+            width = memory_width(op->opcode);
+            address = ea_address(op, cpu, width);
+            if (is_load(op->opcode)) {
+                if (ir_read(cpu, vm, address, width, &result) != 0) return -4;
+                if (width == 1u) {
+                    cpu->d[op->reg] = (cpu->d[op->reg] & 0xffffff00u) | (result & 0xffu);
+                    set_nz8(cpu, (uint8_t)result);
+                } else if (width == 2u) {
+                    cpu->d[op->reg] = (cpu->d[op->reg] & 0xffff0000u) | (result & 0xffffu);
+                    set_nz16(cpu, (uint16_t)result);
+                } else {
+                    cpu->d[op->reg] = result;
+                    set_nz32(cpu, result);
+                }
+            } else {
+                if (ir_write(cpu, vm, address, width, cpu->d[op->reg]) != 0) return -4;
+            }
+            finish_ea_update(op, cpu, address, width);
+            cpu->pc = op->guest_pc + instruction_bytes;
+            continue;
+        }
+
         switch (op->opcode) {
         case AMIVM_IR_NOP:
             cpu->pc = op->guest_pc + 2u;
@@ -389,77 +512,40 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
             cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_ADDQ_L:
-            lhs = cpu->d[op->reg];
-            rhs = (uint32_t)op->imm;
-            result = lhs + rhs;
-            cpu->d[op->reg] = result;
-            set_add32_flags(cpu, lhs, rhs, result);
+            lhs = cpu->d[op->reg]; rhs = (uint32_t)op->imm; result = lhs + rhs;
+            cpu->d[op->reg] = result; set_add32_flags(cpu, lhs, rhs, result);
             cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_SUBQ_L:
-            lhs = cpu->d[op->reg];
-            rhs = (uint32_t)op->imm;
-            result = lhs - rhs;
-            cpu->d[op->reg] = result;
-            set_sub32_flags(cpu, lhs, rhs, result, 1);
+            lhs = cpu->d[op->reg]; rhs = (uint32_t)op->imm; result = lhs - rhs;
+            cpu->d[op->reg] = result; set_sub32_flags(cpu, lhs, rhs, result, 1);
             cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_ADD_L:
-            lhs = cpu->d[op->reg];
-            rhs = cpu->d[op->src_reg];
-            result = lhs + rhs;
-            cpu->d[op->reg] = result;
-            set_add32_flags(cpu, lhs, rhs, result);
+            lhs = cpu->d[op->reg]; rhs = cpu->d[op->src_reg]; result = lhs + rhs;
+            cpu->d[op->reg] = result; set_add32_flags(cpu, lhs, rhs, result);
             cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_SUB_L:
-            lhs = cpu->d[op->reg];
-            rhs = cpu->d[op->src_reg];
-            result = lhs - rhs;
-            cpu->d[op->reg] = result;
-            set_sub32_flags(cpu, lhs, rhs, result, 1);
+            lhs = cpu->d[op->reg]; rhs = cpu->d[op->src_reg]; result = lhs - rhs;
+            cpu->d[op->reg] = result; set_sub32_flags(cpu, lhs, rhs, result, 1);
             cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_CMP_L:
-            lhs = cpu->d[op->reg];
-            rhs = cpu->d[op->src_reg];
-            result = lhs - rhs;
-            set_sub32_flags(cpu, lhs, rhs, result, 0);
-            cpu->pc = op->guest_pc + 2u;
+            lhs = cpu->d[op->reg]; rhs = cpu->d[op->src_reg]; result = lhs - rhs;
+            set_sub32_flags(cpu, lhs, rhs, result, 0); cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_AND_L:
-            result = cpu->d[op->reg] & cpu->d[op->src_reg];
-            cpu->d[op->reg] = result;
-            set_logic32_flags(cpu, result);
-            cpu->pc = op->guest_pc + 2u;
+            result = cpu->d[op->reg] & cpu->d[op->src_reg]; cpu->d[op->reg] = result;
+            set_logic32_flags(cpu, result); cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_OR_L:
-            result = cpu->d[op->reg] | cpu->d[op->src_reg];
-            cpu->d[op->reg] = result;
-            set_logic32_flags(cpu, result);
-            cpu->pc = op->guest_pc + 2u;
+            result = cpu->d[op->reg] | cpu->d[op->src_reg]; cpu->d[op->reg] = result;
+            set_logic32_flags(cpu, result); cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_EOR_L:
-            result = cpu->d[op->reg] ^ cpu->d[op->src_reg];
-            cpu->d[op->reg] = result;
-            set_logic32_flags(cpu, result);
-            cpu->pc = op->guest_pc + 2u;
-            break;
-        case AMIVM_IR_LOAD_L:
-            if (vm == NULL) return -4;
-            address = ea_address(op, cpu);
-            if (ir_read32(cpu, vm, address, &result) != 0) return -4;
-            cpu->d[op->reg] = result;
-            finish_ea_update(op, cpu, address);
-            set_nz32(cpu, result);
-            cpu->pc = op->guest_pc + instruction_bytes;
-            break;
-        case AMIVM_IR_STORE_L:
-            if (vm == NULL) return -4;
-            address = ea_address(op, cpu);
-            if (ir_write32(cpu, vm, address, cpu->d[op->reg]) != 0) return -4;
-            finish_ea_update(op, cpu, address);
-            cpu->pc = op->guest_pc + instruction_bytes;
+            result = cpu->d[op->reg] ^ cpu->d[op->src_reg]; cpu->d[op->reg] = result;
+            set_logic32_flags(cpu, result); cpu->pc = op->guest_pc + 2u;
             break;
         case AMIVM_IR_BRANCH:
             cpu->pc = op->guest_pc + 2u + (uint32_t)op->imm;
