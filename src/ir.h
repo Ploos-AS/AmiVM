@@ -11,13 +11,27 @@
 enum amivm_ir_opcode {
     AMIVM_IR_NOP = 0,
     AMIVM_IR_MOVEQ,
+    AMIVM_IR_CLR_L,
+    AMIVM_IR_TST_L,
+    AMIVM_IR_ADDQ_L,
+    AMIVM_IR_SUBQ_L,
     AMIVM_IR_BRANCH,
+    AMIVM_IR_BRANCH_CC,
     AMIVM_IR_EXIT,
+};
+
+enum amivm_ir_condition {
+    AMIVM_IR_CC_T = 0,
+    AMIVM_IR_CC_NE = 6,
+    AMIVM_IR_CC_EQ = 7,
+    AMIVM_IR_CC_PL = 10,
+    AMIVM_IR_CC_MI = 11,
 };
 
 struct amivm_ir_op {
     enum amivm_ir_opcode opcode;
     uint8_t reg;
+    uint8_t condition;
     int32_t imm;
     uint32_t guest_pc;
 };
