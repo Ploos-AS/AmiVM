@@ -155,6 +155,8 @@ static int compile_ir_block(struct amivm_exec_cache_entry *entry,
     rc = amivm_ir_decode_words(&entry->block, words, count);
     if (rc < 0 || entry->block.op_count == 0u) return 0;
     entry->ir_valid = 1;
+    rc = amivm_jit_compile(&entry->block, &entry->jit);
+    entry->jit_valid = rc == AMIVM_JIT_OK ? 1 : 0;
     return 1;
 }
 
@@ -206,6 +208,7 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
     struct amivm_ir_block partial;
     const struct amivm_ir_block *block;
     size_t executed;
+    int jit_rc;
     int ir_rc;
 
     if (max_instructions == 0u) return 0;
@@ -217,6 +220,16 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
         partial.op_count = (size_t)max_instructions;
         partial.terminates = 0;
         block = &partial;
+    } else if (entry->jit_valid) {
+        jit_rc = amivm_jit_execute(&entry->jit, cpu);
+        if (jit_rc > 0) {
+            executed = entry->jit.guest_instructions;
+            engine->stats.jit_blocks++;
+            engine->stats.jit_instructions += executed;
+            engine->stats.instructions += executed;
+            return 1;
+        }
+        engine->stats.jit_fallbacks++;
     }
 
     ir_rc = amivm_ir_execute(block, cpu, vm);
