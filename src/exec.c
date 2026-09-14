@@ -4,15 +4,33 @@
 
 #include "vm.h"
 
+#define SR_SUPERVISOR 0x2000u
+
 static size_t cache_index(uint32_t pc)
 {
     return (size_t)((pc >> 1u) & (AMIVM_EXEC_CACHE_ENTRIES - 1u));
 }
 
-static int read16_physical(struct amivm_vm *vm, uint32_t addr, uint16_t *value)
+static int read8_guest(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t logical, uint8_t *value)
+{
+    uint32_t physical = 0u;
+    bool supervisor;
+
+    if (cpu == NULL || vm == NULL || value == NULL) return -1;
+    supervisor = (cpu->sr & SR_SUPERVISOR) != 0u;
+    if (amivm_mmu_translate(cpu, vm, logical, false, supervisor, &physical) != AMIVM_MMU_OK)
+        return -1;
+    return amivm_read8(vm, physical, value) ? 0 : -1;
+}
+
+static int read16_guest(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, uint16_t *value)
 {
     uint8_t hi, lo;
-    if (!amivm_read8(vm, addr, &hi) || !amivm_read8(vm, addr + 1u, &lo)) return -1;
+    if ((logical & 1u) != 0u || value == NULL) return -1;
+    if (read8_guest(cpu, vm, logical, &hi) != 0 ||
+        read8_guest(cpu, vm, logical + 1u, &lo) != 0) return -1;
     *value = (uint16_t)(((uint16_t)hi << 8u) | lo);
     return 0;
 }
@@ -25,13 +43,8 @@ static int compile_ir_block(struct amivm_exec_cache_entry *entry,
     uint32_t pc = cpu->pc;
     int rc;
 
-    /* M2.12 IR translation is deliberately disabled while the MMU is active.
-     * The reference interpreter remains authoritative for translated fetches.
-     */
-    if ((cpu->tc & 0x80000000u) != 0u) return 0;
-
     while (count < AMIVM_EXEC_DECODE_WORDS) {
-        if (read16_physical(vm, pc + (uint32_t)(count * 2u), &words[count]) != 0) break;
+        if (read16_guest(cpu, vm, pc + (uint32_t)(count * 2u), &words[count]) != 0) break;
         count++;
     }
     if (count == 0u) return 0;
@@ -90,6 +103,7 @@ int amivm_exec_step(struct amivm_exec_engine *engine,
     uint32_t pc;
     size_t index;
     int ir_rc;
+    int cache_match;
 
     if (engine == NULL || cpu == NULL || vm == NULL ||
         engine->backend == NULL || engine->backend->step == NULL) return -1;
@@ -97,13 +111,17 @@ int amivm_exec_step(struct amivm_exec_engine *engine,
     pc = cpu->pc;
     index = cache_index(pc);
     entry = &engine->cache[index];
-    if (entry->valid && entry->generation == engine->generation && entry->pc == pc) {
+    cache_match = entry->valid && entry->generation == engine->generation && entry->pc == pc;
+    if (cache_match && entry->memory_write_generation == vm->memory_write_generation) {
         engine->stats.cache_hits++;
     } else {
+        if (cache_match && entry->memory_write_generation != vm->memory_write_generation)
+            engine->stats.stale_write_misses++;
         engine->stats.cache_misses++;
         memset(entry, 0, sizeof(*entry));
         entry->pc = pc;
         entry->generation = engine->generation;
+        entry->memory_write_generation = vm->memory_write_generation;
         entry->valid = 1;
         (void)compile_ir_block(entry, cpu, vm);
     }
