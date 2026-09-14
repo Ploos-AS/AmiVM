@@ -56,6 +56,25 @@ static int emit_mov32_state_imm(struct amivm_jit_code *code,
     return emit32(code, value);
 }
 
+static int emit_mov32_state_eax(struct amivm_jit_code *code, size_t offset)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    rc = emit8(code, 0x8bu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x87u); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, (uint32_t)offset);
+}
+
+static int emit_alu32_state_eax(struct amivm_jit_code *code,
+                                size_t offset, uint8_t opcode)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    rc = emit8(code, opcode); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x87u); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, (uint32_t)offset);
+}
+
 static int emit_and16_state_imm(struct amivm_jit_code *code,
                                 size_t offset, uint16_t value)
 {
@@ -98,7 +117,6 @@ static int emit_nz_flags(struct amivm_jit_code *code, uint32_t value)
 
     if (value == 0u) flags |= SR_Z;
     if ((value & 0x80000000u) != 0u) flags |= SR_N;
-
     rc = emit_and16_state_imm(code, sr_offset, (uint16_t)~SR_NZVC);
     if (rc != AMIVM_JIT_OK) return rc;
     if (flags != 0u) return emit_or16_state_imm(code, sr_offset, flags);
@@ -110,7 +128,6 @@ static int emit_capture_nz_flags(struct amivm_jit_code *code)
     const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
     int rc;
 
-    /* pushfq; pop rax.  ZF/SF become 68k Z/N after shifting right four. */
     rc = emit8(code, 0x9cu); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x58u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
@@ -126,31 +143,31 @@ static int emit_capture_nz_flags(struct amivm_jit_code *code)
     return emit_or16_state_cx(code, sr_offset);
 }
 
-static int emit_capture_addsub_flags(struct amivm_jit_code *code)
+static int emit_capture_arithmetic_flags(struct amivm_jit_code *code, int update_x)
 {
     const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
     int rc;
 
-    /* Snapshot host RFLAGS.  x86 CF/ZF/SF/OF map directly to 68k
-       C/Z/N/V for 32-bit ADD/SUB; C is duplicated into X. */
     rc = emit8(code, 0x9cu); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x58u); if (rc != AMIVM_JIT_OK) return rc;
 
-    /* ecx = CF | (CF << 4) */
+    /* ECX = C, optionally duplicated into X. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xe1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x01u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0xcau); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0xe2u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0x04u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
+    if (update_x) {
+        rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xcau); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xe2u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0x04u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
+    }
 
-    /* Add ZF/SF as bits Z/N. */
+    /* ZF/SF -> Z/N. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
@@ -162,7 +179,7 @@ static int emit_capture_addsub_flags(struct amivm_jit_code *code)
     rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
 
-    /* Add OF as 68k V. */
+    /* OF -> V. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
@@ -174,7 +191,8 @@ static int emit_capture_addsub_flags(struct amivm_jit_code *code)
     rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
 
-    rc = emit_and16_state_imm(code, sr_offset, (uint16_t)~SR_XNZVC);
+    rc = emit_and16_state_imm(code, sr_offset,
+                              (uint16_t)~(update_x ? SR_XNZVC : SR_NZVC));
     if (rc != AMIVM_JIT_OK) return rc;
     return emit_or16_state_cx(code, sr_offset);
 }
@@ -183,7 +201,6 @@ static int emit_cmp32_state_zero(struct amivm_jit_code *code, size_t offset)
 {
     int rc;
     if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
-    /* cmp dword ptr [rdi + disp32], 0 */
     rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xbfu); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, (uint32_t)offset); if (rc != AMIVM_JIT_OK) return rc;
@@ -195,7 +212,6 @@ static int emit_addsub32_state_imm(struct amivm_jit_code *code,
 {
     int rc;
     if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
-    /* add/sub dword ptr [rdi + disp32], imm32 */
     rc = emit8(code, 0x81u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, subtract ? 0xafu : 0x87u);
     if (rc != AMIVM_JIT_OK) return rc;
@@ -235,6 +251,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
         const struct amivm_ir_op *op = &block->ops[i];
         uint32_t value;
         size_t d_offset;
+        size_t src_offset;
 
         switch (op->opcode) {
         case AMIVM_IR_NOP:
@@ -275,7 +292,38 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             rc = emit_addsub32_state_imm(code, d_offset, (uint32_t)op->imm,
                                          op->opcode == AMIVM_IR_SUBQ_L);
             if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit_capture_addsub_flags(code);
+            rc = emit_capture_arithmetic_flags(code, 1);
+            if (rc != AMIVM_JIT_OK) return rc;
+            break;
+        case AMIVM_IR_ADD_L:
+        case AMIVM_IR_SUB_L:
+        case AMIVM_IR_CMP_L:
+        case AMIVM_IR_AND_L:
+        case AMIVM_IR_OR_L:
+        case AMIVM_IR_EOR_L:
+            if (op->reg >= 8u || op->src_reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            src_offset = offsetof(struct amivm_cpu_state, d) +
+                         ((size_t)op->src_reg * sizeof(uint32_t));
+            rc = emit_mov32_state_eax(code, src_offset);
+            if (rc != AMIVM_JIT_OK) return rc;
+            switch (op->opcode) {
+            case AMIVM_IR_ADD_L: rc = emit_alu32_state_eax(code, d_offset, 0x01u); break;
+            case AMIVM_IR_SUB_L: rc = emit_alu32_state_eax(code, d_offset, 0x29u); break;
+            case AMIVM_IR_CMP_L: rc = emit_alu32_state_eax(code, d_offset, 0x39u); break;
+            case AMIVM_IR_AND_L: rc = emit_alu32_state_eax(code, d_offset, 0x21u); break;
+            case AMIVM_IR_OR_L:  rc = emit_alu32_state_eax(code, d_offset, 0x09u); break;
+            case AMIVM_IR_EOR_L: rc = emit_alu32_state_eax(code, d_offset, 0x31u); break;
+            default: rc = AMIVM_JIT_INVALID; break;
+            }
+            if (rc != AMIVM_JIT_OK) return rc;
+            if (op->opcode == AMIVM_IR_ADD_L || op->opcode == AMIVM_IR_SUB_L)
+                rc = emit_capture_arithmetic_flags(code, 1);
+            else if (op->opcode == AMIVM_IR_CMP_L)
+                rc = emit_capture_arithmetic_flags(code, 0);
+            else
+                rc = emit_capture_nz_flags(code);
             if (rc != AMIVM_JIT_OK) return rc;
             break;
         default:
@@ -287,7 +335,6 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                block->ops[block->op_count - 1u].instruction_bytes;
     rc = emit_mov32_state_imm(code, offsetof(struct amivm_cpu_state, pc), final_pc);
     if (rc != AMIVM_JIT_OK) return rc;
-
     rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, 1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
@@ -310,7 +357,6 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
 
     if (code == NULL || cpu == NULL || code->size == 0u ||
         code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_INVALID;
-
     mapping = mmap(NULL, code->size, PROT_READ | PROT_WRITE,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapping == MAP_FAILED) return AMIVM_JIT_EXEC_UNAVAILABLE;
@@ -319,7 +365,6 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
         (void)munmap(mapping, code->size);
         return AMIVM_JIT_EXEC_UNAVAILABLE;
     }
-
     if (sizeof(fn) != sizeof(entry)) {
         (void)munmap(mapping, code->size);
         return AMIVM_JIT_EXEC_UNAVAILABLE;
