@@ -11,6 +11,7 @@
 #define SR_Z 0x0004u
 #define SR_V 0x0002u
 #define SR_C 0x0001u
+
 #define OP_NOP 0x4e71u
 #define OP_RTE 0x4e73u
 #define OP_RTS 0x4e75u
@@ -18,6 +19,7 @@
 #define OP_MOVEC_TO 0x4e7bu
 #define OP_JMP_ABSL 0x4ef9u
 #define OP_JSR_ABSL 0x4eb9u
+#define OP_FPU_GEN 0xf200u
 
 #define TC_ENABLE 0x80000000u
 #define PAGE_MASK 0xfffff000u
@@ -329,6 +331,65 @@ static int service_interrupt(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     return rc;
 }
 
+static bool decode_fpu_op(uint16_t opmode, enum amivm_fpu_op *op)
+{
+    if (op == NULL) return false;
+    switch (opmode) {
+    case 0x00u: *op = AMIVM_FPU_FMOVE; return true;
+    case 0x20u: *op = AMIVM_FPU_FDIV; return true;
+    case 0x22u: *op = AMIVM_FPU_FADD; return true;
+    case 0x23u: *op = AMIVM_FPU_FMUL; return true;
+    case 0x28u: *op = AMIVM_FPU_FSUB; return true;
+    case 0x38u: *op = AMIVM_FPU_FCMP; return true;
+    case 0x3au: *op = AMIVM_FPU_FTEST; return true;
+    default: return false;
+    }
+}
+
+static int execute_fpu_register(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                                uint32_t instruction_pc, uint32_t next_pc,
+                                uint16_t opcode)
+{
+    uint16_t ext;
+    uint16_t opmode;
+    unsigned src;
+    unsigned dst;
+    enum amivm_fpu_op op;
+    int rc;
+
+    if (fetch16(cpu, vm, next_pc, &ext) != 0)
+        return deliver_fault(cpu, vm, instruction_pc);
+
+    /* M2.9 handles the 68881/68040 cpGEN register-source form only:
+     * primary word F200, extension class 000, FPm in bits 12..10,
+     * FPn in bits 9..7, and opmode in bits 6..0.
+     */
+    if (((ext >> 13u) & 7u) != 0u) {
+        set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+        return deliver_fault(cpu, vm, instruction_pc);
+    }
+
+    src = (unsigned)((ext >> 10u) & 7u);
+    dst = (unsigned)((ext >> 7u) & 7u);
+    opmode = (uint16_t)(ext & 0x007fu);
+    if (!decode_fpu_op(opmode, &op)) {
+        set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+        return deliver_fault(cpu, vm, instruction_pc);
+    }
+
+    rc = amivm_fpu_execute(&cpu->fpu, op, dst, src, instruction_pc);
+    if (rc == AMIVM_FPU_ERR_REGISTER || rc == AMIVM_FPU_ERR_OPERATION) {
+        set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+        return deliver_fault(cpu, vm, instruction_pc);
+    }
+
+    /* Divide-by-zero is recorded in FPSR by the M2.8 core. Exception enable
+     * and deferred FPU exception delivery are intentionally deferred.
+     */
+    cpu->pc = next_pc + 2u;
+    return 1;
+}
+
 static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
     uint32_t initial_sp, initial_pc;
@@ -351,6 +412,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->fault_address = 0u;
     cpu->fault_opcode = 0u;
     cpu->last_exception_vector = 0u;
+    amivm_fpu_reset(&cpu->fpu);
     return 0;
 }
 
@@ -405,6 +467,8 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     next_pc = cpu->pc + 2u;
 
     if (opcode == OP_NOP) { cpu->pc = next_pc; return 1; }
+    if (opcode == OP_FPU_GEN)
+        return execute_fpu_register(cpu, vm, instruction_pc, next_pc, opcode);
 
     if (opcode == OP_RTE) {
         uint16_t restored_sr, format_vector;
