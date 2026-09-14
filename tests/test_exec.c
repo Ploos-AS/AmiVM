@@ -41,7 +41,7 @@ int main(void)
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t loop_pc = AMIVM_ROM_BASE + 0x100u;
-    const uint32_t fallback_pc = AMIVM_ROM_BASE + 0x120u;
+    const uint32_t ir_pc = AMIVM_ROM_BASE + 0x120u;
     const uint32_t block_pc = AMIVM_ROM_BASE + 0x200u;
 
     amivm_config_init(&config);
@@ -87,18 +87,21 @@ int main(void)
     CHECK(exec.stats.cache_hits == 999u);
     CHECK(exec.stats.dispatches == 2u);
 
-    cpu.pc = fallback_pc;
+    /* M2.16: CLR.L is now native IR and remains in the hot path. */
+    cpu.pc = ir_pc;
     cpu.d[0] = 0xffffffffu;
     CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
     CHECK(cpu.d[0] == 0u);
-    CHECK(cpu.pc == fallback_pc + 2u);
-    CHECK(exec.stats.fallbacks == 1u);
-    CHECK(exec.stats.instructions == 1002u);
+    CHECK(cpu.pc == ir_pc + 2u);
+    CHECK(exec.stats.fallbacks == 0u);
+    CHECK(exec.stats.instructions == 1003u);
+    CHECK(exec.stats.ir_blocks == 1002u);
 
     CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
-    CHECK(cpu.pc == fallback_pc + 2u);
-    CHECK(exec.stats.ir_blocks == 1002u);
-    CHECK(exec.stats.fallbacks == 1u);
+    CHECK(cpu.pc == ir_pc + 2u);
+    CHECK(exec.stats.ir_blocks == 1003u);
+    CHECK(exec.stats.fallbacks == 0u);
+    CHECK(exec.stats.instructions == 1004u);
 
     amivm_exec_reset(&exec);
     CHECK(exec.backend == backend);
@@ -200,6 +203,6 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.15 larger-block/chaining tests: PASS");
+    puts("AmiVM M2.16 richer-IR execution tests: PASS");
     return 0;
 }
