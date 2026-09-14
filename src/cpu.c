@@ -19,6 +19,15 @@
 #define M68K_OPCODE_JMP_ABSL 0x4ef9u
 #define M68K_OPCODE_JSR_ABSL 0x4eb9u
 
+#define AMIVM_TC_ENABLE 0x80000000u
+#define AMIVM_MMU_PAGE_MASK 0xfffff000u
+#define AMIVM_MMU_DESC_VALID 0x00000001u
+#define AMIVM_MMU_DESC_WRITE_PROTECT 0x00000002u
+#define AMIVM_MMUSR_ROOT_FAULT 0x00000001u
+#define AMIVM_MMUSR_PAGE_FAULT 0x00000002u
+#define AMIVM_MMUSR_WRITE_PROTECT 0x00000004u
+#define AMIVM_MMUSR_TABLE_BUS 0x00000008u
+
 static bool is_supervisor(const struct amivm_cpu_state *cpu)
 {
     return (cpu->sr & M68K_SR_SUPERVISOR) != 0u;
@@ -105,6 +114,149 @@ static bool write32_be(struct amivm_vm *vm, uint32_t addr, uint32_t value)
            amivm_write8(vm, addr + 3u, (uint8_t)value);
 }
 
+int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, bool write, bool supervisor,
+                        uint32_t *physical)
+{
+    uint32_t root;
+    uint32_t l1_desc;
+    uint32_t l2_desc;
+    uint32_t l1_addr;
+    uint32_t l2_addr;
+    uint32_t l1_index;
+    uint32_t l2_index;
+
+    if (cpu == NULL || vm == NULL || physical == NULL) {
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+    }
+
+    cpu->mmusr = 0u;
+    if ((cpu->tc & AMIVM_TC_ENABLE) == 0u) {
+        *physical = logical;
+        return AMIVM_MMU_OK;
+    }
+
+    root = (supervisor ? cpu->srp : cpu->urp) & AMIVM_MMU_PAGE_MASK;
+    if (root == 0u) {
+        cpu->mmusr = AMIVM_MMUSR_ROOT_FAULT;
+        return AMIVM_MMU_FAULT_ROOT;
+    }
+
+    l1_index = logical >> 22u;
+    l2_index = (logical >> 12u) & 0x3ffu;
+    l1_addr = root + l1_index * 4u;
+    if (!read32_be(vm, l1_addr, &l1_desc)) {
+        cpu->mmusr = AMIVM_MMUSR_TABLE_BUS;
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+    }
+    if ((l1_desc & AMIVM_MMU_DESC_VALID) == 0u) {
+        cpu->mmusr = AMIVM_MMUSR_ROOT_FAULT;
+        return AMIVM_MMU_FAULT_ROOT;
+    }
+
+    l2_addr = (l1_desc & AMIVM_MMU_PAGE_MASK) + l2_index * 4u;
+    if (!read32_be(vm, l2_addr, &l2_desc)) {
+        cpu->mmusr = AMIVM_MMUSR_TABLE_BUS;
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+    }
+    if ((l2_desc & AMIVM_MMU_DESC_VALID) == 0u) {
+        cpu->mmusr = AMIVM_MMUSR_PAGE_FAULT;
+        return AMIVM_MMU_FAULT_PAGE;
+    }
+    if (write && (l2_desc & AMIVM_MMU_DESC_WRITE_PROTECT) != 0u) {
+        cpu->mmusr = AMIVM_MMUSR_WRITE_PROTECT;
+        return AMIVM_MMU_FAULT_WRITE_PROTECT;
+    }
+
+    *physical = (l2_desc & AMIVM_MMU_PAGE_MASK) | (logical & 0xfffu);
+    return AMIVM_MMU_OK;
+}
+
+static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                      uint32_t logical, bool supervisor, uint8_t *value)
+{
+    uint32_t physical;
+
+    if (amivm_mmu_translate(cpu, vm, logical, false, supervisor, &physical) !=
+        AMIVM_MMU_OK) {
+        set_fault(cpu, AMIVM_CPU_FAULT_MMU, logical, 0u);
+        return false;
+    }
+    if (!amivm_read8(vm, physical, value)) {
+        set_fault(cpu, AMIVM_CPU_FAULT_BUS, logical, 0u);
+        return false;
+    }
+    return true;
+}
+
+static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t logical, bool supervisor, uint8_t value)
+{
+    uint32_t physical;
+
+    if (amivm_mmu_translate(cpu, vm, logical, true, supervisor, &physical) !=
+        AMIVM_MMU_OK) {
+        set_fault(cpu, AMIVM_CPU_FAULT_MMU, logical, 0u);
+        return false;
+    }
+    if (!amivm_write8(vm, physical, value)) {
+        set_fault(cpu, AMIVM_CPU_FAULT_BUS, logical, 0u);
+        return false;
+    }
+    return true;
+}
+
+static bool cpu_read16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t addr, bool supervisor, uint16_t *value)
+{
+    uint8_t hi;
+    uint8_t lo;
+
+    if ((addr & 1u) != 0u || value == NULL ||
+        !cpu_read8(cpu, vm, addr, supervisor, &hi) ||
+        !cpu_read8(cpu, vm, addr + 1u, supervisor, &lo)) {
+        return false;
+    }
+    *value = (uint16_t)(((uint16_t)hi << 8u) | (uint16_t)lo);
+    return true;
+}
+
+static bool cpu_read32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t addr, bool supervisor, uint32_t *value)
+{
+    uint16_t hi;
+    uint16_t lo;
+
+    if (value == NULL || !cpu_read16(cpu, vm, addr, supervisor, &hi) ||
+        !cpu_read16(cpu, vm, addr + 2u, supervisor, &lo)) {
+        return false;
+    }
+    *value = ((uint32_t)hi << 16u) | (uint32_t)lo;
+    return true;
+}
+
+static bool cpu_write16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t addr, bool supervisor, uint16_t value)
+{
+    if ((addr & 1u) != 0u) {
+        return false;
+    }
+    return cpu_write8(cpu, vm, addr, supervisor, (uint8_t)(value >> 8u)) &&
+           cpu_write8(cpu, vm, addr + 1u, supervisor, (uint8_t)value);
+}
+
+static bool cpu_write32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t addr, bool supervisor, uint32_t value)
+{
+    if ((addr & 1u) != 0u) {
+        return false;
+    }
+    return cpu_write8(cpu, vm, addr, supervisor, (uint8_t)(value >> 24u)) &&
+           cpu_write8(cpu, vm, addr + 1u, supervisor, (uint8_t)(value >> 16u)) &&
+           cpu_write8(cpu, vm, addr + 2u, supervisor, (uint8_t)(value >> 8u)) &&
+           cpu_write8(cpu, vm, addr + 3u, supervisor, (uint8_t)value);
+}
+
 static void set_nz32(struct amivm_cpu_state *cpu, uint32_t value)
 {
     cpu->sr &= (uint16_t)~(M68K_SR_N | M68K_SR_Z | M68K_SR_V | M68K_SR_C);
@@ -130,6 +282,7 @@ static bool read_control_register(const struct amivm_cpu_state *cpu,
     case AMIVM_CR_VBR:  *value = cpu->vbr; return true;
     case AMIVM_CR_MSP:  *value = cpu->msp; return true;
     case AMIVM_CR_ISP:  *value = cpu->isp; return true;
+    case AMIVM_CR_MMUSR:*value = cpu->mmusr; return true;
     case AMIVM_CR_URP:  *value = cpu->urp; return true;
     case AMIVM_CR_SRP:  *value = cpu->srp; return true;
     default: return false;
@@ -174,7 +327,8 @@ static int enter_exception_internal(struct amivm_cpu_state *cpu,
     uint16_t old_sr;
     uint16_t format_vector;
 
-    if (vector > 255u || !read32_be(vm, cpu->vbr + vector * 4u, &handler_pc)) {
+    if (vector > 255u ||
+        !cpu_read32(cpu, vm, cpu->vbr + vector * 4u, true, &handler_pc)) {
         cpu->stopped = true;
         return -5;
     }
@@ -187,12 +341,11 @@ static int enter_exception_internal(struct amivm_cpu_state *cpu,
     }
     select_active_sp(cpu);
 
-    /* 68020+-style format-0 short frame: SR, PC, format/vector word. */
     new_sp = cpu->a[7] - 8u;
     format_vector = (uint16_t)((vector * 4u) & 0x0fffu);
-    if (!write16_be(vm, new_sp, old_sr) ||
-        !write32_be(vm, new_sp + 2u, saved_pc) ||
-        !write16_be(vm, new_sp + 6u, format_vector)) {
+    if (!cpu_write16(cpu, vm, new_sp, true, old_sr) ||
+        !cpu_write32(cpu, vm, new_sp + 2u, true, saved_pc) ||
+        !cpu_write16(cpu, vm, new_sp + 6u, true, format_vector)) {
         cpu->stopped = true;
         return -5;
     }
@@ -216,6 +369,7 @@ static int deliver_fault(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 {
     switch (cpu->last_fault) {
     case AMIVM_CPU_FAULT_BUS:
+    case AMIVM_CPU_FAULT_MMU:
         return enter_exception(cpu, vm, AMIVM_VECTOR_BUS_ERROR, saved_pc);
     case AMIVM_CPU_FAULT_ADDRESS:
         return enter_exception(cpu, vm, AMIVM_VECTOR_ADDRESS_ERROR, saved_pc);
@@ -279,6 +433,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->tc = 0u;
     cpu->urp = 0u;
     cpu->srp = 0u;
+    cpu->mmusr = 0u;
     cpu->sfc = 0u;
     cpu->dfc = 0u;
     cpu->sr = (uint16_t)(M68K_SR_SUPERVISOR | M68K_SR_INTERRUPT_MASK);
@@ -297,8 +452,9 @@ static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ADDRESS, addr, 0u);
         return -3;
     }
-    if (!read16_be(vm, addr, value)) {
-        set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
+    if (!cpu_read16(cpu, vm, addr, is_supervisor(cpu), value)) {
+        if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+            set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return -4;
     }
     return 0;
@@ -311,8 +467,9 @@ static int fetch32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ADDRESS, addr, 0u);
         return -3;
     }
-    if (!read32_be(vm, addr, value)) {
-        set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
+    if (!cpu_read32(cpu, vm, addr, is_supervisor(cpu), value)) {
+        if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+            set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return -4;
     }
     return 0;
@@ -353,11 +510,12 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             set_fault(cpu, AMIVM_CPU_FAULT_PRIVILEGE, instruction_pc, opcode);
             return deliver_fault(cpu, vm, instruction_pc);
         }
-        if (!read16_be(vm, cpu->a[7], &restored_sr) ||
-            !read32_be(vm, cpu->a[7] + 2u, &restored_pc) ||
-            !read16_be(vm, cpu->a[7] + 6u, &format_vector)) {
-            set_fault(cpu, (cpu->a[7] & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
-                      cpu->a[7], opcode);
+        if (!cpu_read16(cpu, vm, cpu->a[7], true, &restored_sr) ||
+            !cpu_read32(cpu, vm, cpu->a[7] + 2u, true, &restored_pc) ||
+            !cpu_read16(cpu, vm, cpu->a[7] + 6u, true, &format_vector)) {
+            if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+                set_fault(cpu, (cpu->a[7] & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
+                          cpu->a[7], opcode);
             return deliver_fault(cpu, vm, instruction_pc);
         }
         if ((format_vector & 0xf000u) != 0u) {
@@ -427,9 +585,10 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             return deliver_fault(cpu, vm, instruction_pc);
         if (opcode == M68K_OPCODE_JSR_ABSL) {
             uint32_t new_sp = cpu->a[7] - 4u;
-            if (!write32_be(vm, new_sp, next_pc + 4u)) {
-                set_fault(cpu, (new_sp & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
-                          new_sp, opcode);
+            if (!cpu_write32(cpu, vm, new_sp, is_supervisor(cpu), next_pc + 4u)) {
+                if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+                    set_fault(cpu, (new_sp & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
+                              new_sp, opcode);
                 return deliver_fault(cpu, vm, instruction_pc);
             }
             cpu->a[7] = new_sp;
@@ -483,9 +642,10 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         }
         if ((opcode & 0xff00u) == 0x6100u) {
             uint32_t new_sp = cpu->a[7] - 4u;
-            if (!write32_be(vm, new_sp, base)) {
-                set_fault(cpu, (new_sp & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
-                          new_sp, opcode);
+            if (!cpu_write32(cpu, vm, new_sp, is_supervisor(cpu), base)) {
+                if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+                    set_fault(cpu, (new_sp & 1u) ? AMIVM_CPU_FAULT_ADDRESS : AMIVM_CPU_FAULT_BUS,
+                              new_sp, opcode);
                 return deliver_fault(cpu, vm, instruction_pc);
             }
             cpu->a[7] = new_sp;
