@@ -32,22 +32,15 @@ int main(void)
     struct amivm_cpu_state cpu;
     struct amivm_ir_block block;
     uint8_t byte;
+    const uint32_t pc_load_base = AMIVM_RAM_BASE + 0x800u;
 
-    /* MOVE.L 4(A0,D1.L*2),D0 */
     const uint16_t load_idx[] = {0x2030u, 0x1a04u};
-    /* MOVE.W 6(PC,D2.W*4),D3 */
     const uint16_t pc_idx[] = {0x363bu, 0x2406u};
-    /* MOVE.B D4,-2(A1,A2.W) */
     const uint16_t store_idx[] = {0x1384u, 0xa0feu};
-    /* MOVEA.W 0(A0,D1.W),A2 */
     const uint16_t movea_w[] = {0x3470u, 0x1000u};
-    /* MOVEA.L 4(A0,D1.L*8),A5 */
     const uint16_t movea_l[] = {0x2a70u, 0x1e04u};
-    /* LEA 8(A3,A1.L*2),A4 */
     const uint16_t lea_idx[] = {0x49f3u, 0x9a08u};
-    /* LEA -4(PC,D0.W),A6 */
     const uint16_t lea_pc[] = {0x4dfbu, 0x00fcu};
-    /* Full extension marker: intentionally unsupported in M2.20. */
     const uint16_t full_ext[] = {0x2030u, 0x0100u};
 
     amivm_config_init(&config);
@@ -69,12 +62,11 @@ int main(void)
     CHECK(cpu.d[0] == 0x11223344u);
     CHECK(cpu.pc == 0x1004u);
 
-    /* PC base is extension-word address (instruction PC + 2). */
     memset(&cpu, 0, sizeof(cpu));
     cpu.d[2] = 2u;
-    CHECK(amivm_write8(&vm, 0x2002u + 6u + 8u, 0x80u));
-    CHECK(amivm_write8(&vm, 0x2002u + 6u + 9u, 0x01u));
-    amivm_ir_block_init(&block, 0x2000u);
+    CHECK(amivm_write8(&vm, pc_load_base + 2u + 6u + 8u, 0x80u));
+    CHECK(amivm_write8(&vm, pc_load_base + 2u + 6u + 9u, 0x01u));
+    amivm_ir_block_init(&block, pc_load_base);
     CHECK(amivm_ir_decode_words(&block, pc_idx, 2u) == 0);
     CHECK(block.ops[0].ea_mode == AMIVM_IR_EA_PC_D8_XN);
     CHECK(block.ops[0].index_scale == 4u);
