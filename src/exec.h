@@ -9,11 +9,21 @@
 
 #define AMIVM_EXEC_CACHE_ENTRIES 256u
 #define AMIVM_EXEC_DECODE_WORDS 16u
+#define AMIVM_EXEC_DEP_PAGES 8u
+
+struct amivm_exec_page_dep {
+    uint32_t page_base;
+    uint64_t generation;
+};
 
 struct amivm_exec_cache_entry {
     uint32_t pc;
     uint32_t generation;
-    uint64_t memory_write_generation;
+    uint32_t mmu_tc;
+    uint32_t mmu_root;
+    uint8_t supervisor;
+    size_t dep_count;
+    struct amivm_exec_page_dep deps[AMIVM_EXEC_DEP_PAGES];
     int valid;
     int ir_valid;
     struct amivm_ir_block block;
@@ -23,7 +33,8 @@ struct amivm_exec_stats {
     uint64_t instructions;
     uint64_t cache_hits;
     uint64_t cache_misses;
-    uint64_t stale_write_misses;
+    uint64_t stale_page_misses;
+    uint64_t context_misses;
     uint64_t ir_blocks;
     uint64_t ir_instructions;
     uint64_t fallbacks;
