@@ -12,11 +12,13 @@
 #include <sys/mman.h>
 #endif
 
+#define SR_X 0x0010u
 #define SR_N 0x0008u
 #define SR_Z 0x0004u
 #define SR_V 0x0002u
 #define SR_C 0x0001u
 #define SR_NZVC (SR_N | SR_Z | SR_V | SR_C)
+#define SR_XNZVC (SR_X | SR_NZVC)
 
 static int emit8(struct amivm_jit_code *code, uint8_t value)
 {
@@ -48,7 +50,6 @@ static int emit_mov32_state_imm(struct amivm_jit_code *code,
 {
     int rc;
     if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
-    /* mov dword ptr [rdi + disp32], imm32 */
     rc = emit8(code, 0xc7u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x87u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, (uint32_t)offset); if (rc != AMIVM_JIT_OK) return rc;
@@ -60,7 +61,6 @@ static int emit_and16_state_imm(struct amivm_jit_code *code,
 {
     int rc;
     if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
-    /* and word ptr [rdi + disp32], imm16 */
     rc = emit8(code, 0x66u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x81u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xa7u); if (rc != AMIVM_JIT_OK) return rc;
@@ -73,12 +73,21 @@ static int emit_or16_state_imm(struct amivm_jit_code *code,
 {
     int rc;
     if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
-    /* or word ptr [rdi + disp32], imm16 */
     rc = emit8(code, 0x66u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x81u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x8fu); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, (uint32_t)offset); if (rc != AMIVM_JIT_OK) return rc;
     return emit16(code, value);
+}
+
+static int emit_or16_state_cx(struct amivm_jit_code *code, size_t offset)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    rc = emit8(code, 0x66u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x8fu); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, (uint32_t)offset);
 }
 
 static int emit_nz_flags(struct amivm_jit_code *code, uint32_t value)
@@ -94,6 +103,104 @@ static int emit_nz_flags(struct amivm_jit_code *code, uint32_t value)
     if (rc != AMIVM_JIT_OK) return rc;
     if (flags != 0u) return emit_or16_state_imm(code, sr_offset, flags);
     return AMIVM_JIT_OK;
+}
+
+static int emit_capture_nz_flags(struct amivm_jit_code *code)
+{
+    const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+    int rc;
+
+    /* pushfq; pop rax.  ZF/SF become 68k Z/N after shifting right four. */
+    rc = emit8(code, 0x9cu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x58u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe9u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x04u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x0cu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit_and16_state_imm(code, sr_offset, (uint16_t)~SR_NZVC);
+    if (rc != AMIVM_JIT_OK) return rc;
+    return emit_or16_state_cx(code, sr_offset);
+}
+
+static int emit_capture_addsub_flags(struct amivm_jit_code *code)
+{
+    const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+    int rc;
+
+    /* Snapshot host RFLAGS.  x86 CF/ZF/SF/OF map directly to 68k
+       C/Z/N/V for 32-bit ADD/SUB; C is duplicated into X. */
+    rc = emit8(code, 0x9cu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x58u); if (rc != AMIVM_JIT_OK) return rc;
+
+    /* ecx = CF | (CF << 4) */
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x01u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xcau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe2u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x04u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
+
+    /* Add ZF/SF as bits Z/N. */
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xeau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x04u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe2u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x0cu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
+
+    /* Add OF as 68k V. */
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xeau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x0au); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xe2u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x02u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
+
+    rc = emit_and16_state_imm(code, sr_offset, (uint16_t)~SR_XNZVC);
+    if (rc != AMIVM_JIT_OK) return rc;
+    return emit_or16_state_cx(code, sr_offset);
+}
+
+static int emit_cmp32_state_zero(struct amivm_jit_code *code, size_t offset)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    /* cmp dword ptr [rdi + disp32], 0 */
+    rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xbfu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit32(code, (uint32_t)offset); if (rc != AMIVM_JIT_OK) return rc;
+    return emit8(code, 0x00u);
+}
+
+static int emit_addsub32_state_imm(struct amivm_jit_code *code,
+                                   size_t offset, uint32_t value, int subtract)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    /* add/sub dword ptr [rdi + disp32], imm32 */
+    rc = emit8(code, 0x81u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, subtract ? 0xafu : 0x87u);
+    if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit32(code, (uint32_t)offset); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, value);
 }
 
 int amivm_jit_host_arch(void)
@@ -124,8 +231,6 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
     amivm_jit_code_init(code);
     if (code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_UNSUPPORTED;
 
-    /* M2.25 lowers side-effect-complete straight-line NOP/MOVEQ/CLR.L blocks.
-       Everything else remains on the IR interpreter path. */
     for (i = 0u; i < block->op_count; ++i) {
         const struct amivm_ir_op *op = &block->ops[i];
         uint32_t value;
@@ -137,7 +242,8 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
         case AMIVM_IR_MOVEQ:
             if (op->reg >= 8u) return AMIVM_JIT_INVALID;
             value = (uint32_t)op->imm;
-            d_offset = offsetof(struct amivm_cpu_state, d) + ((size_t)op->reg * sizeof(uint32_t));
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
             rc = emit_mov32_state_imm(code, d_offset, value);
             if (rc != AMIVM_JIT_OK) return rc;
             rc = emit_nz_flags(code, value);
@@ -145,10 +251,31 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             break;
         case AMIVM_IR_CLR_L:
             if (op->reg >= 8u) return AMIVM_JIT_INVALID;
-            d_offset = offsetof(struct amivm_cpu_state, d) + ((size_t)op->reg * sizeof(uint32_t));
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
             rc = emit_mov32_state_imm(code, d_offset, 0u);
             if (rc != AMIVM_JIT_OK) return rc;
             rc = emit_nz_flags(code, 0u);
+            if (rc != AMIVM_JIT_OK) return rc;
+            break;
+        case AMIVM_IR_TST_L:
+            if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            rc = emit_cmp32_state_zero(code, d_offset);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit_capture_nz_flags(code);
+            if (rc != AMIVM_JIT_OK) return rc;
+            break;
+        case AMIVM_IR_ADDQ_L:
+        case AMIVM_IR_SUBQ_L:
+            if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            rc = emit_addsub32_state_imm(code, d_offset, (uint32_t)op->imm,
+                                         op->opcode == AMIVM_IR_SUBQ_L);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit_capture_addsub_flags(code);
             if (rc != AMIVM_JIT_OK) return rc;
             break;
         default:
@@ -161,7 +288,6 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
     rc = emit_mov32_state_imm(code, offsetof(struct amivm_cpu_state, pc), final_pc);
     if (rc != AMIVM_JIT_OK) return rc;
 
-    /* mov eax, 1 ; successful block execution */
     rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, 1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
