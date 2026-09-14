@@ -6,6 +6,7 @@
 
 #include "cpu.h"
 #include "ir.h"
+#include "jit.h"
 
 #define AMIVM_EXEC_CACHE_ENTRIES 256u
 #define AMIVM_EXEC_DECODE_WORDS 64u
@@ -26,10 +27,12 @@ struct amivm_exec_cache_entry {
     struct amivm_exec_page_dep deps[AMIVM_EXEC_DEP_PAGES];
     int valid;
     int ir_valid;
+    int jit_valid;
     int chain_valid;
     uint32_t chain_pc;
     size_t chain_index;
     struct amivm_ir_block block;
+    struct amivm_jit_code jit;
 };
 
 struct amivm_exec_stats {
@@ -43,6 +46,9 @@ struct amivm_exec_stats {
     uint64_t chain_misses;
     uint64_t ir_blocks;
     uint64_t ir_instructions;
+    uint64_t jit_blocks;
+    uint64_t jit_instructions;
+    uint64_t jit_fallbacks;
     uint64_t fallbacks;
     uint64_t exits;
 };
