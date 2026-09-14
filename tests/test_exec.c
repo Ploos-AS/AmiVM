@@ -42,6 +42,7 @@ int main(void)
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t loop_pc = AMIVM_ROM_BASE + 0x100u;
     const uint32_t fallback_pc = AMIVM_ROM_BASE + 0x120u;
+    const uint32_t block_pc = AMIVM_ROM_BASE + 0x200u;
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -52,7 +53,15 @@ int main(void)
     put16_be(&vm.rom[0x100], 0x60feu);
     put16_be(&vm.rom[0x120], 0x4280u);
     put16_be(&vm.rom[0x122], 0x60feu);
-    vm.rom_used = 0x124u;
+
+    /* M2.15 two-block loop. Block A is four IR ops, block B is two. */
+    put16_be(&vm.rom[0x200], 0x7001u); /* MOVEQ #1,D0 */
+    put16_be(&vm.rom[0x202], 0x7202u); /* MOVEQ #2,D1 */
+    put16_be(&vm.rom[0x204], 0x4e71u); /* NOP */
+    put16_be(&vm.rom[0x206], 0x6018u); /* BRA 0x220 */
+    put16_be(&vm.rom[0x220], 0x7403u); /* MOVEQ #3,D2 */
+    put16_be(&vm.rom[0x222], 0x60dcu); /* BRA 0x200 */
+    vm.rom_used = 0x224u;
 
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     amivm_exec_init(&exec, backend);
@@ -63,6 +72,9 @@ int main(void)
     CHECK(exec.stats.cache_hits == 999u);
     CHECK(exec.stats.stale_page_misses == 0u);
     CHECK(exec.stats.context_misses == 0u);
+    CHECK(exec.stats.dispatches == 1u);
+    CHECK(exec.stats.chain_hits == 999u);
+    CHECK(exec.stats.chain_misses == 0u);
     CHECK(exec.stats.ir_blocks == 1000u);
     CHECK(exec.stats.ir_instructions == 1000u);
     CHECK(exec.stats.fallbacks == 0u);
@@ -73,6 +85,7 @@ int main(void)
     CHECK(exec.stats.instructions == 1001u);
     CHECK(exec.stats.cache_misses == 2u);
     CHECK(exec.stats.cache_hits == 999u);
+    CHECK(exec.stats.dispatches == 2u);
 
     cpu.pc = fallback_pc;
     cpu.d[0] = 0xffffffffu;
@@ -92,8 +105,32 @@ int main(void)
     CHECK(exec.stats.instructions == 0u);
     CHECK(exec.stats.cache_hits == 0u);
     CHECK(exec.stats.cache_misses == 0u);
+    CHECK(exec.stats.dispatches == 0u);
+    CHECK(exec.stats.chain_hits == 0u);
     CHECK(exec.stats.ir_blocks == 0u);
     CHECK(exec.stats.fallbacks == 0u);
+
+    /* M2.15: larger blocks plus cached successor chaining. */
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.pc = block_pc;
+    amivm_exec_reset(&exec);
+    CHECK(amivm_exec_run(&exec, &cpu, &vm, 600u) == 1);
+    CHECK(cpu.pc == block_pc);
+    CHECK(cpu.d[0] == 1u);
+    CHECK(cpu.d[1] == 2u);
+    CHECK(cpu.d[2] == 3u);
+    CHECK(exec.stats.instructions == 600u);
+    CHECK(exec.stats.ir_instructions == 600u);
+    CHECK(exec.stats.ir_blocks == 200u);
+    CHECK(exec.stats.cache_misses == 2u);
+    CHECK(exec.stats.dispatches == 2u);
+    CHECK(exec.stats.chain_misses == 1u);
+    CHECK(exec.stats.chain_hits == 198u);
+    CHECK(exec.stats.cache_hits == 198u);
+    CHECK(exec.stats.fallbacks == 0u);
+
+    amivm_exec_reset(&exec);
+    CHECK(exec.backend == backend);
 
     /* M2.14: MMU-aware IR dependencies are page granular. */
     {
@@ -112,7 +149,7 @@ int main(void)
         put32_be(&vm.ram[0x5000u], code_page | 1u);
         put16_be(&vm.ram[code_offset], 0x60feu);
         put16_be(&vm.ram[code_offset + 2u], 0x60feu);
-        put16_be(&vm.ram[alt_code_offset], 0x7009u); /* MOVEQ #9,D0. */
+        put16_be(&vm.ram[alt_code_offset], 0x7009u);
         put16_be(&vm.ram[alt_code_offset + 2u], 0x60feu);
 
         CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
@@ -144,7 +181,6 @@ int main(void)
         CHECK(cpu.d[0] == 7u);
         CHECK(cpu.pc == logical_pc + 2u);
 
-        /* Restore a hot branch, compile it, then remap through the L2 table. */
         CHECK(amivm_write8(&vm, code_page + 0x100u, 0x60u));
         CHECK(amivm_write8(&vm, code_page + 0x101u, 0xfeu));
         cpu.pc = logical_pc;
@@ -164,6 +200,6 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.14 page-granular invalidation tests: PASS");
+    puts("AmiVM M2.15 larger-block/chaining tests: PASS");
     return 0;
 }
