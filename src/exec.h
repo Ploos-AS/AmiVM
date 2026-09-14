@@ -13,6 +13,7 @@
 struct amivm_exec_cache_entry {
     uint32_t pc;
     uint32_t generation;
+    uint64_t memory_write_generation;
     int valid;
     int ir_valid;
     struct amivm_ir_block block;
@@ -22,6 +23,7 @@ struct amivm_exec_stats {
     uint64_t instructions;
     uint64_t cache_hits;
     uint64_t cache_misses;
+    uint64_t stale_write_misses;
     uint64_t ir_blocks;
     uint64_t ir_instructions;
     uint64_t fallbacks;
