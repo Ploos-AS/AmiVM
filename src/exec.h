@@ -8,7 +8,7 @@
 #include "ir.h"
 
 #define AMIVM_EXEC_CACHE_ENTRIES 256u
-#define AMIVM_EXEC_DECODE_WORDS 16u
+#define AMIVM_EXEC_DECODE_WORDS 64u
 #define AMIVM_EXEC_DEP_PAGES 8u
 
 struct amivm_exec_page_dep {
@@ -26,6 +26,9 @@ struct amivm_exec_cache_entry {
     struct amivm_exec_page_dep deps[AMIVM_EXEC_DEP_PAGES];
     int valid;
     int ir_valid;
+    int chain_valid;
+    uint32_t chain_pc;
+    size_t chain_index;
     struct amivm_ir_block block;
 };
 
@@ -35,6 +38,9 @@ struct amivm_exec_stats {
     uint64_t cache_misses;
     uint64_t stale_page_misses;
     uint64_t context_misses;
+    uint64_t dispatches;
+    uint64_t chain_hits;
+    uint64_t chain_misses;
     uint64_t ir_blocks;
     uint64_t ir_instructions;
     uint64_t fallbacks;
