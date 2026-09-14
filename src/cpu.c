@@ -30,6 +30,9 @@
 #define MMUSR_WP 0x00000004u
 #define MMUSR_TABLE 0x00000008u
 
+static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                   uint32_t addr, uint16_t *value);
+
 static bool is_supervisor(const struct amivm_cpu_state *cpu)
 {
     return (cpu->sr & SR_S) != 0u;
