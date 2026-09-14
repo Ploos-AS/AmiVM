@@ -144,7 +144,7 @@ int main(void)
     CHECK(cpu.d[1] == 3u);
     CHECK((cpu.sr & SR_Z) != 0u);
     CHECK((cpu.sr & (SR_N | SR_V | SR_C)) == 0u);
-    CHECK((cpu.sr & SR_X) != 0u); /* Logic/CMP leave X unchanged. */
+    CHECK((cpu.sr & SR_X) == 0u); /* ADD/SUB updated X before logic/CMP preserved it. */
 
     CHECK(branch_case(AMIVM_IR_CC_HI, 0u, 1) == 0);
     CHECK(branch_case(AMIVM_IR_CC_LS, SR_C, 1) == 0);
