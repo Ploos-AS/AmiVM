@@ -36,7 +36,7 @@ static int run_budget(struct amivm_vm *vm,
     amivm_exec_init(&exec, backend);
     CHECK(amivm_exec_run(&exec, &cpu, vm, budget) == 1);
     CHECK(exec.stats.instructions == budget);
-    CHECK(exec.stats.ir_instructions == budget);
+    CHECK(exec.stats.ir_instructions + exec.stats.jit_instructions == budget);
     CHECK(cpu.pc == expected_pc);
     CHECK(cpu.d[0] == d0);
     CHECK(cpu.d[1] == d1);
