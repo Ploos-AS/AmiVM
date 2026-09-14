@@ -13,6 +13,7 @@ add_library(amivm_core STATIC
     src/ir.c
     src/ea.c
     src/jit.c
+    src/jit_runtime.c
 )
 
 target_include_directories(amivm_core PUBLIC src)
@@ -84,6 +85,10 @@ add_executable(amivm_jit_m227_tests tests/test_jit_m227.c)
 target_link_libraries(amivm_jit_m227_tests PRIVATE amivm_core)
 target_compile_options(amivm_jit_m227_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
+add_executable(amivm_exec_m228_tests tests/test_exec_m228.c)
+target_link_libraries(amivm_exec_m228_tests PRIVATE amivm_core)
+target_compile_options(amivm_exec_m228_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
 add_executable(amivm_exec_bench bench/bench_exec.c)
 target_link_libraries(amivm_exec_bench PRIVATE amivm_core)
 target_compile_options(amivm_exec_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
@@ -107,4 +112,5 @@ add_test(NAME amivm_jit_m224 COMMAND amivm_jit_m224_tests)
 add_test(NAME amivm_jit_m225 COMMAND amivm_jit_m225_tests)
 add_test(NAME amivm_exec_m226 COMMAND amivm_exec_m226_tests)
 add_test(NAME amivm_jit_m227 COMMAND amivm_jit_m227_tests)
+add_test(NAME amivm_exec_m228 COMMAND amivm_exec_m228_tests)
 add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
