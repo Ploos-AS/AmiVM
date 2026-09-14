@@ -75,8 +75,10 @@ int main(void)
     CHECK(exec.stats.dispatches == 1u);
     CHECK(exec.stats.chain_hits == 999u);
     CHECK(exec.stats.chain_misses == 0u);
-    CHECK(exec.stats.ir_blocks == 1000u);
-    CHECK(exec.stats.ir_instructions == 1000u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.ir_instructions == 0u);
+    CHECK(exec.stats.jit_blocks == 1000u);
+    CHECK(exec.stats.jit_instructions == 1000u);
     CHECK(exec.stats.fallbacks == 0u);
     CHECK(exec.stats.exits == 0u);
 
@@ -86,8 +88,10 @@ int main(void)
     CHECK(exec.stats.cache_misses == 2u);
     CHECK(exec.stats.cache_hits == 999u);
     CHECK(exec.stats.dispatches == 2u);
+    CHECK(exec.stats.jit_blocks == 1001u);
+    CHECK(exec.stats.jit_instructions == 1001u);
 
-    /* M2.16: CLR.L is now native IR and remains in the hot path. */
+    /* M2.30: CLR.L plus the terminating BRA now remains native JIT. */
     cpu.pc = ir_pc;
     cpu.d[0] = 0xffffffffu;
     CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
@@ -95,11 +99,15 @@ int main(void)
     CHECK(cpu.pc == ir_pc + 2u);
     CHECK(exec.stats.fallbacks == 0u);
     CHECK(exec.stats.instructions == 1003u);
-    CHECK(exec.stats.ir_blocks == 1002u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.jit_blocks == 1002u);
+    CHECK(exec.stats.jit_instructions == 1003u);
 
     CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
     CHECK(cpu.pc == ir_pc + 2u);
-    CHECK(exec.stats.ir_blocks == 1003u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.jit_blocks == 1003u);
+    CHECK(exec.stats.jit_instructions == 1004u);
     CHECK(exec.stats.fallbacks == 0u);
     CHECK(exec.stats.instructions == 1004u);
 
@@ -111,9 +119,10 @@ int main(void)
     CHECK(exec.stats.dispatches == 0u);
     CHECK(exec.stats.chain_hits == 0u);
     CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.jit_blocks == 0u);
     CHECK(exec.stats.fallbacks == 0u);
 
-    /* M2.15: larger blocks plus cached successor chaining. */
+    /* M2.30: larger direct-branch blocks are native and still chain. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.pc = block_pc;
     amivm_exec_reset(&exec);
@@ -123,8 +132,10 @@ int main(void)
     CHECK(cpu.d[1] == 2u);
     CHECK(cpu.d[2] == 3u);
     CHECK(exec.stats.instructions == 600u);
-    CHECK(exec.stats.ir_instructions == 600u);
-    CHECK(exec.stats.ir_blocks == 200u);
+    CHECK(exec.stats.ir_instructions == 0u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.jit_instructions == 600u);
+    CHECK(exec.stats.jit_blocks == 200u);
     CHECK(exec.stats.cache_misses == 2u);
     CHECK(exec.stats.dispatches == 2u);
     CHECK(exec.stats.chain_misses == 1u);
@@ -135,7 +146,7 @@ int main(void)
     amivm_exec_reset(&exec);
     CHECK(exec.backend == backend);
 
-    /* M2.14: MMU-aware IR dependencies are page granular. */
+    /* M2.14: MMU-aware code dependencies remain page granular with JIT. */
     {
         const uint32_t srp = AMIVM_RAM_BASE + 0x4000u;
         const uint32_t sl2 = AMIVM_RAM_BASE + 0x5000u;
@@ -163,7 +174,8 @@ int main(void)
 
         CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
         CHECK(cpu.pc == logical_pc);
-        CHECK(exec.stats.ir_blocks == 1u);
+        CHECK(exec.stats.jit_blocks == 1u);
+        CHECK(exec.stats.ir_blocks == 0u);
         CHECK(exec.stats.cache_misses == 1u);
         CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
         CHECK(exec.stats.cache_hits == 1u);
@@ -203,6 +215,6 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.16 richer-IR execution tests: PASS");
+    puts("AmiVM M2.30 JIT-aware execution tests: PASS");
     return 0;
 }
