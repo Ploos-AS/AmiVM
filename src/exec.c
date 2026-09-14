@@ -325,12 +325,28 @@ static int exec_step_internal(struct amivm_exec_engine *engine,
     return execute_entry(engine, entry, cpu, vm);
 }
 
-static int block_has_direct_branch(const struct amivm_exec_cache_entry *entry)
+static int block_has_chainable_branch(const struct amivm_exec_cache_entry *entry)
 {
     const struct amivm_ir_op *op;
     if (entry == NULL || !entry->ir_valid || entry->block.op_count == 0u) return 0;
     op = &entry->block.ops[entry->block.op_count - 1u];
-    return op->opcode == AMIVM_IR_BRANCH;
+    return op->opcode == AMIVM_IR_BRANCH || op->opcode == AMIVM_IR_BRANCH_CC;
+}
+
+static void record_chain_hit(struct amivm_exec_engine *engine,
+                             const struct amivm_exec_cache_entry *source,
+                             const struct amivm_exec_cache_entry *target)
+{
+    engine->stats.chain_hits++;
+    engine->stats.cache_hits++;
+    if (source->jit_valid && target->jit_valid) engine->stats.jit_chain_hits++;
+}
+
+static void record_chain_miss(struct amivm_exec_engine *engine,
+                              const struct amivm_exec_cache_entry *source)
+{
+    engine->stats.chain_misses++;
+    if (source != NULL && source->jit_valid) engine->stats.jit_chain_misses++;
 }
 
 static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *engine,
@@ -342,13 +358,12 @@ static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *en
     uint32_t target_pc = cpu->pc;
     size_t target_index;
 
-    if (!block_has_direct_branch(source)) return NULL;
+    if (!block_has_chainable_branch(source)) return NULL;
 
     if (source->chain_valid && source->chain_pc == target_pc) {
         target = &engine->cache[source->chain_index];
         if (entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) {
-            engine->stats.chain_hits++;
-            engine->stats.cache_hits++;
+            record_chain_hit(engine, source, target);
             return target;
         }
         source->chain_valid = 0;
@@ -357,15 +372,14 @@ static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *en
     target_index = cache_index(target_pc);
     target = &engine->cache[target_index];
     if (!entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) {
-        engine->stats.chain_misses++;
+        record_chain_miss(engine, source);
         return NULL;
     }
 
     source->chain_valid = 1;
     source->chain_pc = target_pc;
     source->chain_index = target_index;
-    engine->stats.chain_hits++;
-    engine->stats.cache_hits++;
+    record_chain_hit(engine, source, target);
     return target;
 }
 
