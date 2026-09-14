@@ -35,6 +35,7 @@ struct amivm_vm {
     size_t rom_used;
     uint32_t irq_pending;
     uint64_t timer_ticks;
+    uint64_t memory_write_generation;
 };
 
 void amivm_config_init(struct amivm_config *config);
