@@ -124,6 +124,15 @@ static int dependencies_fresh(const struct amivm_exec_cache_entry *entry,
     return 1;
 }
 
+static int entry_is_fresh(const struct amivm_exec_cache_entry *entry,
+                          const struct amivm_cpu_state *cpu,
+                          const struct amivm_vm *vm, uint32_t pc,
+                          uint32_t generation)
+{
+    return entry->valid && entry->generation == generation && entry->pc == pc &&
+           context_matches(entry, cpu) && dependencies_fresh(entry, vm);
+}
+
 static int compile_ir_block(struct amivm_exec_cache_entry *entry,
                             struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
@@ -189,39 +198,11 @@ static int fallback_step(struct amivm_exec_engine *engine,
     return rc;
 }
 
-int amivm_exec_step(struct amivm_exec_engine *engine,
-                    struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+static int execute_entry(struct amivm_exec_engine *engine,
+                         struct amivm_exec_cache_entry *entry,
+                         struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
-    struct amivm_exec_cache_entry *entry;
-    uint32_t pc;
-    size_t index;
     int ir_rc;
-    int base_match;
-    int context_match;
-    int deps_fresh;
-
-    if (engine == NULL || cpu == NULL || vm == NULL ||
-        engine->backend == NULL || engine->backend->step == NULL) return -1;
-
-    pc = cpu->pc;
-    index = cache_index(pc);
-    entry = &engine->cache[index];
-    base_match = entry->valid && entry->generation == engine->generation && entry->pc == pc;
-    context_match = base_match && context_matches(entry, cpu);
-    deps_fresh = context_match && dependencies_fresh(entry, vm);
-
-    if (deps_fresh) {
-        engine->stats.cache_hits++;
-    } else {
-        if (base_match && !context_match) engine->stats.context_misses++;
-        else if (context_match && !deps_fresh) engine->stats.stale_page_misses++;
-        engine->stats.cache_misses++;
-        memset(entry, 0, sizeof(*entry));
-        entry->pc = pc;
-        entry->generation = engine->generation;
-        entry->valid = 1;
-        (void)compile_ir_block(entry, cpu, vm);
-    }
 
     if (!entry->ir_valid) return fallback_step(engine, cpu, vm);
 
@@ -229,6 +210,12 @@ int amivm_exec_step(struct amivm_exec_engine *engine,
     if (ir_rc < 0) return fallback_step(engine, cpu, vm);
 
     if (ir_rc == 2) {
+        size_t prefix = entry->block.op_count > 0u ? entry->block.op_count - 1u : 0u;
+        if (prefix != 0u) {
+            engine->stats.ir_blocks++;
+            engine->stats.ir_instructions += prefix;
+            engine->stats.instructions += prefix;
+        }
         return fallback_step(engine, cpu, vm);
     }
 
@@ -238,17 +225,124 @@ int amivm_exec_step(struct amivm_exec_engine *engine,
     return 1;
 }
 
+static struct amivm_exec_cache_entry *prepare_entry(struct amivm_exec_engine *engine,
+                                                     struct amivm_cpu_state *cpu,
+                                                     struct amivm_vm *vm)
+{
+    struct amivm_exec_cache_entry *entry;
+    uint32_t pc = cpu->pc;
+    size_t index = cache_index(pc);
+    int base_match;
+    int context_match;
+    int deps_fresh;
+
+    entry = &engine->cache[index];
+    base_match = entry->valid && entry->generation == engine->generation && entry->pc == pc;
+    context_match = base_match && context_matches(entry, cpu);
+    deps_fresh = context_match && dependencies_fresh(entry, vm);
+
+    if (deps_fresh) {
+        engine->stats.cache_hits++;
+        return entry;
+    }
+
+    if (base_match && !context_match) engine->stats.context_misses++;
+    else if (context_match && !deps_fresh) engine->stats.stale_page_misses++;
+    engine->stats.cache_misses++;
+    memset(entry, 0, sizeof(*entry));
+    entry->pc = pc;
+    entry->generation = engine->generation;
+    entry->valid = 1;
+    (void)compile_ir_block(entry, cpu, vm);
+    return entry;
+}
+
+static int exec_step_internal(struct amivm_exec_engine *engine,
+                              struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                              struct amivm_exec_cache_entry **executed)
+{
+    struct amivm_exec_cache_entry *entry;
+
+    engine->stats.dispatches++;
+    entry = prepare_entry(engine, cpu, vm);
+    if (executed != NULL) *executed = entry;
+    return execute_entry(engine, entry, cpu, vm);
+}
+
+static int block_has_direct_branch(const struct amivm_exec_cache_entry *entry)
+{
+    const struct amivm_ir_op *op;
+    if (entry == NULL || !entry->ir_valid || entry->block.op_count == 0u) return 0;
+    op = &entry->block.ops[entry->block.op_count - 1u];
+    return op->opcode == AMIVM_IR_BRANCH;
+}
+
+static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *engine,
+                                                    struct amivm_exec_cache_entry *source,
+                                                    struct amivm_cpu_state *cpu,
+                                                    struct amivm_vm *vm)
+{
+    struct amivm_exec_cache_entry *target;
+    uint32_t target_pc = cpu->pc;
+    size_t target_index;
+
+    if (!block_has_direct_branch(source)) return NULL;
+
+    if (source->chain_valid && source->chain_pc == target_pc) {
+        target = &engine->cache[source->chain_index];
+        if (entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) {
+            engine->stats.chain_hits++;
+            engine->stats.cache_hits++;
+            return target;
+        }
+        source->chain_valid = 0;
+    }
+
+    target_index = cache_index(target_pc);
+    target = &engine->cache[target_index];
+    if (!entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) {
+        engine->stats.chain_misses++;
+        return NULL;
+    }
+
+    source->chain_valid = 1;
+    source->chain_pc = target_pc;
+    source->chain_index = target_index;
+    engine->stats.chain_hits++;
+    engine->stats.cache_hits++;
+    return target;
+}
+
+int amivm_exec_step(struct amivm_exec_engine *engine,
+                    struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+{
+    if (engine == NULL || cpu == NULL || vm == NULL ||
+        engine->backend == NULL || engine->backend->step == NULL) return -1;
+    return exec_step_internal(engine, cpu, vm, NULL);
+}
+
 int amivm_exec_run(struct amivm_exec_engine *engine,
                    struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint64_t instruction_budget)
 {
+    struct amivm_exec_cache_entry *source = NULL;
+    struct amivm_exec_cache_entry *target;
     uint64_t before;
     int rc = 0;
 
+    if (engine == NULL || cpu == NULL || vm == NULL ||
+        engine->backend == NULL || engine->backend->step == NULL) return -1;
     if (instruction_budget == 0u) return 0;
-    before = engine != NULL ? engine->stats.instructions : 0u;
-    while (engine != NULL && engine->stats.instructions - before < instruction_budget) {
-        rc = amivm_exec_step(engine, cpu, vm);
+
+    before = engine->stats.instructions;
+    while (engine->stats.instructions - before < instruction_budget) {
+        target = resolve_chain(engine, source, cpu, vm);
+        if (target != NULL) {
+            rc = execute_entry(engine, target, cpu, vm);
+            source = target;
+        } else {
+            rc = exec_step_internal(engine, cpu, vm, &source);
+        }
         if (rc <= 0 || cpu->stopped) return rc;
     }
     return rc;
