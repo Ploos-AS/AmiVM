@@ -353,6 +353,50 @@ static void record_chain_miss(struct amivm_exec_engine *engine,
     if (source != NULL && source->jit_valid) engine->stats.jit_chain_misses++;
 }
 
+static struct amivm_exec_cache_entry *lookup_chain_slot(struct amivm_exec_engine *engine,
+                                                        struct amivm_exec_cache_entry *source,
+                                                        struct amivm_cpu_state *cpu,
+                                                        struct amivm_vm *vm,
+                                                        uint32_t target_pc,
+                                                        int alternate)
+{
+    struct amivm_exec_cache_entry *target;
+    int *valid;
+    uint32_t *pc;
+    size_t *index;
+
+    if (alternate) {
+        valid = &source->chain_alt_valid;
+        pc = &source->chain_alt_pc;
+        index = &source->chain_alt_index;
+    } else {
+        valid = &source->chain_valid;
+        pc = &source->chain_pc;
+        index = &source->chain_index;
+    }
+
+    if (!*valid || *pc != target_pc) return NULL;
+    target = &engine->cache[*index];
+    if (entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) return target;
+    *valid = 0;
+    return NULL;
+}
+
+static void remember_chain_slot(struct amivm_exec_cache_entry *source,
+                                uint32_t target_pc, size_t target_index)
+{
+    if (!source->chain_valid || source->chain_pc == target_pc) {
+        source->chain_valid = 1;
+        source->chain_pc = target_pc;
+        source->chain_index = target_index;
+        return;
+    }
+
+    source->chain_alt_valid = 1;
+    source->chain_alt_pc = target_pc;
+    source->chain_alt_index = target_index;
+}
+
 static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *engine,
                                                     struct amivm_exec_cache_entry *source,
                                                     struct amivm_cpu_state *cpu,
@@ -364,13 +408,12 @@ static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *en
 
     if (!block_has_chainable_successor(source)) return NULL;
 
-    if (source->chain_valid && source->chain_pc == target_pc) {
-        target = &engine->cache[source->chain_index];
-        if (entry_is_fresh(target, cpu, vm, target_pc, engine->generation)) {
-            record_chain_hit(engine, source, target);
-            return target;
-        }
-        source->chain_valid = 0;
+    target = lookup_chain_slot(engine, source, cpu, vm, target_pc, 0);
+    if (target == NULL)
+        target = lookup_chain_slot(engine, source, cpu, vm, target_pc, 1);
+    if (target != NULL) {
+        record_chain_hit(engine, source, target);
+        return target;
     }
 
     target_index = cache_index(target_pc);
@@ -380,9 +423,7 @@ static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *en
         return NULL;
     }
 
-    source->chain_valid = 1;
-    source->chain_pc = target_pc;
-    source->chain_index = target_index;
+    remember_chain_slot(source, target_pc, target_index);
     record_chain_hit(engine, source, target);
     return target;
 }
