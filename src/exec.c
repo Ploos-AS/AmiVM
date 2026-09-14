@@ -198,19 +198,32 @@ static int fallback_step(struct amivm_exec_engine *engine,
     return rc;
 }
 
-static int execute_entry(struct amivm_exec_engine *engine,
-                         struct amivm_exec_cache_entry *entry,
-                         struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+static int execute_entry_limited(struct amivm_exec_engine *engine,
+                                 struct amivm_exec_cache_entry *entry,
+                                 struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                                 uint64_t max_instructions)
 {
+    struct amivm_ir_block partial;
+    const struct amivm_ir_block *block;
+    size_t executed;
     int ir_rc;
 
+    if (max_instructions == 0u) return 0;
     if (!entry->ir_valid) return fallback_step(engine, cpu, vm);
 
-    ir_rc = amivm_ir_execute(&entry->block, cpu, vm);
+    block = &entry->block;
+    if ((uint64_t)block->op_count > max_instructions) {
+        partial = *block;
+        partial.op_count = (size_t)max_instructions;
+        partial.terminates = 0;
+        block = &partial;
+    }
+
+    ir_rc = amivm_ir_execute(block, cpu, vm);
     if (ir_rc < 0) return fallback_step(engine, cpu, vm);
 
     if (ir_rc == 2) {
-        size_t prefix = entry->block.op_count > 0u ? entry->block.op_count - 1u : 0u;
+        size_t prefix = block->op_count > 0u ? block->op_count - 1u : 0u;
         if (prefix != 0u) {
             engine->stats.ir_blocks++;
             engine->stats.ir_instructions += prefix;
@@ -219,10 +232,18 @@ static int execute_entry(struct amivm_exec_engine *engine,
         return fallback_step(engine, cpu, vm);
     }
 
+    executed = block->op_count;
     engine->stats.ir_blocks++;
-    engine->stats.ir_instructions += entry->block.op_count;
-    engine->stats.instructions += entry->block.op_count;
+    engine->stats.ir_instructions += executed;
+    engine->stats.instructions += executed;
     return 1;
+}
+
+static int execute_entry(struct amivm_exec_engine *engine,
+                         struct amivm_exec_cache_entry *entry,
+                         struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+{
+    return execute_entry_limited(engine, entry, cpu, vm, (uint64_t)-1);
 }
 
 static struct amivm_exec_cache_entry *prepare_entry(struct amivm_exec_engine *engine,
@@ -328,6 +349,8 @@ int amivm_exec_run(struct amivm_exec_engine *engine,
     struct amivm_exec_cache_entry *source = NULL;
     struct amivm_exec_cache_entry *target;
     uint64_t before;
+    uint64_t used;
+    uint64_t remaining;
     int rc = 0;
 
     if (engine == NULL || cpu == NULL || vm == NULL ||
@@ -335,13 +358,16 @@ int amivm_exec_run(struct amivm_exec_engine *engine,
     if (instruction_budget == 0u) return 0;
 
     before = engine->stats.instructions;
-    while (engine->stats.instructions - before < instruction_budget) {
+    while ((used = engine->stats.instructions - before) < instruction_budget) {
+        remaining = instruction_budget - used;
         target = resolve_chain(engine, source, cpu, vm);
         if (target != NULL) {
-            rc = execute_entry(engine, target, cpu, vm);
+            rc = execute_entry_limited(engine, target, cpu, vm, remaining);
             source = target;
         } else {
-            rc = exec_step_internal(engine, cpu, vm, &source);
+            engine->stats.dispatches++;
+            source = prepare_entry(engine, cpu, vm);
+            rc = execute_entry_limited(engine, source, cpu, vm, remaining);
         }
         if (rc <= 0 || cpu->stopped) return rc;
     }
