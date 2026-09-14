@@ -33,6 +33,7 @@ int main(void)
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t loop_pc = AMIVM_ROM_BASE + 0x100u;
+    const uint32_t fallback_pc = AMIVM_ROM_BASE + 0x120u;
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -41,7 +42,9 @@ int main(void)
     put32_be(&vm.rom[0], initial_sp);
     put32_be(&vm.rom[4], loop_pc);
     put16_be(&vm.rom[0x100], 0x60feu); /* BRA -2: hot single-instruction loop. */
-    vm.rom_used = 0x102u;
+    put16_be(&vm.rom[0x120], 0x4280u); /* CLR.L D0: interpreter fallback. */
+    put16_be(&vm.rom[0x122], 0x60feu);
+    vm.rom_used = 0x124u;
 
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     amivm_exec_init(&exec, backend);
@@ -50,6 +53,9 @@ int main(void)
     CHECK(exec.stats.instructions == 1000u);
     CHECK(exec.stats.cache_misses == 1u);
     CHECK(exec.stats.cache_hits == 999u);
+    CHECK(exec.stats.ir_blocks == 1000u);
+    CHECK(exec.stats.ir_instructions == 1000u);
+    CHECK(exec.stats.fallbacks == 0u);
     CHECK(exec.stats.exits == 0u);
 
     amivm_exec_invalidate_all(&exec);
@@ -58,13 +64,31 @@ int main(void)
     CHECK(exec.stats.cache_misses == 2u);
     CHECK(exec.stats.cache_hits == 999u);
 
+    cpu.pc = fallback_pc;
+    cpu.d[0] = 0xffffffffu;
+    CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+    CHECK(cpu.d[0] == 0u);
+    CHECK(cpu.pc == fallback_pc + 2u);
+    CHECK(exec.stats.fallbacks == 1u);
+    CHECK(exec.stats.instructions == 1002u);
+
+    /* Active MMU deliberately disables M2.12 physical IR translation. */
+    cpu.pc = loop_pc;
+    cpu.tc = 0x80000000u;
+    cpu.urp = 0u;
+    CHECK(amivm_exec_step(&exec, &cpu, &vm) == 2);
+    CHECK(exec.stats.fallbacks == 2u);
+    cpu.tc = 0u;
+
     amivm_exec_reset(&exec);
     CHECK(exec.backend == backend);
     CHECK(exec.stats.instructions == 0u);
     CHECK(exec.stats.cache_hits == 0u);
     CHECK(exec.stats.cache_misses == 0u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.fallbacks == 0u);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.10 execution-core tests: PASS");
+    puts("AmiVM M2.12 IR block-cache/fallback tests: PASS");
     return 0;
 }
