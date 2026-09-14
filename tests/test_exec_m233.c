@@ -33,6 +33,8 @@ int main(void)
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t block_a = AMIVM_ROM_BASE + 0x200u;
+    const uint32_t block_b = AMIVM_ROM_BASE + 0x280u;
+    const uint32_t block_end = AMIVM_ROM_BASE + 0x300u;
     size_t i;
 
     amivm_config_init(&config);
@@ -42,39 +44,62 @@ int main(void)
     put32_be(&vm.rom[0], initial_sp);
     put32_be(&vm.rom[4], block_a);
 
-    /* A fills the complete 64-word decode window and falls through to B. */
+    /*
+     * A and B each fill one complete 64-word decode window.  Neither block
+     * terminates explicitly, so A falls through to B and B falls through to
+     * block_end.  This isolates M2.33 fallthrough chaining from branch decode
+     * semantics (the current IR still only accepts short BRA/Bcc forms).
+     */
     for (i = 0u; i < 64u; ++i)
         put16_be(&vm.rom[0x200u + i * 2u], 0x4e71u);
-
-    /* B executes 62 NOPs and a BRA.w back to A. */
-    for (i = 0u; i < 62u; ++i)
+    for (i = 0u; i < 64u; ++i)
         put16_be(&vm.rom[0x280u + i * 2u], 0x4e71u);
-    put16_be(&vm.rom[0x2fcu], 0x6000u);
-    put16_be(&vm.rom[0x2feu], 0xff02u); /* A - (branch PC + 2) = -254 */
     vm.rom_used = 0x300u;
 
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     amivm_exec_init(&exec, backend);
 
-    /* Two complete A/B cycles: 64 + 63 + 64 + 63 = 254 instructions. */
-    CHECK(amivm_exec_run(&exec, &cpu, &vm, 254u) == 1);
-    CHECK(cpu.pc == block_a);
-    CHECK(exec.stats.instructions == 254u);
-    CHECK(exec.stats.jit_instructions == 254u);
-    CHECK(exec.stats.jit_blocks == 4u);
+    /* First pass compiles A and B.  A->B initially misses because B is new. */
+    CHECK(amivm_exec_run(&exec, &cpu, &vm, 128u) == 1);
+    CHECK(cpu.pc == block_end);
+    CHECK(exec.stats.instructions == 128u);
+    CHECK(exec.stats.jit_instructions == 128u);
+    CHECK(exec.stats.jit_blocks == 2u);
     CHECK(exec.stats.ir_instructions == 0u);
     CHECK(exec.stats.ir_blocks == 0u);
     CHECK(exec.stats.fallbacks == 0u);
     CHECK(exec.stats.jit_fallbacks == 0u);
-
-    /* A->B initially misses; B->A and the next A->B are direct cache chains. */
     CHECK(exec.stats.cache_misses == 2u);
     CHECK(exec.stats.dispatches == 2u);
     CHECK(exec.stats.jit_prepares == 2u);
     CHECK(exec.stats.chain_misses == 1u);
     CHECK(exec.stats.jit_chain_misses == 1u);
-    CHECK(exec.stats.chain_hits == 2u);
-    CHECK(exec.stats.jit_chain_hits == 2u);
+    CHECK(exec.stats.chain_hits == 0u);
+    CHECK(exec.stats.jit_chain_hits == 0u);
+
+    /*
+     * Re-enter A with the same execution cache.  A itself is a normal cache
+     * hit; its fallthrough successor B must then be resolved through the
+     * direct native-to-native chain fast path.
+     */
+    cpu.pc = block_a;
+    CHECK(amivm_exec_run(&exec, &cpu, &vm, 128u) == 1);
+    CHECK(cpu.pc == block_end);
+    CHECK(cpu.pc == block_b + 0x80u);
+    CHECK(exec.stats.instructions == 256u);
+    CHECK(exec.stats.jit_instructions == 256u);
+    CHECK(exec.stats.jit_blocks == 4u);
+    CHECK(exec.stats.ir_instructions == 0u);
+    CHECK(exec.stats.ir_blocks == 0u);
+    CHECK(exec.stats.fallbacks == 0u);
+    CHECK(exec.stats.jit_fallbacks == 0u);
+    CHECK(exec.stats.cache_misses == 2u);
+    CHECK(exec.stats.dispatches == 3u);
+    CHECK(exec.stats.jit_prepares == 2u);
+    CHECK(exec.stats.chain_misses == 1u);
+    CHECK(exec.stats.jit_chain_misses == 1u);
+    CHECK(exec.stats.chain_hits == 1u);
+    CHECK(exec.stats.jit_chain_hits == 1u);
     CHECK(exec.stats.cache_hits == 2u);
 
     amivm_exec_reset(&exec);
