@@ -31,6 +31,9 @@ struct amivm_exec_cache_entry {
     int chain_valid;
     uint32_t chain_pc;
     size_t chain_index;
+    int chain_alt_valid;
+    uint32_t chain_alt_pc;
+    size_t chain_alt_index;
     struct amivm_ir_block block;
     struct amivm_jit_code jit;
     struct amivm_jit_runtime jit_runtime;
