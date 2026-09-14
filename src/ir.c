@@ -35,6 +35,7 @@ static int emit(struct amivm_ir_block *block, enum amivm_ir_opcode opcode,
     op->condition = condition;
     op->ea_mode = ea_mode;
     op->index_scale = 1u;
+    op->instruction_bytes = 2u;
     op->imm = imm;
     op->guest_pc = pc;
     return 0;
@@ -170,17 +171,6 @@ static int control_ea(uint8_t mode, uint8_t reg, uint8_t *ea_mode)
     return 0;
 }
 
-static int parse_brief_index(struct amivm_ir_op *op, uint16_t ext)
-{
-    if ((ext & 0x0100u) != 0u) return -1;
-    op->index_is_addr = (uint8_t)((ext >> 15u) & 1u);
-    op->index_reg = (uint8_t)((ext >> 12u) & 7u);
-    op->index_long = (uint8_t)((ext >> 11u) & 1u);
-    op->index_scale = (uint8_t)(1u << ((ext >> 9u) & 3u));
-    op->imm = (int8_t)(ext & 0xffu);
-    return 0;
-}
-
 static enum amivm_ir_opcode load_opcode(unsigned width)
 {
     return width == 1u ? AMIVM_IR_LOAD_B :
@@ -201,17 +191,36 @@ static int consume_ea_extension(struct amivm_ir_op *ir, const uint16_t *words,
         if (*index + 1u >= word_count) return -1;
         (*index)++;
         ir->imm = (int16_t)words[*index];
+        ir->instruction_bytes = 4u;
     } else if (ir->ea_mode == AMIVM_IR_EA_ABS_L) {
         uint32_t value;
         if (*index + 2u >= word_count) return -1;
         value = ((uint32_t)words[*index + 1u] << 16u) | words[*index + 2u];
         *index += 2u;
         ir->imm = (int32_t)value;
+        ir->instruction_bytes = 6u;
     } else if (ir->ea_mode == AMIVM_IR_EA_D8_AN_XN ||
                ir->ea_mode == AMIVM_IR_EA_PC_D8_XN) {
-        if (*index + 1u >= word_count) return -1;
-        (*index)++;
-        if (parse_brief_index(ir, words[*index]) != 0) return -2;
+        struct amivm_ea_index_extension ext;
+        int rc;
+        size_t start = *index + 1u;
+        if (start >= word_count) return -1;
+        rc = amivm_ea_parse_index_extension(&words[start], word_count - start, &ext);
+        if (rc == AMIVM_EA_PARSE_TRUNCATED) return -1;
+        if (rc != AMIVM_EA_PARSE_OK) return -2;
+        ir->full_format = ext.full_format;
+        ir->index_is_addr = ext.index_is_addr;
+        ir->index_reg = ext.index_reg;
+        ir->index_long = ext.index_long;
+        ir->index_scale = ext.index_scale;
+        ir->base_suppress = ext.base_suppress;
+        ir->index_suppress = ext.index_suppress;
+        ir->indirect_mode = ext.indirect_mode;
+        ir->imm = ext.full_format ? ext.base_displacement : ext.brief_displacement;
+        ir->base_displacement = ext.base_displacement;
+        ir->outer_displacement = ext.outer_displacement;
+        ir->instruction_bytes = (uint8_t)(2u + ext.words_consumed * 2u);
+        *index += ext.words_consumed;
     }
     return 0;
 }
@@ -314,15 +323,6 @@ static int emit_lea(struct amivm_ir_block *block, const uint16_t *words,
     return 1;
 }
 
-static uint32_t instruction_bytes_for_ea(uint8_t ea_mode)
-{
-    if (ea_mode == AMIVM_IR_EA_ABS_L) return 6u;
-    if (ea_mode == AMIVM_IR_EA_D16_AN || ea_mode == AMIVM_IR_EA_D8_AN_XN ||
-        ea_mode == AMIVM_IR_EA_ABS_W || ea_mode == AMIVM_IR_EA_PC_D16 ||
-        ea_mode == AMIVM_IR_EA_PC_D8_XN) return 4u;
-    return 2u;
-}
-
 int amivm_ir_decode_words(struct amivm_ir_block *block,
                           const uint16_t *words, size_t word_count)
 {
@@ -338,19 +338,19 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         rc = emit_lea(block, words, word_count, &i, pc);
         if (rc < 0) return -3;
         if (rc > 0) {
-            pc += instruction_bytes_for_ea(block->ops[block->op_count - 1u].ea_mode);
+            pc += block->ops[block->op_count - 1u].instruction_bytes;
             continue;
         }
         rc = emit_movea(block, words, word_count, &i, pc);
         if (rc < 0) return -3;
         if (rc > 0) {
-            pc += instruction_bytes_for_ea(block->ops[block->op_count - 1u].ea_mode);
+            pc += block->ops[block->op_count - 1u].instruction_bytes;
             continue;
         }
         rc = emit_move_memory(block, words, word_count, &i, pc);
         if (rc < 0) return -3;
         if (rc > 0) {
-            pc += instruction_bytes_for_ea(block->ops[block->op_count - 1u].ea_mode);
+            pc += block->ops[block->op_count - 1u].instruction_bytes;
             continue;
         }
 
@@ -498,13 +498,25 @@ static unsigned ea_step(const struct amivm_ir_op *op, unsigned width)
 static int32_t index_value(const struct amivm_ir_op *op,
                            const struct amivm_cpu_state *cpu)
 {
-    uint32_t raw = op->index_is_addr ? cpu->a[op->index_reg] : cpu->d[op->index_reg];
-    int32_t value = op->index_long ? (int32_t)raw : (int32_t)(int16_t)(raw & 0xffffu);
+    uint32_t raw;
+    int32_t value;
+    if (op->full_format && op->index_suppress) return 0;
+    raw = op->index_is_addr ? cpu->a[op->index_reg] : cpu->d[op->index_reg];
+    value = op->index_long ? (int32_t)raw : (int32_t)(int16_t)(raw & 0xffffu);
     return value * (int32_t)op->index_scale;
 }
 
-static uint32_t ea_address(const struct amivm_ir_op *op,
-                           const struct amivm_cpu_state *cpu, unsigned width)
+static uint32_t indexed_base(const struct amivm_ir_op *op,
+                             const struct amivm_cpu_state *cpu)
+{
+    if (op->full_format && op->base_suppress) return 0u;
+    if (op->ea_mode == AMIVM_IR_EA_PC_D8_XN) return op->guest_pc + 2u;
+    return cpu->a[op->src_reg];
+}
+
+static uint32_t ea_address_direct(const struct amivm_ir_op *op,
+                                  const struct amivm_cpu_state *cpu,
+                                  unsigned width)
 {
     uint32_t base;
     unsigned step = ea_step(op, width);
@@ -516,8 +528,10 @@ static uint32_t ea_address(const struct amivm_ir_op *op,
     case AMIVM_IR_EA_PC_D16:
         return (uint32_t)((int64_t)(op->guest_pc + 2u) + (int64_t)(int16_t)op->imm);
     case AMIVM_IR_EA_PC_D8_XN:
-        return (uint32_t)((int64_t)(op->guest_pc + 2u) +
-                          (int64_t)(int8_t)op->imm + (int64_t)index_value(op, cpu));
+        base = indexed_base(op, cpu);
+        return (uint32_t)((int64_t)base +
+                          (int64_t)(op->full_format ? op->base_displacement : (int8_t)op->imm) +
+                          (int64_t)index_value(op, cpu));
     default:
         break;
     }
@@ -531,11 +545,45 @@ static uint32_t ea_address(const struct amivm_ir_op *op,
     case AMIVM_IR_EA_D16_AN:
         return (uint32_t)((int64_t)base + (int64_t)(int16_t)op->imm);
     case AMIVM_IR_EA_D8_AN_XN:
-        return (uint32_t)((int64_t)base + (int64_t)(int8_t)op->imm +
+        base = indexed_base(op, cpu);
+        return (uint32_t)((int64_t)base +
+                          (int64_t)(op->full_format ? op->base_displacement : (int8_t)op->imm) +
                           (int64_t)index_value(op, cpu));
     default:
         return base;
     }
+}
+
+static int resolve_ea(const struct amivm_ir_op *op,
+                      struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                      unsigned width, uint32_t *address)
+{
+    uint32_t base;
+    uint32_t pointer_address;
+    uint32_t pointer;
+    int32_t index;
+
+    if (address == NULL) return -1;
+    if (!op->full_format || op->indirect_mode == AMIVM_EA_INDIRECT_NONE) {
+        *address = ea_address_direct(op, cpu, width);
+        return 0;
+    }
+    if (vm == NULL) return -1;
+
+    base = indexed_base(op, cpu);
+    index = index_value(op, cpu);
+    if (op->indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED)
+        pointer_address = (uint32_t)((int64_t)base + (int64_t)op->base_displacement + index);
+    else
+        pointer_address = (uint32_t)((int64_t)base + (int64_t)op->base_displacement);
+
+    if (ir_read(cpu, vm, pointer_address, 4u, &pointer) != 0) return -1;
+
+    if (op->indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED)
+        *address = (uint32_t)((int64_t)pointer + (int64_t)op->outer_displacement);
+    else
+        *address = (uint32_t)((int64_t)pointer + index + (int64_t)op->outer_displacement);
+    return 0;
 }
 
 static void finish_ea_update(const struct amivm_ir_op *op,
@@ -575,7 +623,7 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
         const struct amivm_ir_op *op = &block->ops[i];
         uint32_t lhs, rhs, result, address;
         unsigned width;
-        uint32_t instruction_bytes = instruction_bytes_for_ea(op->ea_mode);
+        uint32_t instruction_bytes = op->instruction_bytes;
 
         if (op->reg >= 8u || op->src_reg >= 8u || op->index_reg >= 8u) {
             if (op->opcode != AMIVM_IR_NOP && op->opcode != AMIVM_IR_BRANCH &&
@@ -586,7 +634,7 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
         if (is_load(op->opcode) || is_store(op->opcode)) {
             if (vm == NULL) return -4;
             width = memory_width(op->opcode);
-            address = ea_address(op, cpu, width);
+            if (resolve_ea(op, cpu, vm, width, &address) != 0) return -4;
             if (is_load(op->opcode)) {
                 if (ir_read(cpu, vm, address, width, &result) != 0) return -4;
                 if (width == 1u) {
@@ -620,14 +668,15 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
         case AMIVM_IR_MOVEA_L:
             if (vm == NULL) return -4;
             width = op->opcode == AMIVM_IR_MOVEA_W ? 2u : 4u;
-            address = ea_address(op, cpu, width);
+            if (resolve_ea(op, cpu, vm, width, &address) != 0) return -4;
             if (ir_read(cpu, vm, address, width, &result) != 0) return -4;
             cpu->a[op->reg] = width == 2u ? (uint32_t)(int32_t)(int16_t)result : result;
             if (op->reg == 7u) sync_a7_bank(cpu);
             cpu->pc = op->guest_pc + instruction_bytes;
             break;
         case AMIVM_IR_LEA:
-            cpu->a[op->reg] = ea_address(op, cpu, 4u);
+            if (resolve_ea(op, cpu, vm, 4u, &address) != 0) return -4;
+            cpu->a[op->reg] = address;
             if (op->reg == 7u) sync_a7_bank(cpu);
             cpu->pc = op->guest_pc + instruction_bytes;
             break;
