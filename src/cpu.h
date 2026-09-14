@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "fpu.h"
+
 struct amivm_vm;
 
 enum amivm_cpu_fault {
@@ -60,6 +62,7 @@ struct amivm_cpu_state {
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
+    struct amivm_fpu_state fpu;
     bool stopped;
     enum amivm_cpu_fault last_fault;
     uint32_t fault_address;
