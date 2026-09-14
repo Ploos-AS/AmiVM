@@ -31,11 +31,23 @@ struct amivm_jit_code {
     uint32_t guest_end_pc;
 };
 
+struct amivm_jit_runtime {
+    void *mapping;
+    size_t mapping_size;
+};
+
 int amivm_jit_host_arch(void);
 void amivm_jit_code_init(struct amivm_jit_code *code);
 int amivm_jit_compile(const struct amivm_ir_block *block,
                       struct amivm_jit_code *code);
 int amivm_jit_execute(const struct amivm_jit_code *code,
                       struct amivm_cpu_state *cpu);
+
+void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime);
+int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
+                              const struct amivm_jit_code *code);
+int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
+                              struct amivm_cpu_state *cpu);
+void amivm_jit_runtime_release(struct amivm_jit_runtime *runtime);
 
 #endif
