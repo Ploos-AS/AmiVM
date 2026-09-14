@@ -82,11 +82,6 @@ int main(void)
     put16_be(&vm.rom[0x280], 0x4e71u);
     put16_be(&vm.rom[0x2a0], 0x4e73u);
 
-    /* M2.6 control-register program:
-     * MOVE.L #$12345678,D0; MOVEC D0,TC; MOVEC TC,D1;
-     * MOVE.L #$10001c00,A0 is prepared by the test, then MOVEC A0,MSP;
-     * MOVEC MSP,A1; MOVEC D0,URP; MOVEC URP,D2.
-     */
     put16_be(&vm.rom[0x2c0], 0x203cu);
     put32_be(&vm.rom[0x2c2], 0x12345678u);
     put16_be(&vm.rom[0x2c6], 0x4e7bu);
@@ -102,7 +97,6 @@ int main(void)
     put16_be(&vm.rom[0x2da], 0x4e7au);
     put16_be(&vm.rom[0x2dc], 0x2806u);
 
-    /* User-mode MOVEC D0,TC must raise privilege violation. */
     put16_be(&vm.rom[0x300], 0x4e7bu);
     put16_be(&vm.rom[0x302], 0x0003u);
     vm.rom_used = 0x304u;
@@ -116,6 +110,7 @@ int main(void)
     CHECK(cpu.pc == initial_pc);
     CHECK(cpu.vbr == AMIVM_ROM_BASE);
     CHECK(cpu.tc == 0u && cpu.urp == 0u && cpu.srp == 0u && cpu.cacr == 0u);
+    CHECK(cpu.mmusr == 0u);
     CHECK(cpu.sfc == 0u && cpu.dfc == 0u);
     CHECK((cpu.sr & 0x2700u) == 0x2700u);
 
@@ -203,7 +198,6 @@ int main(void)
     CHECK(cpu.last_exception_vector == AMIVM_VECTOR_PRIVILEGE_VIOLATION);
     CHECK(cpu.pc == privilege_handler);
 
-    /* MOVEC register model and round-trip. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.a[0] = AMIVM_RAM_BASE + 0x1c00u;
     cpu.pc = AMIVM_ROM_BASE + 0x2c0u;
@@ -223,7 +217,6 @@ int main(void)
     CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
     CHECK(cpu.d[2] == 0x12345678u);
 
-    /* User-mode MOVEC is privileged. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.sr = 0u;
     cpu.usp = user_sp;
@@ -234,7 +227,6 @@ int main(void)
     CHECK(cpu.last_exception_vector == AMIVM_VECTOR_PRIVILEGE_VIOLATION);
     CHECK(cpu.pc == privilege_handler);
 
-    /* A hardware interrupt from master state must use ISP and preserve MSP. */
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.msp = AMIVM_RAM_BASE + 0x1e00u;
     cpu.a[7] = cpu.msp;
@@ -250,7 +242,60 @@ int main(void)
     CHECK(cpu.sr == 0x3000u);
     CHECK(cpu.a[7] == AMIVM_RAM_BASE + 0x1e00u);
 
+    /* M2.7 foundation page tables: 4 KiB pages, 10/10/12 split. */
+    {
+        const uint32_t urp = AMIVM_RAM_BASE + 0x2000u;
+        const uint32_t ul2 = AMIVM_RAM_BASE + 0x3000u;
+        const uint32_t srp = AMIVM_RAM_BASE + 0x4000u;
+        const uint32_t sl2 = AMIVM_RAM_BASE + 0x5000u;
+        const uint32_t user_page = AMIVM_RAM_BASE + 0x8000u;
+        const uint32_t supervisor_page = AMIVM_RAM_BASE + 0x9000u;
+        const uint32_t logical = 0x00401234u;
+        uint32_t physical = 0u;
+
+        CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+        cpu.urp = urp;
+        cpu.srp = srp;
+        cpu.tc = 0x80000000u;
+
+        put32_be(&vm.ram[0x2000u + 4u], ul2 | 1u);
+        put32_be(&vm.ram[0x3000u + 4u], user_page | 1u);
+        put32_be(&vm.ram[0x4000u + 4u], sl2 | 1u);
+        put32_be(&vm.ram[0x5000u + 4u], supervisor_page | 1u);
+
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, false, false, &physical) == AMIVM_MMU_OK);
+        CHECK(physical == user_page + 0x234u);
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) == AMIVM_MMU_OK);
+        CHECK(physical == supervisor_page + 0x234u);
+
+        put32_be(&vm.ram[0x3000u + 4u], user_page | 3u);
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, true, false, &physical) ==
+              AMIVM_MMU_FAULT_WRITE_PROTECT);
+        CHECK(cpu.mmusr != 0u);
+
+        put32_be(&vm.ram[0x3000u + 4u], 0u);
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, false, false, &physical) ==
+              AMIVM_MMU_FAULT_PAGE);
+
+        cpu.urp = 0u;
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, false, false, &physical) ==
+              AMIVM_MMU_FAULT_ROOT);
+
+        cpu.tc = 0u;
+        CHECK(amivm_mmu_translate(&cpu, &vm, logical, false, false, &physical) == AMIVM_MMU_OK);
+        CHECK(physical == logical);
+
+        /* Supervisor instruction fetch through SRP: logical $00400100 -> ROM+$100. */
+        cpu.tc = 0x80000000u;
+        cpu.srp = srp;
+        put32_be(&vm.ram[0x5000u], AMIVM_ROM_BASE | 1u);
+        cpu.pc = 0x00400100u;
+        cpu.sr = 0x2700u;
+        CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+        CHECK(cpu.pc == 0x00400102u);
+    }
+
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.6 CPU control-state tests: PASS");
+    puts("AmiVM M2.7 CPU/MMU foundation tests: PASS");
     return 0;
 }
