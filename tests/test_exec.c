@@ -72,13 +72,11 @@ int main(void)
     CHECK(exec.stats.fallbacks == 1u);
     CHECK(exec.stats.instructions == 1002u);
 
-    /* Active MMU deliberately disables M2.12 physical IR translation. */
-    cpu.pc = loop_pc;
-    cpu.tc = 0x80000000u;
-    cpu.urp = 0u;
-    CHECK(amivm_exec_step(&exec, &cpu, &vm) == 2);
-    CHECK(exec.stats.fallbacks == 2u);
-    cpu.tc = 0u;
+    /* The following supported branch compiles into a separate cached IR block. */
+    CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+    CHECK(cpu.pc == fallback_pc + 2u);
+    CHECK(exec.stats.ir_blocks == 1002u);
+    CHECK(exec.stats.fallbacks == 1u);
 
     amivm_exec_reset(&exec);
     CHECK(exec.backend == backend);
