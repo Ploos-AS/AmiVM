@@ -21,7 +21,11 @@ enum amivm_ir_opcode {
     AMIVM_IR_AND_L,
     AMIVM_IR_OR_L,
     AMIVM_IR_EOR_L,
+    AMIVM_IR_LOAD_B,
+    AMIVM_IR_LOAD_W,
     AMIVM_IR_LOAD_L,
+    AMIVM_IR_STORE_B,
+    AMIVM_IR_STORE_W,
     AMIVM_IR_STORE_L,
     AMIVM_IR_BRANCH,
     AMIVM_IR_BRANCH_CC,
@@ -52,6 +56,9 @@ enum amivm_ir_ea_mode {
     AMIVM_IR_EA_POSTINC = 3,
     AMIVM_IR_EA_PREDEC = 4,
     AMIVM_IR_EA_D16_AN = 5,
+    AMIVM_IR_EA_ABS_W = 8,
+    AMIVM_IR_EA_ABS_L = 9,
+    AMIVM_IR_EA_PC_D16 = 10,
 };
 
 struct amivm_ir_op {
