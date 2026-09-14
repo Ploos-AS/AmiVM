@@ -325,12 +325,16 @@ static int exec_step_internal(struct amivm_exec_engine *engine,
     return execute_entry(engine, entry, cpu, vm);
 }
 
-static int block_has_chainable_branch(const struct amivm_exec_cache_entry *entry)
+static int block_has_chainable_successor(const struct amivm_exec_cache_entry *entry)
 {
     const struct amivm_ir_op *op;
+
     if (entry == NULL || !entry->ir_valid || entry->block.op_count == 0u) return 0;
     op = &entry->block.ops[entry->block.op_count - 1u];
-    return op->opcode == AMIVM_IR_BRANCH || op->opcode == AMIVM_IR_BRANCH_CC;
+    if (op->opcode == AMIVM_IR_BRANCH || op->opcode == AMIVM_IR_BRANCH_CC) return 1;
+
+    /* A full decode-window block may fall through directly to guest_end_pc. */
+    return entry->block.terminates == 0;
 }
 
 static void record_chain_hit(struct amivm_exec_engine *engine,
@@ -358,7 +362,7 @@ static struct amivm_exec_cache_entry *resolve_chain(struct amivm_exec_engine *en
     uint32_t target_pc = cpu->pc;
     size_t target_index;
 
-    if (!block_has_chainable_branch(source)) return NULL;
+    if (!block_has_chainable_successor(source)) return NULL;
 
     if (source->chain_valid && source->chain_pc == target_pc) {
         target = &engine->cache[source->chain_index];
