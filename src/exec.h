@@ -45,6 +45,8 @@ struct amivm_exec_stats {
     uint64_t dispatches;
     uint64_t chain_hits;
     uint64_t chain_misses;
+    uint64_t jit_chain_hits;
+    uint64_t jit_chain_misses;
     uint64_t ir_blocks;
     uint64_t ir_instructions;
     uint64_t jit_blocks;
