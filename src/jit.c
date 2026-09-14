@@ -151,7 +151,6 @@ static int emit_capture_arithmetic_flags(struct amivm_jit_code *code, int update
     rc = emit8(code, 0x9cu); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x58u); if (rc != AMIVM_JIT_OK) return rc;
 
-    /* ECX = C, optionally duplicated into X. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
@@ -167,7 +166,6 @@ static int emit_capture_arithmetic_flags(struct amivm_jit_code *code, int update
         rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
     }
 
-    /* ZF/SF -> Z/N. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
@@ -179,7 +177,6 @@ static int emit_capture_arithmetic_flags(struct amivm_jit_code *code, int update
     rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xd1u); if (rc != AMIVM_JIT_OK) return rc;
 
-    /* OF -> V. */
     rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc2u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
@@ -219,6 +216,114 @@ static int emit_addsub32_state_imm(struct amivm_jit_code *code,
     return emit32(code, value);
 }
 
+static int emit_movzx16_state_eax(struct amivm_jit_code *code, size_t offset)
+{
+    int rc;
+    if (offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+    rc = emit8(code, 0x0fu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xb7u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x87u); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, (uint32_t)offset);
+}
+
+static int emit_test_eax_imm(struct amivm_jit_code *code, uint32_t mask)
+{
+    int rc = emit8(code, 0xa9u);
+    if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, mask);
+}
+
+static int emit_setcc_eax(struct amivm_jit_code *code, int set_if_zero)
+{
+    int rc;
+    rc = emit8(code, 0x0fu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, set_if_zero ? 0x94u : 0x95u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc0u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x0fu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xb6u); if (rc != AMIVM_JIT_OK) return rc;
+    return emit8(code, 0xc0u);
+}
+
+static int emit_condition_eax(struct amivm_jit_code *code, uint8_t condition)
+{
+    const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+    uint32_t mask = 0u;
+    int set_if_zero = 0;
+    int rc;
+
+    if (condition == AMIVM_IR_CC_T) {
+        rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
+        return emit32(code, 1u);
+    }
+
+    rc = emit_movzx16_state_eax(code, sr_offset);
+    if (rc != AMIVM_JIT_OK) return rc;
+
+    switch (condition) {
+    case AMIVM_IR_CC_HI: mask = SR_C | SR_Z; set_if_zero = 1; break;
+    case AMIVM_IR_CC_LS: mask = SR_C | SR_Z; set_if_zero = 0; break;
+    case AMIVM_IR_CC_CC: mask = SR_C; set_if_zero = 1; break;
+    case AMIVM_IR_CC_CS: mask = SR_C; set_if_zero = 0; break;
+    case AMIVM_IR_CC_NE: mask = SR_Z; set_if_zero = 1; break;
+    case AMIVM_IR_CC_EQ: mask = SR_Z; set_if_zero = 0; break;
+    case AMIVM_IR_CC_VC: mask = SR_V; set_if_zero = 1; break;
+    case AMIVM_IR_CC_VS: mask = SR_V; set_if_zero = 0; break;
+    case AMIVM_IR_CC_PL: mask = SR_N; set_if_zero = 1; break;
+    case AMIVM_IR_CC_MI: mask = SR_N; set_if_zero = 0; break;
+    case AMIVM_IR_CC_GE:
+    case AMIVM_IR_CC_LT:
+    case AMIVM_IR_CC_GT:
+    case AMIVM_IR_CC_LE:
+        rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xe8u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0x02u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0x31u); if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit8(code, 0xc8u); if (rc != AMIVM_JIT_OK) return rc;
+        if (condition == AMIVM_IR_CC_GT || condition == AMIVM_IR_CC_LE) {
+            rc = emit8(code, 0x81u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xe1u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, SR_Z); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xc1u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xe9u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x01u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x09u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xc8u); if (rc != AMIVM_JIT_OK) return rc;
+        }
+        mask = SR_V;
+        set_if_zero = condition == AMIVM_IR_CC_GE || condition == AMIVM_IR_CC_GT;
+        break;
+    default:
+        return AMIVM_JIT_UNSUPPORTED;
+    }
+
+    rc = emit_test_eax_imm(code, mask);
+    if (rc != AMIVM_JIT_OK) return rc;
+    return emit_setcc_eax(code, set_if_zero);
+}
+
+static int emit_select_pc(struct amivm_jit_code *code,
+                          uint32_t taken, uint32_t fallthrough)
+{
+    const size_t pc_offset = offsetof(struct amivm_cpu_state, pc);
+    int rc;
+    if (pc_offset > UINT32_MAX) return AMIVM_JIT_UNSUPPORTED;
+
+    rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit32(code, fallthrough); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xbau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit32(code, taken); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x85u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xc0u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x0fu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x45u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0xcau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit8(code, 0x8fu); if (rc != AMIVM_JIT_OK) return rc;
+    return emit32(code, (uint32_t)pc_offset);
+}
+
 int amivm_jit_host_arch(void)
 {
 #if defined(__x86_64__) || defined(_M_X64)
@@ -240,6 +345,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
 {
     size_t i;
     uint32_t final_pc;
+    int terminal_pc = 0;
     int rc;
 
     if (block == NULL || code == NULL || block->op_count == 0u)
@@ -326,15 +432,33 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 rc = emit_capture_nz_flags(code);
             if (rc != AMIVM_JIT_OK) return rc;
             break;
+        case AMIVM_IR_BRANCH:
+            if (i + 1u != block->op_count) return AMIVM_JIT_INVALID;
+            value = op->guest_pc + 2u + (uint32_t)op->imm;
+            rc = emit_mov32_state_imm(code, offsetof(struct amivm_cpu_state, pc), value);
+            if (rc != AMIVM_JIT_OK) return rc;
+            terminal_pc = 1;
+            break;
+        case AMIVM_IR_BRANCH_CC:
+            if (i + 1u != block->op_count) return AMIVM_JIT_INVALID;
+            rc = emit_condition_eax(code, op->condition);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit_select_pc(code,
+                                op->guest_pc + 2u + (uint32_t)op->imm,
+                                op->guest_pc + 2u);
+            if (rc != AMIVM_JIT_OK) return rc;
+            terminal_pc = 1;
+            break;
         default:
             return AMIVM_JIT_UNSUPPORTED;
         }
     }
 
-    final_pc = block->ops[block->op_count - 1u].guest_pc +
-               block->ops[block->op_count - 1u].instruction_bytes;
-    rc = emit_mov32_state_imm(code, offsetof(struct amivm_cpu_state, pc), final_pc);
-    if (rc != AMIVM_JIT_OK) return rc;
+    final_pc = block->guest_end_pc;
+    if (!terminal_pc) {
+        rc = emit_mov32_state_imm(code, offsetof(struct amivm_cpu_state, pc), final_pc);
+        if (rc != AMIVM_JIT_OK) return rc;
+    }
     rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit32(code, 1u); if (rc != AMIVM_JIT_OK) return rc;
     rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
