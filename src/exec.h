@@ -5,19 +5,26 @@
 #include <stdint.h>
 
 #include "cpu.h"
+#include "ir.h"
 
 #define AMIVM_EXEC_CACHE_ENTRIES 256u
+#define AMIVM_EXEC_DECODE_WORDS 16u
 
 struct amivm_exec_cache_entry {
     uint32_t pc;
     uint32_t generation;
     int valid;
+    int ir_valid;
+    struct amivm_ir_block block;
 };
 
 struct amivm_exec_stats {
     uint64_t instructions;
     uint64_t cache_hits;
     uint64_t cache_misses;
+    uint64_t ir_blocks;
+    uint64_t ir_instructions;
+    uint64_t fallbacks;
     uint64_t exits;
 };
 
