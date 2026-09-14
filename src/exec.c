@@ -133,6 +133,20 @@ static int entry_is_fresh(const struct amivm_exec_cache_entry *entry,
            context_matches(entry, cpu) && dependencies_fresh(entry, vm);
 }
 
+static void release_entry(struct amivm_exec_cache_entry *entry)
+{
+    if (entry == NULL) return;
+    amivm_jit_runtime_release(&entry->jit_runtime);
+}
+
+static void release_cache(struct amivm_exec_engine *engine)
+{
+    size_t i;
+    if (engine == NULL) return;
+    for (i = 0u; i < AMIVM_EXEC_CACHE_ENTRIES; ++i)
+        release_entry(&engine->cache[i]);
+}
+
 static int compile_ir_block(struct amivm_exec_cache_entry *entry,
                             struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
@@ -156,7 +170,13 @@ static int compile_ir_block(struct amivm_exec_cache_entry *entry,
     if (rc < 0 || entry->block.op_count == 0u) return 0;
     entry->ir_valid = 1;
     rc = amivm_jit_compile(&entry->block, &entry->jit);
-    entry->jit_valid = rc == AMIVM_JIT_OK ? 1 : 0;
+    if (rc == AMIVM_JIT_OK) {
+        amivm_jit_runtime_init(&entry->jit_runtime);
+        rc = amivm_jit_runtime_prepare(&entry->jit_runtime, &entry->jit);
+        entry->jit_valid = rc == AMIVM_JIT_OK ? 1 : 0;
+    } else {
+        entry->jit_valid = 0;
+    }
     return 1;
 }
 
@@ -174,6 +194,7 @@ void amivm_exec_reset(struct amivm_exec_engine *engine)
     const struct amivm_cpu_backend *backend;
     if (engine == NULL) return;
     backend = engine->backend;
+    release_cache(engine);
     memset(engine, 0, sizeof(*engine));
     engine->backend = backend;
     engine->generation = 1u;
@@ -182,11 +203,10 @@ void amivm_exec_reset(struct amivm_exec_engine *engine)
 void amivm_exec_invalidate_all(struct amivm_exec_engine *engine)
 {
     if (engine == NULL) return;
+    release_cache(engine);
+    memset(engine->cache, 0, sizeof(engine->cache));
     engine->generation++;
-    if (engine->generation == 0u) {
-        memset(engine->cache, 0, sizeof(engine->cache));
-        engine->generation = 1u;
-    }
+    if (engine->generation == 0u) engine->generation = 1u;
 }
 
 static int fallback_step(struct amivm_exec_engine *engine,
@@ -221,7 +241,7 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
         partial.terminates = 0;
         block = &partial;
     } else if (entry->jit_valid) {
-        jit_rc = amivm_jit_execute(&entry->jit, cpu);
+        jit_rc = amivm_jit_runtime_execute(&entry->jit_runtime, cpu);
         if (jit_rc > 0) {
             executed = entry->jit.guest_instructions;
             engine->stats.jit_blocks++;
@@ -283,11 +303,13 @@ static struct amivm_exec_cache_entry *prepare_entry(struct amivm_exec_engine *en
     if (base_match && !context_match) engine->stats.context_misses++;
     else if (context_match && !deps_fresh) engine->stats.stale_page_misses++;
     engine->stats.cache_misses++;
+    release_entry(entry);
     memset(entry, 0, sizeof(*entry));
     entry->pc = pc;
     entry->generation = engine->generation;
     entry->valid = 1;
     (void)compile_ir_block(entry, cpu, vm);
+    if (entry->jit_valid) engine->stats.jit_prepares++;
     return entry;
 }
 
