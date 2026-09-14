@@ -10,6 +10,7 @@ add_library(amivm_core STATIC
     src/cpu.c
     src/fpu.c
     src/exec.c
+    src/ir.c
 )
 
 target_include_directories(amivm_core PUBLIC src)
@@ -65,6 +66,14 @@ target_compile_options(amivm_exec_tests PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>
 )
 
+add_executable(amivm_ir_tests
+    tests/test_ir.c
+)
+target_link_libraries(amivm_ir_tests PRIVATE amivm_core)
+target_compile_options(amivm_ir_tests PRIVATE
+    $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>
+)
+
 add_executable(amivm_exec_bench
     bench/bench_exec.c
 )
@@ -82,4 +91,5 @@ add_test(NAME amivm_cpu_core COMMAND amivm_cpu_tests)
 add_test(NAME amivm_fpu_core COMMAND amivm_fpu_tests)
 add_test(NAME amivm_fpu_decode COMMAND amivm_fpu_decode_tests)
 add_test(NAME amivm_exec_core COMMAND amivm_exec_tests)
+add_test(NAME amivm_ir_core COMMAND amivm_ir_tests)
 add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
