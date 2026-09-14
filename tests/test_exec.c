@@ -24,6 +24,14 @@ static void put32_be(uint8_t *p, uint32_t value)
     p[3] = (uint8_t)value;
 }
 
+static int write32_vm(struct amivm_vm *vm, uint32_t addr, uint32_t value)
+{
+    return amivm_write8(vm, addr, (uint8_t)(value >> 24u)) &&
+           amivm_write8(vm, addr + 1u, (uint8_t)(value >> 16u)) &&
+           amivm_write8(vm, addr + 2u, (uint8_t)(value >> 8u)) &&
+           amivm_write8(vm, addr + 3u, (uint8_t)value);
+}
+
 int main(void)
 {
     struct amivm_config config;
@@ -41,8 +49,8 @@ int main(void)
 
     put32_be(&vm.rom[0], initial_sp);
     put32_be(&vm.rom[4], loop_pc);
-    put16_be(&vm.rom[0x100], 0x60feu); /* BRA -2: hot single-instruction loop. */
-    put16_be(&vm.rom[0x120], 0x4280u); /* CLR.L D0: interpreter fallback. */
+    put16_be(&vm.rom[0x100], 0x60feu);
+    put16_be(&vm.rom[0x120], 0x4280u);
     put16_be(&vm.rom[0x122], 0x60feu);
     vm.rom_used = 0x124u;
 
@@ -53,7 +61,8 @@ int main(void)
     CHECK(exec.stats.instructions == 1000u);
     CHECK(exec.stats.cache_misses == 1u);
     CHECK(exec.stats.cache_hits == 999u);
-    CHECK(exec.stats.stale_write_misses == 0u);
+    CHECK(exec.stats.stale_page_misses == 0u);
+    CHECK(exec.stats.context_misses == 0u);
     CHECK(exec.stats.ir_blocks == 1000u);
     CHECK(exec.stats.ir_instructions == 1000u);
     CHECK(exec.stats.fallbacks == 0u);
@@ -73,7 +82,6 @@ int main(void)
     CHECK(exec.stats.fallbacks == 1u);
     CHECK(exec.stats.instructions == 1002u);
 
-    /* The following supported branch compiles into a separate cached IR block. */
     CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
     CHECK(cpu.pc == fallback_pc + 2u);
     CHECK(exec.stats.ir_blocks == 1002u);
@@ -87,19 +95,25 @@ int main(void)
     CHECK(exec.stats.ir_blocks == 0u);
     CHECK(exec.stats.fallbacks == 0u);
 
-    /* M2.13: translate instruction fetch through the supervisor page tables. */
+    /* M2.14: MMU-aware IR dependencies are page granular. */
     {
         const uint32_t srp = AMIVM_RAM_BASE + 0x4000u;
         const uint32_t sl2 = AMIVM_RAM_BASE + 0x5000u;
+        const uint32_t data_page = AMIVM_RAM_BASE + 0x7000u;
         const uint32_t code_page = AMIVM_RAM_BASE + 0x9000u;
+        const uint32_t alt_code_page = AMIVM_RAM_BASE + 0xa000u;
         const uint32_t logical_pc = 0x00400100u;
         const size_t code_offset = 0x9000u + 0x100u;
-        uint64_t generation_before_write;
+        const size_t alt_code_offset = 0xa000u + 0x100u;
+        uint64_t code_generation;
+        uint64_t data_generation;
 
-        put32_be(&vm.ram[0x4000u + 4u], sl2 | 1u); /* L1[1] -> L2. */
-        put32_be(&vm.ram[0x5000u], code_page | 1u); /* L2[0] -> code page. */
-        put16_be(&vm.ram[code_offset], 0x60feu);    /* BRA -2. */
+        put32_be(&vm.ram[0x4000u + 4u], sl2 | 1u);
+        put32_be(&vm.ram[0x5000u], code_page | 1u);
+        put16_be(&vm.ram[code_offset], 0x60feu);
         put16_be(&vm.ram[code_offset + 2u], 0x60feu);
+        put16_be(&vm.ram[alt_code_offset], 0x7009u); /* MOVEQ #9,D0. */
+        put16_be(&vm.ram[alt_code_offset + 2u], 0x60feu);
 
         CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
         cpu.srp = srp;
@@ -110,27 +124,46 @@ int main(void)
         CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
         CHECK(cpu.pc == logical_pc);
         CHECK(exec.stats.ir_blocks == 1u);
-        CHECK(exec.stats.fallbacks == 0u);
         CHECK(exec.stats.cache_misses == 1u);
-
         CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
         CHECK(exec.stats.cache_hits == 1u);
-        CHECK(exec.stats.ir_blocks == 2u);
 
-        generation_before_write = vm.memory_write_generation;
-        CHECK(amivm_write8(&vm, code_page + 0x100u, 0x70u));
-        CHECK(amivm_write8(&vm, code_page + 0x101u, 0x07u)); /* MOVEQ #7,D0. */
-        CHECK(vm.memory_write_generation > generation_before_write);
-
+        CHECK(amivm_ram_page_generation(&vm, code_page, &code_generation));
+        CHECK(amivm_ram_page_generation(&vm, data_page, &data_generation));
+        CHECK(amivm_write8(&vm, data_page + 0x20u, 0xa5u));
+        CHECK(amivm_ram_page_generation(&vm, data_page, &data_generation));
         CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
-        CHECK(exec.stats.stale_write_misses == 1u);
+        CHECK(exec.stats.cache_hits == 2u);
+        CHECK(exec.stats.stale_page_misses == 0u);
+
+        CHECK(amivm_write8(&vm, code_page + 0x100u, 0x70u));
+        CHECK(amivm_write8(&vm, code_page + 0x101u, 0x07u));
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(exec.stats.stale_page_misses == 1u);
         CHECK(exec.stats.cache_misses == 2u);
-        CHECK(exec.stats.fallbacks == 0u);
         CHECK(cpu.d[0] == 7u);
+        CHECK(cpu.pc == logical_pc + 2u);
+
+        /* Restore a hot branch, compile it, then remap through the L2 table. */
+        CHECK(amivm_write8(&vm, code_page + 0x100u, 0x60u));
+        CHECK(amivm_write8(&vm, code_page + 0x101u, 0xfeu));
+        cpu.pc = logical_pc;
+        cpu.d[0] = 0u;
+        amivm_exec_reset(&exec);
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(cpu.pc == logical_pc);
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(exec.stats.cache_hits == 1u);
+
+        CHECK(write32_vm(&vm, sl2, alt_code_page | 1u));
+        CHECK(amivm_exec_step(&exec, &cpu, &vm) == 1);
+        CHECK(exec.stats.stale_page_misses == 1u);
+        CHECK(exec.stats.cache_misses == 2u);
+        CHECK(cpu.d[0] == 9u);
         CHECK(cpu.pc == logical_pc + 2u);
     }
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.13 MMU-aware IR/write-invalidation tests: PASS");
+    puts("AmiVM M2.14 page-granular invalidation tests: PASS");
     return 0;
 }
