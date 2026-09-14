@@ -206,7 +206,7 @@ static int execute_entry(struct amivm_exec_engine *engine,
 
     if (!entry->ir_valid) return fallback_step(engine, cpu, vm);
 
-    ir_rc = amivm_ir_execute(&entry->block, cpu);
+    ir_rc = amivm_ir_execute(&entry->block, cpu, vm);
     if (ir_rc < 0) return fallback_step(engine, cpu, vm);
 
     if (ir_rc == 2) {
