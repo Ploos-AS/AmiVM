@@ -33,6 +33,7 @@ enum amivm_ir_opcode {
     AMIVM_IR_STORE_L,
     AMIVM_IR_BRANCH,
     AMIVM_IR_BRANCH_CC,
+    AMIVM_IR_BSR,
     AMIVM_IR_EXIT,
 };
 
