@@ -45,11 +45,12 @@ int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
 #endif
 }
 
-int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
-                              struct amivm_cpu_state *cpu)
+int amivm_jit_runtime_execute_context(const struct amivm_jit_runtime *runtime,
+                                      struct amivm_cpu_state *cpu,
+                                      struct amivm_jit_context *context)
 {
 #if defined(__x86_64__) && defined(__linux__)
-    typedef int (*jit_fn)(struct amivm_cpu_state *);
+    typedef int (*jit_fn)(struct amivm_cpu_state *, struct amivm_jit_context *);
     void *entry;
     jit_fn fn;
 
@@ -59,12 +60,19 @@ int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
 
     entry = runtime->mapping;
     memcpy(&fn, &entry, sizeof(fn));
-    return fn(cpu);
+    return fn(cpu, context);
 #else
     (void)runtime;
     (void)cpu;
+    (void)context;
     return AMIVM_JIT_EXEC_UNAVAILABLE;
 #endif
+}
+
+int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
+                              struct amivm_cpu_state *cpu)
+{
+    return amivm_jit_runtime_execute_context(runtime, cpu, NULL);
 }
 
 void amivm_jit_runtime_release(struct amivm_jit_runtime *runtime)
