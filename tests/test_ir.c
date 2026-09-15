@@ -60,7 +60,7 @@ int main(void)
     struct amivm_cpu_state cpu;
     const uint16_t hot_block[] = {0x4e71u, 0x7480u, 0x6002u};
     const uint16_t loop_block[] = {0x60feu};
-    const uint16_t unsupported[] = {0x4e75u};
+    const uint16_t unsupported[] = {0x4e72u};
     const uint16_t flags_block[] = {0x7000u, 0x6602u};
     const uint16_t arithmetic_block[] = {0x7001u, 0x5280u, 0x5380u, 0x4a80u, 0x6780u};
     const uint16_t clear_branch[] = {0x4280u, 0x6702u};
@@ -180,12 +180,12 @@ int main(void)
     {
         struct amivm_config config;
         struct amivm_vm vm;
-        const uint16_t load_an[] = {0x2010u};             /* MOVE.L (A0),D0 */
-        const uint16_t store_post[] = {0x22c1u};          /* MOVE.L D1,(A1)+ */
-        const uint16_t load_pre[] = {0x2422u};            /* MOVE.L -(A2),D2 */
-        const uint16_t load_disp[] = {0x262bu, 0x0004u};  /* MOVE.L 4(A3),D3 */
-        const uint16_t store_disp[] = {0x2943u, 0x0008u}; /* MOVE.L D3,8(A4) */
-        const uint16_t store_a7_pre[] = {0x2f00u};        /* MOVE.L D0,-(A7) */
+        const uint16_t load_an[] = {0x2010u};
+        const uint16_t store_post[] = {0x22c1u};
+        const uint16_t load_pre[] = {0x2422u};
+        const uint16_t load_disp[] = {0x262bu, 0x0004u};
+        const uint16_t store_disp[] = {0x2943u, 0x0008u};
+        const uint16_t store_a7_pre[] = {0x2f00u};
         uint32_t value;
 
         amivm_config_init(&config);
@@ -252,7 +252,6 @@ int main(void)
         CHECK(read32_vm(&vm, cpu.a[7], &value));
         CHECK(value == 0xcafebabeu);
 
-        /* MMU translated load through supervisor SRP/L1/L2. */
         {
             const uint32_t srp = AMIVM_RAM_BASE + 0x4000u;
             const uint32_t l2 = AMIVM_RAM_BASE + 0x5000u;
