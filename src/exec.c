@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "jit_helpers.h"
 #include "vm.h"
 
 #define SR_SUPERVISOR 0x2000u
@@ -226,6 +227,7 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
                                  uint64_t max_instructions)
 {
     struct amivm_ir_block partial;
+    struct amivm_jit_context jit_context;
     const struct amivm_ir_block *block;
     size_t executed;
     int jit_rc;
@@ -241,7 +243,9 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
         partial.terminates = 0;
         block = &partial;
     } else if (entry->jit_valid) {
-        jit_rc = amivm_jit_runtime_execute(&entry->jit_runtime, cpu);
+        amivm_jit_context_init(&jit_context, cpu, vm);
+        jit_rc = amivm_jit_runtime_execute_context(&entry->jit_runtime, cpu,
+                                                   &jit_context);
         if (jit_rc > 0) {
             executed = entry->jit.guest_instructions;
             engine->stats.jit_blocks++;
@@ -333,7 +337,6 @@ static int block_has_chainable_successor(const struct amivm_exec_cache_entry *en
     op = &entry->block.ops[entry->block.op_count - 1u];
     if (op->opcode == AMIVM_IR_BRANCH || op->opcode == AMIVM_IR_BRANCH_CC) return 1;
 
-    /* A full decode-window block may fall through directly to guest_end_pc. */
     return entry->block.terminates == 0;
 }
 
