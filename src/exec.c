@@ -1,63 +1,184 @@
 #include "exec.h"
-#include "jit_helpers.h"
 
-#include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 
-#define EXEC_FETCH_WORDS 64u
-#define EXEC_PAGE_SHIFT 12u
+#include "jit_helpers.h"
+#include "vm.h"
+
+#define SR_SUPERVISOR 0x2000u
+#define TC_ENABLE 0x80000000u
+#define PAGE_MASK 0xfffff000u
+#define DESC_VALID 0x00000001u
 
 static size_t cache_index(uint32_t pc)
 {
-    return (size_t)((pc >> 1u) % AMIVM_EXEC_CACHE_SIZE);
+    return (size_t)((pc >> 1u) & (AMIVM_EXEC_CACHE_ENTRIES - 1u));
 }
 
-static uint32_t page_number(uint32_t address)
+static int read32_physical(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 {
-    return address >> EXEC_PAGE_SHIFT;
+    uint8_t b0, b1, b2, b3;
+    if (value == NULL || !amivm_read8(vm, addr, &b0) ||
+        !amivm_read8(vm, addr + 1u, &b1) ||
+        !amivm_read8(vm, addr + 2u, &b2) ||
+        !amivm_read8(vm, addr + 3u, &b3)) return -1;
+    *value = ((uint32_t)b0 << 24u) | ((uint32_t)b1 << 16u) |
+             ((uint32_t)b2 << 8u) | (uint32_t)b3;
+    return 0;
 }
 
-static int same_page(uint32_t a, uint32_t b)
+static int track_ram_dependency(struct amivm_exec_cache_entry *entry,
+                                struct amivm_vm *vm, uint32_t physical)
 {
-    return page_number(a) == page_number(b);
+    uint32_t page_base = physical & PAGE_MASK;
+    uint64_t generation;
+    size_t i;
+
+    if (!amivm_ram_page_generation(vm, physical, &generation)) return 0;
+    for (i = 0u; i < entry->dep_count; ++i) {
+        if (entry->deps[i].page_base == page_base) return 0;
+    }
+    if (entry->dep_count >= AMIVM_EXEC_DEP_PAGES) return -1;
+    entry->deps[entry->dep_count].page_base = page_base;
+    entry->deps[entry->dep_count].generation = generation;
+    entry->dep_count++;
+    return 0;
+}
+
+static int track_mmu_dependencies(struct amivm_exec_cache_entry *entry,
+                                  struct amivm_cpu_state *cpu,
+                                  struct amivm_vm *vm, uint32_t logical)
+{
+    uint32_t root;
+    uint32_t l1_addr;
+    uint32_t l1_desc;
+    uint32_t l2_base;
+    bool supervisor;
+
+    if ((cpu->tc & TC_ENABLE) == 0u) return 0;
+    supervisor = (cpu->sr & SR_SUPERVISOR) != 0u;
+    root = (supervisor ? cpu->srp : cpu->urp) & PAGE_MASK;
+    if (track_ram_dependency(entry, vm, root) != 0) return -1;
+
+    l1_addr = root + ((logical >> 22u) * 4u);
+    if (read32_physical(vm, l1_addr, &l1_desc) != 0 ||
+        (l1_desc & DESC_VALID) == 0u) return 0;
+    l2_base = l1_desc & PAGE_MASK;
+    if (track_ram_dependency(entry, vm, l2_base) != 0) return -1;
+    return 0;
+}
+
+static int read8_guest(struct amivm_exec_cache_entry *entry,
+                       struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t logical, uint8_t *value)
+{
+    uint32_t physical = 0u;
+    bool supervisor;
+
+    if (entry == NULL || cpu == NULL || vm == NULL || value == NULL) return -1;
+    if (track_mmu_dependencies(entry, cpu, vm, logical) != 0) return -1;
+    supervisor = (cpu->sr & SR_SUPERVISOR) != 0u;
+    if (amivm_mmu_translate(cpu, vm, logical, false, supervisor, &physical) != AMIVM_MMU_OK)
+        return -1;
+    if (track_ram_dependency(entry, vm, physical) != 0) return -1;
+    return amivm_read8(vm, physical, value) ? 0 : -1;
+}
+
+static int read16_guest(struct amivm_exec_cache_entry *entry,
+                        struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, uint16_t *value)
+{
+    uint8_t hi, lo;
+    if ((logical & 1u) != 0u || value == NULL) return -1;
+    if (read8_guest(entry, cpu, vm, logical, &hi) != 0 ||
+        read8_guest(entry, cpu, vm, logical + 1u, &lo) != 0) return -1;
+    *value = (uint16_t)(((uint16_t)hi << 8u) | lo);
+    return 0;
+}
+
+static uint32_t current_root(const struct amivm_cpu_state *cpu)
+{
+    bool supervisor = (cpu->sr & SR_SUPERVISOR) != 0u;
+    if ((cpu->tc & TC_ENABLE) == 0u) return 0u;
+    return (supervisor ? cpu->srp : cpu->urp) & PAGE_MASK;
 }
 
 static int context_matches(const struct amivm_exec_cache_entry *entry,
                            const struct amivm_cpu_state *cpu)
 {
-    uint32_t root = (cpu->sr & 0x2000u) != 0u ? cpu->srp : cpu->urp;
-    return entry->context_tc == cpu->tc && entry->context_root == root &&
-           entry->context_supervisor == (((cpu->sr & 0x2000u) != 0u) ? 1 : 0);
+    uint8_t supervisor = (cpu->sr & SR_SUPERVISOR) != 0u ? 1u : 0u;
+    return entry->mmu_tc == cpu->tc && entry->mmu_root == current_root(cpu) &&
+           entry->supervisor == supervisor;
 }
 
 static int dependencies_fresh(const struct amivm_exec_cache_entry *entry,
                               const struct amivm_vm *vm)
 {
     size_t i;
-    for (i = 0u; i < entry->dependency_count; ++i) {
-        if (amivm_page_generation(vm, entry->dependencies[i].page) !=
-            entry->dependencies[i].generation) return 0;
+    uint64_t generation;
+
+    for (i = 0u; i < entry->dep_count; ++i) {
+        if (!amivm_ram_page_generation(vm, entry->deps[i].page_base, &generation) ||
+            generation != entry->deps[i].generation) return 0;
     }
     return 1;
 }
 
 static int entry_is_fresh(const struct amivm_exec_cache_entry *entry,
                           const struct amivm_cpu_state *cpu,
-                          const struct amivm_vm *vm,
-                          uint32_t pc, uint64_t generation)
+                          const struct amivm_vm *vm, uint32_t pc,
+                          uint32_t generation)
 {
-    return entry != NULL && entry->valid && entry->generation == generation &&
-           entry->pc == pc && context_matches(entry, cpu) &&
-           dependencies_fresh(entry, vm);
+    return entry->valid && entry->generation == generation && entry->pc == pc &&
+           context_matches(entry, cpu) && dependencies_fresh(entry, vm);
 }
 
 static void release_entry(struct amivm_exec_cache_entry *entry)
 {
     if (entry == NULL) return;
     amivm_jit_runtime_release(&entry->jit_runtime);
-    entry->jit_valid = 0;
-    entry->chain_valid = 0;
-    entry->chain_alt_valid = 0;
+}
+
+static void release_cache(struct amivm_exec_engine *engine)
+{
+    size_t i;
+    if (engine == NULL) return;
+    for (i = 0u; i < AMIVM_EXEC_CACHE_ENTRIES; ++i)
+        release_entry(&engine->cache[i]);
+}
+
+static int compile_ir_block(struct amivm_exec_cache_entry *entry,
+                            struct amivm_cpu_state *cpu, struct amivm_vm *vm)
+{
+    uint16_t words[AMIVM_EXEC_DECODE_WORDS];
+    size_t count = 0u;
+    uint32_t pc = cpu->pc;
+    int rc;
+
+    entry->mmu_tc = cpu->tc;
+    entry->mmu_root = current_root(cpu);
+    entry->supervisor = (cpu->sr & SR_SUPERVISOR) != 0u ? 1u : 0u;
+
+    while (count < AMIVM_EXEC_DECODE_WORDS) {
+        if (read16_guest(entry, cpu, vm, pc + (uint32_t)(count * 2u), &words[count]) != 0) break;
+        count++;
+    }
+    if (count == 0u) return 0;
+
+    amivm_ir_block_init(&entry->block, pc);
+    rc = amivm_ir_decode_words(&entry->block, words, count);
+    if (rc < 0 || entry->block.op_count == 0u) return 0;
+    entry->ir_valid = 1;
+    rc = amivm_jit_compile(&entry->block, &entry->jit);
+    if (rc == AMIVM_JIT_OK) {
+        amivm_jit_runtime_init(&entry->jit_runtime);
+        rc = amivm_jit_runtime_prepare(&entry->jit_runtime, &entry->jit);
+        entry->jit_valid = rc == AMIVM_JIT_OK ? 1 : 0;
+    } else {
+        entry->jit_valid = 0;
+    }
+    return 1;
 }
 
 void amivm_exec_init(struct amivm_exec_engine *engine,
@@ -71,11 +192,10 @@ void amivm_exec_init(struct amivm_exec_engine *engine,
 
 void amivm_exec_reset(struct amivm_exec_engine *engine)
 {
-    size_t i;
     const struct amivm_cpu_backend *backend;
     if (engine == NULL) return;
     backend = engine->backend;
-    for (i = 0u; i < AMIVM_EXEC_CACHE_SIZE; ++i) release_entry(&engine->cache[i]);
+    release_cache(engine);
     memset(engine, 0, sizeof(*engine));
     engine->backend = backend;
     engine->generation = 1u;
@@ -83,118 +203,50 @@ void amivm_exec_reset(struct amivm_exec_engine *engine)
 
 void amivm_exec_invalidate_all(struct amivm_exec_engine *engine)
 {
-    size_t i;
     if (engine == NULL) return;
-    for (i = 0u; i < AMIVM_EXEC_CACHE_SIZE; ++i) release_entry(&engine->cache[i]);
+    release_cache(engine);
+    memset(engine->cache, 0, sizeof(engine->cache));
     engine->generation++;
     if (engine->generation == 0u) engine->generation = 1u;
-}
-
-static void add_dependency(struct amivm_exec_cache_entry *entry,
-                           struct amivm_vm *vm, uint32_t address)
-{
-    uint32_t page = page_number(address);
-    size_t i;
-    for (i = 0u; i < entry->dependency_count; ++i)
-        if (entry->dependencies[i].page == page) return;
-    if (entry->dependency_count >= AMIVM_EXEC_MAX_DEPENDENCIES) return;
-    entry->dependencies[entry->dependency_count].page = page;
-    entry->dependencies[entry->dependency_count].generation = amivm_page_generation(vm, page);
-    entry->dependency_count++;
-}
-
-static int fetch_word(struct amivm_exec_cache_entry *entry,
-                      struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                      uint32_t logical, uint16_t *value)
-{
-    uint32_t p0, p1;
-    int supervisor = (cpu->sr & 0x2000u) != 0u;
-    if (amivm_mmu_translate(cpu, vm, logical, 0, supervisor, &p0) != 0 ||
-        amivm_mmu_translate(cpu, vm, logical + 1u, 0, supervisor, &p1) != 0)
-        return -1;
-    add_dependency(entry, vm, p0);
-    add_dependency(entry, vm, p1);
-    *value = (uint16_t)(((uint16_t)amivm_read8(vm, p0) << 8u) | amivm_read8(vm, p1));
-    return 0;
-}
-
-static int compile_ir_block(struct amivm_exec_cache_entry *entry,
-                            struct amivm_cpu_state *cpu, struct amivm_vm *vm)
-{
-    uint16_t words[EXEC_FETCH_WORDS];
-    size_t count = 0u;
-    uint32_t logical = entry->pc;
-    uint32_t root = (cpu->sr & 0x2000u) != 0u ? cpu->srp : cpu->urp;
-    int rc;
-
-    entry->dependency_count = 0u;
-    entry->context_tc = cpu->tc;
-    entry->context_root = root;
-    entry->context_supervisor = (cpu->sr & 0x2000u) != 0u ? 1 : 0;
-
-    while (count < EXEC_FETCH_WORDS) {
-        if (fetch_word(entry, cpu, vm, logical, &words[count]) != 0) break;
-        count++;
-        logical += 2u;
-    }
-    if (count == 0u) return -1;
-
-    rc = amivm_ir_decode_words(words, count, entry->pc, &entry->block);
-    if (rc != 0) return rc;
-    entry->ir_valid = 1;
-    amivm_jit_code_init(&entry->jit);
-    rc = amivm_jit_compile(&entry->block, &entry->jit);
-    if (rc == AMIVM_JIT_OK) {
-        amivm_jit_runtime_init(&entry->jit_runtime);
-        if (amivm_jit_runtime_prepare(&entry->jit_runtime, &entry->jit) == AMIVM_JIT_OK)
-            entry->jit_valid = 1;
-    }
-    return 0;
 }
 
 static int fallback_step(struct amivm_exec_engine *engine,
                          struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
-    int rc = engine->backend->step(cpu, vm);
-    if (rc > 0) {
-        engine->stats.fallbacks++;
-        engine->stats.instructions++;
-    }
+    int rc;
+    engine->stats.fallbacks++;
+    rc = amivm_cpu_step(cpu, vm, engine->backend);
+    if (rc > 0) engine->stats.instructions++;
+    if (rc <= 0 || cpu->stopped) engine->stats.exits++;
     return rc;
 }
 
 static int execute_entry_limited(struct amivm_exec_engine *engine,
                                  struct amivm_exec_cache_entry *entry,
                                  struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                                 uint64_t remaining)
+                                 uint64_t max_instructions)
 {
-    const struct amivm_ir_block *block = &entry->block;
-    struct amivm_ir_block prefix;
-    struct amivm_jit_context context;
-    uint64_t executed;
+    struct amivm_ir_block partial;
+    struct amivm_jit_context jit_context;
+    const struct amivm_ir_block *block;
+    size_t executed;
+    int jit_rc;
     int ir_rc;
 
-    if (!entry->ir_valid || block->op_count == 0u) return fallback_step(engine, cpu, vm);
+    if (max_instructions == 0u) return 0;
+    if (!entry->ir_valid) return fallback_step(engine, cpu, vm);
 
-    if (remaining < block->op_count) {
-        prefix = *block;
-        prefix.op_count = (size_t)remaining;
-        prefix.terminates = 0;
-        prefix.guest_end_pc = prefix.ops[prefix.op_count - 1u].guest_pc +
-                              prefix.ops[prefix.op_count - 1u].instruction_bytes;
-        ir_rc = amivm_ir_execute(&prefix, cpu, vm);
-        if (ir_rc < 0) return fallback_step(engine, cpu, vm);
-        executed = prefix.op_count;
-        engine->stats.ir_blocks++;
-        engine->stats.ir_instructions += executed;
-        engine->stats.instructions += executed;
-        return 1;
-    }
-
-    if (entry->jit_valid) {
-        amivm_jit_context_init(&context, cpu, vm);
-        ir_rc = amivm_jit_runtime_execute_context(&entry->jit_runtime, cpu, &context);
-        if (ir_rc > 0) {
+    block = &entry->block;
+    if ((uint64_t)block->op_count > max_instructions) {
+        partial = *block;
+        partial.op_count = (size_t)max_instructions;
+        partial.terminates = 0;
+        block = &partial;
+    } else if (entry->jit_valid) {
+        amivm_jit_context_init(&jit_context, cpu, vm);
+        jit_rc = amivm_jit_runtime_execute_context(&entry->jit_runtime, cpu,
+                                                   &jit_context);
+        if (jit_rc > 0) {
             executed = entry->jit.guest_instructions;
             engine->stats.jit_blocks++;
             engine->stats.jit_instructions += executed;
@@ -208,11 +260,11 @@ static int execute_entry_limited(struct amivm_exec_engine *engine,
     if (ir_rc < 0) return fallback_step(engine, cpu, vm);
 
     if (ir_rc == 2) {
-        size_t prefix_count = block->op_count > 0u ? block->op_count - 1u : 0u;
-        if (prefix_count != 0u) {
+        size_t prefix = block->op_count > 0u ? block->op_count - 1u : 0u;
+        if (prefix != 0u) {
             engine->stats.ir_blocks++;
-            engine->stats.ir_instructions += prefix_count;
-            engine->stats.instructions += prefix_count;
+            engine->stats.ir_instructions += prefix;
+            engine->stats.instructions += prefix;
         }
         return fallback_step(engine, cpu, vm);
     }
