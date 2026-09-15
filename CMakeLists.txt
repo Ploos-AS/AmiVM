@@ -33,7 +33,7 @@ target_compile_options(amivm PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;
 set(AMIVM_TESTS
     vm cpu fpu fpu_decode exec ir ir_m219 ir_m220 ea_m221 ir_m222
     exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229
-    jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236
+    jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237
 )
 
 foreach(test_name IN LISTS AMIVM_TESTS)
