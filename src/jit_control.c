@@ -89,7 +89,7 @@ static int compile_bsr(const struct amivm_ir_block *block,
 {
     const struct amivm_ir_op *op = &block->ops[0];
     uint64_t helper;
-    uint32_t return_pc = op->guest_pc + 2u;
+    uint32_t return_pc = op->guest_pc + op->instruction_bytes;
     uint32_t target_pc = op->guest_pc + 2u + (uint32_t)op->imm;
     int rc;
 
