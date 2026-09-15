@@ -60,15 +60,11 @@ static int qualification_edges(void)
 {
     struct amivm_ir_block block;
     const uint16_t truncated[] = { 0x6000u };
-    const uint16_t bsr[] = { 0x6100u, 0x0010u };
 
+    /* M2.35 still owns the truncated word-displacement fallback boundary.
+     * BSR.w moved into supported IR in M2.36 and is qualified there. */
     amivm_ir_block_init(&block, 0x00005000u);
     CHECK(amivm_ir_decode_words(&block, truncated, 1u) == 1);
-    CHECK(block.op_count == 1u);
-    CHECK(block.ops[0].opcode == AMIVM_IR_EXIT);
-
-    amivm_ir_block_init(&block, 0x00005000u);
-    CHECK(amivm_ir_decode_words(&block, bsr, 2u) == 1);
     CHECK(block.op_count == 1u);
     CHECK(block.ops[0].opcode == AMIVM_IR_EXIT);
     return 0;
