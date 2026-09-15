@@ -15,6 +15,7 @@ add_library(amivm_core STATIC
     src/ea.c
     src/jit.c
     src/jit_runtime.c
+    src/jit_helpers.c
 )
 
 set_source_files_properties(src/ir.c PROPERTIES
@@ -34,6 +35,7 @@ set(AMIVM_TESTS
     vm cpu fpu fpu_decode exec ir ir_m219 ir_m220 ea_m221 ir_m222
     exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229
     jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237
+    jit_m238
 )
 
 foreach(test_name IN LISTS AMIVM_TESTS)
