@@ -15,6 +15,7 @@ void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime)
     if (runtime == NULL) return;
     runtime->mapping = NULL;
     runtime->mapping_size = 0u;
+    runtime->requires_context = 0;
 }
 
 int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
@@ -37,6 +38,7 @@ int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
     }
     runtime->mapping = mapping;
     runtime->mapping_size = code->size;
+    runtime->requires_context = code->requires_context;
     return AMIVM_JIT_OK;
 #else
     (void)runtime;
@@ -56,6 +58,7 @@ int amivm_jit_runtime_execute_context(const struct amivm_jit_runtime *runtime,
 
     if (runtime == NULL || cpu == NULL || runtime->mapping == NULL ||
         runtime->mapping_size == 0u) return AMIVM_JIT_INVALID;
+    if (runtime->requires_context && context == NULL) return AMIVM_JIT_INVALID;
     if (sizeof(fn) != sizeof(entry)) return AMIVM_JIT_EXEC_UNAVAILABLE;
 
     entry = runtime->mapping;
@@ -84,4 +87,5 @@ void amivm_jit_runtime_release(struct amivm_jit_runtime *runtime)
 #endif
     runtime->mapping = NULL;
     runtime->mapping_size = 0u;
+    runtime->requires_context = 0;
 }
