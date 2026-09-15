@@ -83,3 +83,27 @@ int amivm_jit_helper_stack_pop_long(struct amivm_jit_context *context,
     sync_a7_bank(context->cpu);
     return 0;
 }
+
+int amivm_jit_helper_bsr(struct amivm_jit_context *context,
+                         uint32_t return_pc, uint32_t target_pc)
+{
+    int rc;
+
+    if (context == NULL || context->cpu == NULL) return -4;
+    rc = amivm_jit_helper_stack_push_long(context, return_pc);
+    if (rc != 0) return rc;
+    context->cpu->pc = target_pc;
+    return 0;
+}
+
+int amivm_jit_helper_rts(struct amivm_jit_context *context)
+{
+    uint32_t target_pc;
+    int rc;
+
+    if (context == NULL || context->cpu == NULL) return -4;
+    rc = amivm_jit_helper_stack_pop_long(context, &target_pc);
+    if (rc != 0) return rc;
+    context->cpu->pc = target_pc;
+    return 0;
+}
