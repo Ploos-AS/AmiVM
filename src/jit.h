@@ -36,6 +36,8 @@ struct amivm_jit_runtime {
     size_t mapping_size;
 };
 
+struct amivm_jit_context;
+
 int amivm_jit_host_arch(void);
 void amivm_jit_code_init(struct amivm_jit_code *code);
 int amivm_jit_compile(const struct amivm_ir_block *block,
@@ -46,8 +48,14 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
 void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime);
 int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
                               const struct amivm_jit_code *code);
+/* Legacy CPU-only entry point retained for qualification/backward compatibility. */
 int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
                               struct amivm_cpu_state *cpu);
+/* M2.40 native entry ABI: RDI=cpu, RSI=context on x86-64 SysV. Existing native
+   blocks ignore context; helper-calling blocks can consume it in M2.41+. */
+int amivm_jit_runtime_execute_context(const struct amivm_jit_runtime *runtime,
+                                      struct amivm_cpu_state *cpu,
+                                      struct amivm_jit_context *context);
 void amivm_jit_runtime_release(struct amivm_jit_runtime *runtime);
 
 #endif
