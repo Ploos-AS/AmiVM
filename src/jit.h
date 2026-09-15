@@ -29,11 +29,13 @@ struct amivm_jit_code {
     size_t guest_instructions;
     uint32_t guest_start_pc;
     uint32_t guest_end_pc;
+    int requires_context;
 };
 
 struct amivm_jit_runtime {
     void *mapping;
     size_t mapping_size;
+    int requires_context;
 };
 
 struct amivm_jit_context;
@@ -48,11 +50,11 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
 void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime);
 int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
                               const struct amivm_jit_code *code);
-/* Legacy CPU-only entry point retained for qualification/backward compatibility. */
+/* Legacy CPU-only entry point retained for qualification/backward compatibility.
+   Context-requiring blocks are rejected rather than entered with NULL context. */
 int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
                               struct amivm_cpu_state *cpu);
-/* M2.40 native entry ABI: RDI=cpu, RSI=context on x86-64 SysV. Existing native
-   blocks ignore context; helper-calling blocks can consume it in M2.41+. */
+/* Native entry ABI: RDI=cpu, RSI=context on x86-64 SysV. */
 int amivm_jit_runtime_execute_context(const struct amivm_jit_runtime *runtime,
                                       struct amivm_cpu_state *cpu,
                                       struct amivm_jit_context *context);
