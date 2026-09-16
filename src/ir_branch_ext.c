@@ -96,6 +96,18 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         return 0;
     }
 
+    /* M2.45: dynamic register-indirect control flow. 68000 encodings are
+       JSR (An) = 4e90+n and JMP (An) = 4ed0+n. */
+    if ((branch_word & 0xfff8u) == 0x4e90u ||
+        (branch_word & 0xfff8u) == 0x4ed0u) {
+        op->opcode = (branch_word & 0x0040u) != 0u ? AMIVM_IR_JMP : AMIVM_IR_JSR;
+        op->reg = (uint8_t)(branch_word & 7u);
+        op->ea_mode = AMIVM_IR_EA_AN;
+        op->instruction_bytes = 2u;
+        block->terminates = 1;
+        return 0;
+    }
+
     if ((branch_word & 0xf000u) != 0x6000u) return rc;
 
     condition = (uint8_t)((branch_word >> 8u) & 0x0fu);
@@ -140,13 +152,15 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
     const struct amivm_ir_op *terminal;
     uint32_t return_pc;
     uint32_t new_sp;
+    uint32_t target_pc;
     int rc;
 
     if (block == NULL || cpu == NULL || block->op_count == 0u)
         return amivm_ir_execute_base(block, cpu, vm);
 
     terminal = &block->ops[block->op_count - 1u];
-    if (terminal->opcode != AMIVM_IR_BSR && terminal->opcode != AMIVM_IR_RTS)
+    if (terminal->opcode != AMIVM_IR_BSR && terminal->opcode != AMIVM_IR_RTS &&
+        terminal->opcode != AMIVM_IR_JSR && terminal->opcode != AMIVM_IR_JMP)
         return amivm_ir_execute_base(block, cpu, vm);
 
     prefix = *block;
@@ -155,6 +169,22 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
 
     rc = amivm_ir_execute_base(&prefix, cpu, vm);
     if (rc < 0) return rc;
+
+    if (terminal->opcode == AMIVM_IR_JMP) {
+        cpu->pc = cpu->a[terminal->reg];
+        return 1;
+    }
+
+    if (terminal->opcode == AMIVM_IR_JSR) {
+        target_pc = cpu->a[terminal->reg];
+        return_pc = terminal->guest_pc + terminal->instruction_bytes;
+        new_sp = cpu->a[7] - 4u;
+        if (write_stack_long(cpu, vm, new_sp, return_pc) != 0) return -4;
+        cpu->a[7] = new_sp;
+        sync_a7_bank(cpu);
+        cpu->pc = target_pc;
+        return 1;
+    }
 
     if (terminal->opcode == AMIVM_IR_BSR) {
         return_pc = terminal->guest_pc + terminal->instruction_bytes;
