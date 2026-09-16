@@ -44,8 +44,13 @@ int amivm_jit_host_arch(void);
 void amivm_jit_code_init(struct amivm_jit_code *code);
 int amivm_jit_compile(const struct amivm_ir_block *block,
                       struct amivm_jit_code *code);
+/* Legacy CPU-only direct entry. Context-requiring code is rejected. */
 int amivm_jit_execute(const struct amivm_jit_code *code,
                       struct amivm_cpu_state *cpu);
+/* Safe direct entry for generated code that requires VM-aware helpers. */
+int amivm_jit_execute_context(const struct amivm_jit_code *code,
+                              struct amivm_cpu_state *cpu,
+                              struct amivm_jit_context *context);
 
 void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime);
 int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
