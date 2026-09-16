@@ -28,4 +28,10 @@ int amivm_jit_helper_bsr(struct amivm_jit_context *context,
                          uint32_t return_pc, uint32_t target_pc);
 int amivm_jit_helper_rts(struct amivm_jit_context *context);
 
+/* M2.46 dynamic register-indirect control flow. */
+int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
+                            uint32_t return_pc, uint32_t address_register);
+int amivm_jit_helper_jmp_an(struct amivm_jit_context *context,
+                            uint32_t address_register);
+
 #endif
