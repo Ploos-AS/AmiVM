@@ -35,6 +35,8 @@ enum amivm_ir_opcode {
     AMIVM_IR_BRANCH_CC,
     AMIVM_IR_BSR,
     AMIVM_IR_RTS,
+    AMIVM_IR_JSR,
+    AMIVM_IR_JMP,
     AMIVM_IR_EXIT,
 };
 
