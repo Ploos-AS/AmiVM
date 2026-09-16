@@ -36,25 +36,24 @@ static int put64(struct amivm_jit_code *code, uint64_t value)
     return AMIVM_JIT_OK;
 }
 
-static int bsr_helper_address(uint64_t *address)
-{
-    int (*fn)(struct amivm_jit_context *, uint32_t, uint32_t) = amivm_jit_helper_bsr;
-    uintptr_t bits = 0u;
-    if (address == NULL || sizeof(fn) != sizeof(bits)) return AMIVM_JIT_UNSUPPORTED;
-    memcpy(&bits, &fn, sizeof(bits));
-    *address = (uint64_t)bits;
-    return AMIVM_JIT_OK;
+#define HELPER_ADDRESS(name, type, target) \
+static int name(uint64_t *address) \
+{ \
+    type fn = target; \
+    uintptr_t bits = 0u; \
+    if (address == NULL || sizeof(fn) != sizeof(bits)) return AMIVM_JIT_UNSUPPORTED; \
+    memcpy(&bits, &fn, sizeof(bits)); \
+    *address = (uint64_t)bits; \
+    return AMIVM_JIT_OK; \
 }
 
-static int rts_helper_address(uint64_t *address)
-{
-    int (*fn)(struct amivm_jit_context *) = amivm_jit_helper_rts;
-    uintptr_t bits = 0u;
-    if (address == NULL || sizeof(fn) != sizeof(bits)) return AMIVM_JIT_UNSUPPORTED;
-    memcpy(&bits, &fn, sizeof(bits));
-    *address = (uint64_t)bits;
-    return AMIVM_JIT_OK;
-}
+typedef int (*helper_ctx_u32_u32)(struct amivm_jit_context *, uint32_t, uint32_t);
+typedef int (*helper_ctx_u32)(struct amivm_jit_context *, uint32_t);
+typedef int (*helper_ctx)(struct amivm_jit_context *);
+HELPER_ADDRESS(bsr_helper_address, helper_ctx_u32_u32, amivm_jit_helper_bsr)
+HELPER_ADDRESS(rts_helper_address, helper_ctx, amivm_jit_helper_rts)
+HELPER_ADDRESS(jsr_helper_address, helper_ctx_u32_u32, amivm_jit_helper_jsr_an)
+HELPER_ADDRESS(jmp_helper_address, helper_ctx_u32, amivm_jit_helper_jmp_an)
 
 static int emit_call_tail(struct amivm_jit_code *code, uint64_t helper)
 {
@@ -93,7 +92,6 @@ static int prepare_prefix(const struct amivm_ir_block *block,
         if (code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_UNSUPPORTED;
         return AMIVM_JIT_OK;
     }
-
     prefix = *block;
     prefix_count = block->op_count - 1u;
     prefix.op_count = prefix_count;
@@ -101,33 +99,29 @@ static int prepare_prefix(const struct amivm_ir_block *block,
     prefix.guest_end_pc = block->ops[prefix_count].guest_pc;
     rc = amivm_jit_compile_base(&prefix, code);
     if (rc != AMIVM_JIT_OK) return rc;
-
-    /* The base compiler ends a non-terminal block with:
-       mov cpu->pc,guest_end_pc; mov eax,1; ret. Remove that fixed
-       fallthrough epilogue so the context-aware control transfer can follow. */
-    if (code->size < BASE_FALLTHROUGH_EPILOGUE_SIZE)
-        return AMIVM_JIT_INVALID;
+    if (code->size < BASE_FALLTHROUGH_EPILOGUE_SIZE) return AMIVM_JIT_INVALID;
     code->size -= BASE_FALLTHROUGH_EPILOGUE_SIZE;
     return AMIVM_JIT_OK;
 }
 
-static int compile_bsr(const struct amivm_ir_block *block,
-                       struct amivm_jit_code *code)
+static void finish_control_code(const struct amivm_ir_block *block,
+                                struct amivm_jit_code *code)
+{
+    code->requires_context = 1;
+    code->guest_instructions = block->op_count;
+    code->guest_start_pc = block->guest_start_pc;
+    code->guest_end_pc = block->guest_end_pc;
+}
+
+static int compile_bsr(const struct amivm_ir_block *block, struct amivm_jit_code *code)
 {
     const struct amivm_ir_op *op = &block->ops[block->op_count - 1u];
     uint64_t helper;
     uint32_t return_pc = op->guest_pc + op->instruction_bytes;
     uint32_t target_pc = op->guest_pc + 2u + (uint32_t)op->imm;
-    int rc;
-
-    rc = bsr_helper_address(&helper);
+    int rc = bsr_helper_address(&helper);
     if (rc != AMIVM_JIT_OK) return rc;
-    rc = prepare_prefix(block, code);
-    if (rc != AMIVM_JIT_OK) return rc;
-    code->requires_context = 1;
-
-    /* SysV entry keeps context in RSI while the ordinary native prefix uses
-       the CPU pointer in RDI. Move context only when entering the helper. */
+    rc = prepare_prefix(block, code); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0xf7u); if (rc != AMIVM_JIT_OK) return rc;
@@ -135,48 +129,72 @@ static int compile_bsr(const struct amivm_ir_block *block,
     rc = put32(code, return_pc); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0xbau); if (rc != AMIVM_JIT_OK) return rc;
     rc = put32(code, target_pc); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit_call_tail(code, helper);
-    if (rc != AMIVM_JIT_OK) return rc;
-
-    code->guest_instructions = block->op_count;
-    code->guest_start_pc = block->guest_start_pc;
-    code->guest_end_pc = block->guest_end_pc;
+    rc = emit_call_tail(code, helper); if (rc != AMIVM_JIT_OK) return rc;
+    finish_control_code(block, code);
     return AMIVM_JIT_OK;
 }
 
-static int compile_rts(const struct amivm_ir_block *block,
-                       struct amivm_jit_code *code)
+static int compile_rts(const struct amivm_ir_block *block, struct amivm_jit_code *code)
 {
     uint64_t helper;
     int rc = rts_helper_address(&helper);
     if (rc != AMIVM_JIT_OK) return rc;
-    rc = prepare_prefix(block, code);
-    if (rc != AMIVM_JIT_OK) return rc;
-    code->requires_context = 1;
-
+    rc = prepare_prefix(block, code); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
     rc = put8(code, 0xf7u); if (rc != AMIVM_JIT_OK) return rc;
-    rc = emit_call_tail(code, helper);
-    if (rc != AMIVM_JIT_OK) return rc;
-
-    code->guest_instructions = block->op_count;
-    code->guest_start_pc = block->guest_start_pc;
-    code->guest_end_pc = block->guest_end_pc;
+    rc = emit_call_tail(code, helper); if (rc != AMIVM_JIT_OK) return rc;
+    finish_control_code(block, code);
     return AMIVM_JIT_OK;
 }
 
-int amivm_jit_compile(const struct amivm_ir_block *block,
-                      struct amivm_jit_code *code)
+static int compile_jsr(const struct amivm_ir_block *block, struct amivm_jit_code *code)
+{
+    const struct amivm_ir_op *op = &block->ops[block->op_count - 1u];
+    uint64_t helper;
+    uint32_t return_pc = op->guest_pc + op->instruction_bytes;
+    int rc;
+    if (op->ea_mode != AMIVM_IR_EA_AN || op->reg >= 8u) return AMIVM_JIT_UNSUPPORTED;
+    rc = jsr_helper_address(&helper); if (rc != AMIVM_JIT_OK) return rc;
+    rc = prepare_prefix(block, code); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0xf7u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0xbeu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put32(code, return_pc); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0xbau); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put32(code, op->reg); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit_call_tail(code, helper); if (rc != AMIVM_JIT_OK) return rc;
+    finish_control_code(block, code);
+    return AMIVM_JIT_OK;
+}
+
+static int compile_jmp(const struct amivm_ir_block *block, struct amivm_jit_code *code)
+{
+    const struct amivm_ir_op *op = &block->ops[block->op_count - 1u];
+    uint64_t helper;
+    int rc;
+    if (op->ea_mode != AMIVM_IR_EA_AN || op->reg >= 8u) return AMIVM_JIT_UNSUPPORTED;
+    rc = jmp_helper_address(&helper); if (rc != AMIVM_JIT_OK) return rc;
+    rc = prepare_prefix(block, code); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0xf7u); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put8(code, 0xbeu); if (rc != AMIVM_JIT_OK) return rc;
+    rc = put32(code, op->reg); if (rc != AMIVM_JIT_OK) return rc;
+    rc = emit_call_tail(code, helper); if (rc != AMIVM_JIT_OK) return rc;
+    finish_control_code(block, code);
+    return AMIVM_JIT_OK;
+}
+
+int amivm_jit_compile(const struct amivm_ir_block *block, struct amivm_jit_code *code)
 {
     const struct amivm_ir_op *terminal;
-
-    if (block == NULL || code == NULL || block->op_count == 0u)
-        return AMIVM_JIT_INVALID;
+    if (block == NULL || code == NULL || block->op_count == 0u) return AMIVM_JIT_INVALID;
     terminal = &block->ops[block->op_count - 1u];
-    if (terminal->opcode == AMIVM_IR_BSR)
-        return compile_bsr(block, code);
-    if (terminal->opcode == AMIVM_IR_RTS)
-        return compile_rts(block, code);
+    if (terminal->opcode == AMIVM_IR_BSR) return compile_bsr(block, code);
+    if (terminal->opcode == AMIVM_IR_RTS) return compile_rts(block, code);
+    if (terminal->opcode == AMIVM_IR_JSR) return compile_jsr(block, code);
+    if (terminal->opcode == AMIVM_IR_JMP) return compile_jmp(block, code);
     return amivm_jit_compile_base(block, code);
 }
