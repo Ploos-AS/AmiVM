@@ -41,6 +41,7 @@ set(AMIVM_TESTS
     exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229
     jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237
     jit_m238 jit_m239 jit_m240 jit_m241 exec_m242 jit_m243 jit_m244
+    ir_m245
 )
 
 foreach(test_name IN LISTS AMIVM_TESTS)
