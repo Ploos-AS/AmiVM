@@ -28,7 +28,6 @@ int main(void)
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     const uint32_t sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t caller = AMIVM_ROM_BASE + 0x200u;
-    const uint32_t callee = AMIVM_ROM_BASE + 0x220u;
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
