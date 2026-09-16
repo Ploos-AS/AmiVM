@@ -107,3 +107,27 @@ int amivm_jit_helper_rts(struct amivm_jit_context *context)
     context->cpu->pc = target_pc;
     return 0;
 }
+
+int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
+                            uint32_t return_pc, uint32_t address_register)
+{
+    uint32_t target_pc;
+    int rc;
+
+    if (context == NULL || context->cpu == NULL || address_register >= 8u)
+        return -4;
+    target_pc = context->cpu->a[address_register];
+    rc = amivm_jit_helper_stack_push_long(context, return_pc);
+    if (rc != 0) return rc;
+    context->cpu->pc = target_pc;
+    return 0;
+}
+
+int amivm_jit_helper_jmp_an(struct amivm_jit_context *context,
+                            uint32_t address_register)
+{
+    if (context == NULL || context->cpu == NULL || address_register >= 8u)
+        return -4;
+    context->cpu->pc = context->cpu->a[address_register];
+    return 0;
+}
