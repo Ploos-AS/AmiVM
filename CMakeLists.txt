@@ -15,6 +15,7 @@ add_library(amivm_core STATIC
     src/ea.c
     src/jit.c
     src/jit_control.c
+    src/jit_execute.c
     src/jit_runtime.c
     src/jit_helpers.c
 )
@@ -23,7 +24,7 @@ set_source_files_properties(src/ir.c PROPERTIES
     COMPILE_DEFINITIONS "amivm_ir_decode_words=amivm_ir_decode_words_base;amivm_ir_execute=amivm_ir_execute_base"
 )
 set_source_files_properties(src/jit.c PROPERTIES
-    COMPILE_DEFINITIONS "amivm_jit_compile=amivm_jit_compile_base"
+    COMPILE_DEFINITIONS "amivm_jit_compile=amivm_jit_compile_base;amivm_jit_execute=amivm_jit_execute_base"
 )
 
 target_include_directories(amivm_core PUBLIC src)
@@ -39,7 +40,7 @@ set(AMIVM_TESTS
     vm cpu fpu fpu_decode exec ir ir_m219 ir_m220 ea_m221 ir_m222
     exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229
     jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237
-    jit_m238 jit_m239 jit_m240 jit_m241 exec_m242
+    jit_m238 jit_m239 jit_m240 jit_m241 exec_m242 jit_m243
 )
 
 foreach(test_name IN LISTS AMIVM_TESTS)
