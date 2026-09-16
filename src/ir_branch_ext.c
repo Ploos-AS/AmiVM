@@ -5,7 +5,6 @@
 
 #include "vm.h"
 
-/* src/ir.c exports its established implementations under these names. */
 int amivm_ir_decode_words_base(struct amivm_ir_block *block,
                                const uint16_t *words, size_t word_count);
 int amivm_ir_execute_base(const struct amivm_ir_block *block,
@@ -67,6 +66,13 @@ static int read_stack_long(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return 0;
 }
 
+static uint32_t control_target(const struct amivm_ir_op *op,
+                               const struct amivm_cpu_state *cpu)
+{
+    if (op->ea_mode == AMIVM_IR_EA_AN) return cpu->a[op->reg];
+    return (uint32_t)op->imm;
+}
+
 int amivm_ir_decode_words(struct amivm_ir_block *block,
                           const uint16_t *words, size_t word_count)
 {
@@ -96,8 +102,6 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         return 0;
     }
 
-    /* M2.45: dynamic register-indirect control flow. 68000 encodings are
-       JSR (An) = 4e90+n and JMP (An) = 4ed0+n. */
     if ((branch_word & 0xfff8u) == 0x4e90u ||
         (branch_word & 0xfff8u) == 0x4ed0u) {
         op->opcode = (branch_word & 0x0040u) != 0u ? AMIVM_IR_JMP : AMIVM_IR_JSR;
@@ -108,8 +112,30 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         return 0;
     }
 
-    if ((branch_word & 0xf000u) != 0x6000u) return rc;
+    /* M2.47: absolute control transfers. */
+    if (branch_word == 0x4eb8u || branch_word == 0x4ef8u) {
+        if (word_index + 1u >= word_count) return rc;
+        op->opcode = branch_word == 0x4ef8u ? AMIVM_IR_JMP : AMIVM_IR_JSR;
+        op->ea_mode = AMIVM_IR_EA_ABS_W;
+        op->imm = (int32_t)(int16_t)words[word_index + 1u];
+        op->instruction_bytes = 4u;
+        block->guest_end_pc = op->guest_pc + 4u;
+        block->terminates = 1;
+        return 0;
+    }
+    if (branch_word == 0x4eb9u || branch_word == 0x4ef9u) {
+        if (word_index + 2u >= word_count) return rc;
+        op->opcode = branch_word == 0x4ef9u ? AMIVM_IR_JMP : AMIVM_IR_JSR;
+        op->ea_mode = AMIVM_IR_EA_ABS_L;
+        op->imm = (int32_t)(((uint32_t)words[word_index + 1u] << 16u) |
+                            (uint32_t)words[word_index + 2u]);
+        op->instruction_bytes = 6u;
+        block->guest_end_pc = op->guest_pc + 6u;
+        block->terminates = 1;
+        return 0;
+    }
 
+    if ((branch_word & 0xf000u) != 0x6000u) return rc;
     condition = (uint8_t)((branch_word >> 8u) & 0x0fu);
 
     if ((branch_word & 0x00ffu) != 0u) {
@@ -133,8 +159,6 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
         return 0;
     }
 
-    /* Existing branch lowering uses guest_pc + 2 for both target base and
-       conditional fallthrough, so retain the M2.35 extension-word shim. */
     op->opcode = condition == 0u ? AMIVM_IR_BRANCH : AMIVM_IR_BRANCH_CC;
     op->condition = condition == 0u ? AMIVM_IR_CC_T : condition;
     op->guest_pc += 2u;
@@ -171,12 +195,12 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
     if (rc < 0) return rc;
 
     if (terminal->opcode == AMIVM_IR_JMP) {
-        cpu->pc = cpu->a[terminal->reg];
+        cpu->pc = control_target(terminal, cpu);
         return 1;
     }
 
     if (terminal->opcode == AMIVM_IR_JSR) {
-        target_pc = cpu->a[terminal->reg];
+        target_pc = control_target(terminal, cpu);
         return_pc = terminal->guest_pc + terminal->instruction_bytes;
         new_sp = cpu->a[7] - 4u;
         if (write_stack_long(cpu, vm, new_sp, return_pc) != 0) return -4;
