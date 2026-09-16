@@ -19,12 +19,15 @@ int main(void)
 {
     struct amivm_ir_block block;
     struct amivm_cpu_state cpu = {0};
+    struct amivm_config config;
     struct amivm_vm vm;
     const uint16_t jsr_words[] = { 0x4e92u }; /* JSR (A2) */
     const uint16_t jmp_words[] = { 0x4ed3u }; /* JMP (A3) */
     uint32_t sp = AMIVM_RAM_BASE + 0x1000u;
 
-    CHECK(amivm_vm_init(&vm, 1u) == 0);
+    amivm_config_init(&config);
+    config.ram_size = 1u * 1024u * 1024u;
+    CHECK(amivm_vm_init(&vm, &config) == 0);
     cpu.sr = 0x2000u;
     cpu.a[7] = sp;
     cpu.isp = sp;
