@@ -32,5 +32,10 @@ int amivm_jit_helper_jsr_d16_an(struct amivm_jit_context *context,
                                 uint32_t return_pc, uint32_t encoded);
 int amivm_jit_helper_jmp_d16_an(struct amivm_jit_context *context,
                                 uint32_t encoded);
+/* M2.52 brief indexed control flow. encoded carries EA/index metadata. */
+int amivm_jit_helper_jsr_indexed(struct amivm_jit_context *context,
+                                 uint32_t return_pc, uint32_t encoded);
+int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
+                                 uint32_t pc_base, uint32_t encoded);
 
 #endif
