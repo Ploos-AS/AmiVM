@@ -117,29 +117,58 @@ static int decode_d16_an(uint32_t encoded, uint32_t *reg, int32_t *disp)
 int amivm_jit_helper_jsr_d16_an(struct amivm_jit_context *context,
                                 uint32_t return_pc, uint32_t encoded)
 {
-    uint32_t reg;
-    int32_t disp;
-    uint32_t target_pc;
-    int rc;
+    uint32_t reg; int32_t disp; uint32_t target_pc; int rc;
     if (context == NULL || context->cpu == NULL) return -4;
-    rc = decode_d16_an(encoded, &reg, &disp);
-    if (rc != 0) return rc;
+    rc = decode_d16_an(encoded, &reg, &disp); if (rc != 0) return rc;
     target_pc = context->cpu->a[reg] + (uint32_t)disp;
-    rc = amivm_jit_helper_stack_push_long(context, return_pc);
-    if (rc != 0) return rc;
-    context->cpu->pc = target_pc;
-    return 0;
+    rc = amivm_jit_helper_stack_push_long(context, return_pc); if (rc != 0) return rc;
+    context->cpu->pc = target_pc; return 0;
 }
 
 int amivm_jit_helper_jmp_d16_an(struct amivm_jit_context *context,
                                 uint32_t encoded)
 {
-    uint32_t reg;
-    int32_t disp;
-    int rc;
+    uint32_t reg; int32_t disp; int rc;
     if (context == NULL || context->cpu == NULL) return -4;
-    rc = decode_d16_an(encoded, &reg, &disp);
-    if (rc != 0) return rc;
-    context->cpu->pc = context->cpu->a[reg] + (uint32_t)disp;
+    rc = decode_d16_an(encoded, &reg, &disp); if (rc != 0) return rc;
+    context->cpu->pc = context->cpu->a[reg] + (uint32_t)disp; return 0;
+}
+
+/* encoded: bits 0..7 d8, 8..10 index reg, 11 A/D, 12 long,
+ * 13..14 scale shift, 15 PC base, 16..18 address base reg. */
+static int indexed_target(struct amivm_jit_context *context, uint32_t pc_base,
+                          uint32_t encoded, uint32_t *target)
+{
+    uint32_t index_reg, index, base, scale;
+    int32_t disp;
+    if (context == NULL || context->cpu == NULL || target == NULL) return -4;
+    index_reg = (encoded >> 8u) & 7u;
+    index = (encoded & (1u << 11u)) != 0u ? context->cpu->a[index_reg] : context->cpu->d[index_reg];
+    if ((encoded & (1u << 12u)) == 0u) index = (uint32_t)(int32_t)(int16_t)(index & 0xffffu);
+    scale = 1u << ((encoded >> 13u) & 3u);
+    disp = (int32_t)(int8_t)(encoded & 0xffu);
+    if ((encoded & (1u << 15u)) != 0u) base = pc_base;
+    else {
+        uint32_t base_reg = (encoded >> 16u) & 7u;
+        base = context->cpu->a[base_reg];
+    }
+    *target = base + (uint32_t)disp + index * scale;
     return 0;
+}
+
+int amivm_jit_helper_jsr_indexed(struct amivm_jit_context *context,
+                                 uint32_t return_pc, uint32_t encoded)
+{
+    uint32_t target; int rc;
+    rc = indexed_target(context, return_pc - 2u, encoded, &target); if (rc != 0) return rc;
+    rc = amivm_jit_helper_stack_push_long(context, return_pc); if (rc != 0) return rc;
+    context->cpu->pc = target; return 0;
+}
+
+int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
+                                 uint32_t pc_base, uint32_t encoded)
+{
+    uint32_t target; int rc = indexed_target(context, pc_base, encoded, &target);
+    if (rc != 0) return rc;
+    context->cpu->pc = target; return 0;
 }
