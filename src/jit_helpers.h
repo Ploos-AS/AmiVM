@@ -25,8 +25,12 @@ int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
                             uint32_t return_pc, uint32_t address_register);
 int amivm_jit_helper_jmp_an(struct amivm_jit_context *context,
                             uint32_t address_register);
-/* M2.48 absolute control flow. */
 int amivm_jit_helper_jmp_abs(struct amivm_jit_context *context,
                              uint32_t target_pc);
+/* M2.50 register-base displacement control flow. */
+int amivm_jit_helper_jsr_d16_an(struct amivm_jit_context *context,
+                                uint32_t return_pc, uint32_t encoded);
+int amivm_jit_helper_jmp_d16_an(struct amivm_jit_context *context,
+                                uint32_t encoded);
 
 #endif
