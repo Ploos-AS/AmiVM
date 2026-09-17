@@ -37,5 +37,12 @@ int amivm_jit_helper_jsr_indexed(struct amivm_jit_context *context,
                                  uint32_t return_pc, uint32_t encoded);
 int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
                                  uint32_t pc_base, uint32_t encoded);
+/* M2.54 non-indirect 68020+ full indexed control flow. */
+int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
+                                      uint32_t return_pc, uint32_t encoded,
+                                      uint32_t base_displacement);
+int amivm_jit_helper_jmp_full_indexed(struct amivm_jit_context *context,
+                                      uint32_t pc_base, uint32_t encoded,
+                                      uint32_t base_displacement);
 
 #endif
