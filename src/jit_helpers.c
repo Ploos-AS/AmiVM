@@ -104,3 +104,42 @@ int amivm_jit_helper_jmp_abs(struct amivm_jit_context *context,
     context->cpu->pc = target_pc;
     return 0;
 }
+
+static int decode_d16_an(uint32_t encoded, uint32_t *reg, int32_t *disp)
+{
+    if (reg == NULL || disp == NULL) return -4;
+    *reg = encoded >> 16u;
+    if (*reg >= 8u) return -4;
+    *disp = (int32_t)(int16_t)(encoded & 0xffffu);
+    return 0;
+}
+
+int amivm_jit_helper_jsr_d16_an(struct amivm_jit_context *context,
+                                uint32_t return_pc, uint32_t encoded)
+{
+    uint32_t reg;
+    int32_t disp;
+    uint32_t target_pc;
+    int rc;
+    if (context == NULL || context->cpu == NULL) return -4;
+    rc = decode_d16_an(encoded, &reg, &disp);
+    if (rc != 0) return rc;
+    target_pc = context->cpu->a[reg] + (uint32_t)disp;
+    rc = amivm_jit_helper_stack_push_long(context, return_pc);
+    if (rc != 0) return rc;
+    context->cpu->pc = target_pc;
+    return 0;
+}
+
+int amivm_jit_helper_jmp_d16_an(struct amivm_jit_context *context,
+                                uint32_t encoded)
+{
+    uint32_t reg;
+    int32_t disp;
+    int rc;
+    if (context == NULL || context->cpu == NULL) return -4;
+    rc = decode_d16_an(encoded, &reg, &disp);
+    if (rc != 0) return rc;
+    context->cpu->pc = context->cpu->a[reg] + (uint32_t)disp;
+    return 0;
+}
