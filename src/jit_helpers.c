@@ -172,3 +172,54 @@ int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
     if (rc != 0) return rc;
     context->cpu->pc = target; return 0;
 }
+
+/* M2.54 encoded: bits 0..2 index reg, 3 A/D, 4 long, 5..6 scale shift,
+ * 7 PC base, 8..10 address base reg, 11 base suppress, 12 index suppress. */
+static int full_indexed_target(struct amivm_jit_context *context, uint32_t pc_base,
+                               uint32_t encoded, uint32_t base_displacement,
+                               uint32_t *target)
+{
+    uint32_t index = 0u, base = 0u, scale;
+    uint32_t index_reg;
+    if (context == NULL || context->cpu == NULL || target == NULL) return -4;
+    if ((encoded & (1u << 11u)) == 0u) {
+        if ((encoded & (1u << 7u)) != 0u) base = pc_base;
+        else base = context->cpu->a[(encoded >> 8u) & 7u];
+    }
+    if ((encoded & (1u << 12u)) == 0u) {
+        index_reg = encoded & 7u;
+        index = (encoded & (1u << 3u)) != 0u ?
+            context->cpu->a[index_reg] : context->cpu->d[index_reg];
+        if ((encoded & (1u << 4u)) == 0u)
+            index = (uint32_t)(int32_t)(int16_t)(index & 0xffffu);
+        scale = 1u << ((encoded >> 5u) & 3u);
+        index *= scale;
+    }
+    *target = base + base_displacement + index;
+    return 0;
+}
+
+int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
+                                      uint32_t return_pc, uint32_t encoded,
+                                      uint32_t base_displacement)
+{
+    uint32_t target; int rc;
+    rc = full_indexed_target(context, return_pc - 2u, encoded,
+                             base_displacement, &target);
+    if (rc != 0) return rc;
+    rc = amivm_jit_helper_stack_push_long(context, return_pc);
+    if (rc != 0) return rc;
+    context->cpu->pc = target;
+    return 0;
+}
+
+int amivm_jit_helper_jmp_full_indexed(struct amivm_jit_context *context,
+                                      uint32_t pc_base, uint32_t encoded,
+                                      uint32_t base_displacement)
+{
+    uint32_t target; int rc;
+    rc = full_indexed_target(context, pc_base, encoded, base_displacement, &target);
+    if (rc != 0) return rc;
+    context->cpu->pc = target;
+    return 0;
+}
