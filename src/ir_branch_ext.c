@@ -73,20 +73,34 @@ static uint32_t index_value(const struct amivm_ir_op *op,
     return value * (uint32_t)op->index_scale;
 }
 
-static uint32_t control_target(const struct amivm_ir_op *op,
-                               const struct amivm_cpu_state *cpu)
+static int control_target(const struct amivm_ir_op *op,
+                          struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                          uint32_t *target)
 {
-    uint32_t base, index;
-    if (op->ea_mode == AMIVM_IR_EA_AN) return cpu->a[op->reg];
-    if (op->ea_mode == AMIVM_IR_EA_D16_AN) return cpu->a[op->reg] + (uint32_t)op->imm;
-    if (op->ea_mode == AMIVM_IR_EA_PC_D16) return op->guest_pc + 2u + (uint32_t)op->imm;
+    uint32_t base, index, indirect;
+    if (target == NULL) return -1;
+    if (op->ea_mode == AMIVM_IR_EA_AN) { *target = cpu->a[op->reg]; return 0; }
+    if (op->ea_mode == AMIVM_IR_EA_D16_AN) { *target = cpu->a[op->reg] + (uint32_t)op->imm; return 0; }
+    if (op->ea_mode == AMIVM_IR_EA_PC_D16) { *target = op->guest_pc + 2u + (uint32_t)op->imm; return 0; }
     if (op->ea_mode == AMIVM_IR_EA_D8_AN_XN || op->ea_mode == AMIVM_IR_EA_PC_D8_XN) {
         base = op->ea_mode == AMIVM_IR_EA_D8_AN_XN ? cpu->a[op->reg] : op->guest_pc + 2u;
         if (op->base_suppress) base = 0u;
         index = op->index_suppress ? 0u : index_value(op, cpu);
-        return base + (uint32_t)(op->full_format ? op->base_displacement : op->imm) + index;
+        if (!op->full_format) { *target = base + (uint32_t)op->imm + index; return 0; }
+        if (op->indirect_mode == AMIVM_EA_INDIRECT_NONE) {
+            *target = base + (uint32_t)op->base_displacement + index; return 0;
+        }
+        if (op->indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED) {
+            if (read_stack_long(cpu, vm, base + (uint32_t)op->base_displacement + index,
+                                &indirect) != 0) return -1;
+            *target = indirect + (uint32_t)op->outer_displacement; return 0;
+        }
+        if (read_stack_long(cpu, vm, base + (uint32_t)op->base_displacement,
+                            &indirect) != 0) return -1;
+        *target = indirect + index + (uint32_t)op->outer_displacement; return 0;
     }
-    return (uint32_t)op->imm;
+    *target = (uint32_t)op->imm;
+    return 0;
 }
 
 static int decode_index(struct amivm_ir_op *op, const uint16_t *words,
@@ -95,7 +109,6 @@ static int decode_index(struct amivm_ir_op *op, const uint16_t *words,
     struct amivm_ea_index_extension ext;
     int rc = amivm_ea_parse_index_extension(words, count, &ext);
     if (rc != AMIVM_EA_PARSE_OK) return 0;
-    if (ext.full_format && ext.indirect_mode != AMIVM_EA_INDIRECT_NONE) return 0;
     op->index_is_addr = ext.index_is_addr;
     op->index_reg = ext.index_reg;
     op->index_long = ext.index_long;
@@ -217,10 +230,11 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
     rc = amivm_ir_execute_base(&prefix, cpu, vm);
     if (rc < 0) return rc;
     if (terminal->opcode == AMIVM_IR_JMP) {
-        cpu->pc = control_target(terminal, cpu); return 1;
+        if (control_target(terminal, cpu, vm, &target_pc) != 0) return -4;
+        cpu->pc = target_pc; return 1;
     }
     if (terminal->opcode == AMIVM_IR_JSR) {
-        target_pc = control_target(terminal, cpu);
+        if (control_target(terminal, cpu, vm, &target_pc) != 0) return -4;
         return_pc = terminal->guest_pc + terminal->instruction_bytes;
         new_sp = cpu->a[7] - 4u;
         if (write_stack_long(cpu, vm, new_sp, return_pc) != 0) return -4;
