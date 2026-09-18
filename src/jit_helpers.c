@@ -1,4 +1,5 @@
 #include "jit_helpers.h"
+#include "ea.h"
 
 #include <stddef.h>
 
