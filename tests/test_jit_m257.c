@@ -10,7 +10,7 @@ int main(void){struct amivm_config cfg;struct amivm_vm vm;struct amivm_cpu_state
 /* D0.l, full, base suppressed, long BD, preindexed, long OD. */
 const uint16_t pre_bs[]={0x4eb0u,0x09b3u,0x10001000u>>16,0x1000u,0x00000020u>>16,0x0020u};
 /* D3.l, full, index suppressed, word BD, postindexed, null OD. */
-const uint16_t post_is[]={0x4ef5u,0x3d25u,0x0040u};
+const uint16_t post_is[]={0x4ef5u,0x3d65u,0x0040u};
 if(amivm_jit_host_arch()!=AMIVM_JIT_ARCH_X86_64){puts("AmiVM M2.57 tests: SKIP");return 0;}
 #if !defined(__x86_64__) || !defined(__linux__)
 puts("AmiVM M2.57 tests: SKIP");return 0;
