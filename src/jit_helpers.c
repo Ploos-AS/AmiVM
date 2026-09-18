@@ -175,12 +175,25 @@ int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
 
 /* M2.54 encoded: bits 0..2 index reg, 3 A/D, 4 long, 5..6 scale shift,
  * 7 PC base, 8..10 address base reg, 11 base suppress, 12 index suppress. */
+static int read_logical_long(struct amivm_jit_context *context, uint32_t logical,
+                             uint32_t *value)
+{
+    uint32_t physical[4]; uint8_t byte[4]; unsigned i; int rc;
+    if (value == NULL) return -4;
+    rc = translate_long(context, logical, 0, physical); if (rc != 0) return rc;
+    for (i = 0u; i < 4u; ++i)
+        if (!amivm_read8(context->vm, physical[i], &byte[i])) return -4;
+    *value = ((uint32_t)byte[0] << 24u) | ((uint32_t)byte[1] << 16u) |
+             ((uint32_t)byte[2] << 8u) | (uint32_t)byte[3];
+    return 0;
+}
+
 static int full_indexed_target(struct amivm_jit_context *context, uint32_t pc_base,
                                uint32_t encoded, uint32_t base_displacement,
-                               uint32_t *target)
+                               uint32_t outer_displacement, uint32_t *target)
 {
-    uint32_t index = 0u, base = 0u, scale;
-    uint32_t index_reg;
+    uint32_t index = 0u, base = 0u, scale, indirect;
+    uint32_t index_reg, indirect_mode; int rc;
     if (context == NULL || context->cpu == NULL || target == NULL) return -4;
     if ((encoded & (1u << 11u)) == 0u) {
         if ((encoded & (1u << 7u)) != 0u) base = pc_base;
@@ -195,17 +208,34 @@ static int full_indexed_target(struct amivm_jit_context *context, uint32_t pc_ba
         scale = 1u << ((encoded >> 5u) & 3u);
         index *= scale;
     }
-    *target = base + base_displacement + index;
-    return 0;
+    indirect_mode = (encoded >> 13u) & 3u;
+    if (indirect_mode == AMIVM_EA_INDIRECT_NONE) {
+        *target = base + base_displacement + index;
+        return 0;
+    }
+    if (indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED) {
+        rc = read_logical_long(context, base + base_displacement + index, &indirect);
+        if (rc != 0) return rc;
+        *target = indirect + outer_displacement;
+        return 0;
+    }
+    if (indirect_mode == AMIVM_EA_INDIRECT_POSTINDEXED) {
+        rc = read_logical_long(context, base + base_displacement, &indirect);
+        if (rc != 0) return rc;
+        *target = indirect + index + outer_displacement;
+        return 0;
+    }
+    return -4;
 }
 
 int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
                                       uint32_t return_pc, uint32_t encoded,
-                                      uint32_t base_displacement)
+                                      uint32_t base_displacement,
+                                      uint32_t outer_displacement)
 {
     uint32_t target; int rc;
     rc = full_indexed_target(context, return_pc - 2u, encoded,
-                             base_displacement, &target);
+                             base_displacement, outer_displacement, &target);
     if (rc != 0) return rc;
     rc = amivm_jit_helper_stack_push_long(context, return_pc);
     if (rc != 0) return rc;
@@ -215,10 +245,12 @@ int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
 
 int amivm_jit_helper_jmp_full_indexed(struct amivm_jit_context *context,
                                       uint32_t pc_base, uint32_t encoded,
-                                      uint32_t base_displacement)
+                                      uint32_t base_displacement,
+                                      uint32_t outer_displacement)
 {
     uint32_t target; int rc;
-    rc = full_indexed_target(context, pc_base, encoded, base_displacement, &target);
+    rc = full_indexed_target(context, pc_base, encoded, base_displacement,
+                             outer_displacement, &target);
     if (rc != 0) return rc;
     context->cpu->pc = target;
     return 0;
