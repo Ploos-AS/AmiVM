@@ -235,8 +235,9 @@ int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
                                       uint32_t outer_displacement)
 {
     uint32_t target; int rc;
-    rc = full_indexed_target(context, return_pc - 2u, encoded,
-                             base_displacement, outer_displacement, &target);
+    rc = full_indexed_target(context,
+                             return_pc - ((encoded >> 16u) & 0xffu) + 2u,
+                             encoded, base_displacement, outer_displacement, &target);
     if (rc != 0) return rc;
     rc = amivm_jit_helper_stack_push_long(context, return_pc);
     if (rc != 0) return rc;
