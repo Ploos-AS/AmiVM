@@ -723,8 +723,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                     op->opcode == AMIVM_IR_JMP) &&
                    (op->ea_mode == AMIVM_IR_EA_D8_AN_XN ||
                     op->ea_mode == AMIVM_IR_EA_PC_D8_XN) &&
-                   op->full_format &&
-                   op->indirect_mode == AMIVM_EA_INDIRECT_NONE) {
+                   op->full_format) {
             uintptr_t helper = (uintptr_t)(op->opcode == AMIVM_IR_JSR ?
                                amivm_jit_helper_jsr_full_indexed :
                                amivm_jit_helper_jmp_full_indexed);
