@@ -12,6 +12,7 @@
 enum amivm_jit_arch {
     AMIVM_JIT_ARCH_NONE = 0,
     AMIVM_JIT_ARCH_X86_64,
+    AMIVM_JIT_ARCH_AARCH64,
 };
 
 enum amivm_jit_result {
