@@ -654,8 +654,36 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 case AMIVM_IR_CC_VS: cond = SR_V; break;
                 case AMIVM_IR_CC_PL: cond = SR_N; break;
                 case AMIVM_IR_CC_MI: cond = SR_N; break;
+                case AMIVM_IR_CC_GE:
+                case AMIVM_IR_CC_LT:
+                case AMIVM_IR_CC_GT:
+                case AMIVM_IR_CC_LE:
+                    cond = 0u;
+                    break;
                 default: return AMIVM_JIT_UNSUPPORTED;
                 }
+                if (op->condition == AMIVM_IR_CC_GE ||
+                    op->condition == AMIVM_IR_CC_LT ||
+                    op->condition == AMIVM_IR_CC_GT ||
+                    op->condition == AMIVM_IR_CC_LE) {
+                    /* N xor V in w10; optionally combine with Z. */
+                    rc = emit32(code, 0x53037d2au); /* ubfx w10,w9,#3,#1 */
+                    if (rc != AMIVM_JIT_OK) return rc;
+                    rc = emit32(code, 0x53027d2bu); /* ubfx w11,w9,#2,#1 */
+                    if (rc != AMIVM_JIT_OK) return rc;
+                    rc = emit32(code, 0x53017d2cu); /* ubfx w12,w9,#1,#1 */
+                    if (rc != AMIVM_JIT_OK) return rc;
+                    rc = emit32(code, 0x4a0c014au); /* eor w10,w10,w12 */
+                    if (rc != AMIVM_JIT_OK) return rc;
+                    if (op->condition == AMIVM_IR_CC_GE)
+                        rc = emit32(code, 0x5200014au); /* eor w10,w10,#1 */
+                    else if (op->condition == AMIVM_IR_CC_GT) {
+                        rc = emit32(code, 0x2a0b014au); /* orr w10,w10,w11 */
+                        if (rc == AMIVM_JIT_OK) rc = emit32(code, 0x5200014au);
+                    } else if (op->condition == AMIVM_IR_CC_LE)
+                        rc = emit32(code, 0x2a0b014au); /* orr w10,w10,w11 */
+                    if (rc != AMIVM_JIT_OK) return rc;
+                } else {
                 rc = emit32(code, 0x12001d2au | ((cond & 0x3fu) << 10u));
                 if (rc != AMIVM_JIT_OK) return rc; /* and w10,w9,#mask */
                 rc = emit32(code, 0x7100015fu); if (rc != AMIVM_JIT_OK) return rc;
@@ -668,6 +696,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 else
                     rc = emit32(code, 0x1a9f17eau); /* cset w10,eq */
                 if (rc != AMIVM_JIT_OK) return rc;
+                }
                 cond = 0u;
             }
             /* w11=fallthrough, w12=taken; select target into w9. */
