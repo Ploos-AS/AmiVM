@@ -33,6 +33,11 @@ int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapping == MAP_FAILED) return AMIVM_JIT_EXEC_UNAVAILABLE;
     memcpy(mapping, code->bytes, code->size);
+#if defined(__aarch64__)
+    /* Keep the persistent executable mapping coherent with newly emitted
+       AArch64 instructions before switching it to RX. */
+    __builtin___clear_cache((char *)mapping, (char *)mapping + code->size);
+#endif
     if (mprotect(mapping, code->size, PROT_READ | PROT_EXEC) != 0) {
         (void)munmap(mapping, code->size);
         return AMIVM_JIT_EXEC_UNAVAILABLE;
