@@ -11,7 +11,7 @@ target_compile_options(amivm_core PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-We
 add_executable(amivm src/main.c)
 target_link_libraries(amivm PRIVATE amivm_core)
 target_compile_options(amivm PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
-set(AMIVM_TESTS vm cpu fpu fpu_decode exec ir ir_m219 ir_m220 ea_m221 ir_m222 exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229 jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237 jit_m238 jit_m239 jit_m240 jit_m241 exec_m242 jit_m243 jit_m244 ir_m245 jit_m246 ir_m247 jit_m248 ir_m249 jit_m250 ir_m251 jit_m252 ir_m253 jit_m254 ir_m255 jit_m256 jit_m257 jit_m258 jit_m259 jit_m260 jit_m261 jit_m262 jit_m263 jit_m264 jit_m265 jit_m266 jit_m267 jit_m268)
+set(AMIVM_TESTS vm cpu fpu fpu_decode exec ir ir_m219 ir_m220 ea_m221 ir_m222 exec_m223 jit_m224 jit_m225 exec_m226 jit_m227 exec_m228 jit_m229 jit_m230 exec_m231 exec_m233 exec_m234 jit_m235 ir_m236 ir_m237 jit_m238 jit_m239 jit_m240 jit_m241 exec_m242 jit_m243 jit_m244 ir_m245 jit_m246 ir_m247 jit_m248 ir_m249 jit_m250 ir_m251 jit_m252 ir_m253 jit_m254 ir_m255 jit_m256 jit_m257 jit_m258 jit_m259 jit_m260 jit_m261 jit_m262 jit_m263 jit_m264 jit_m265 jit_m266 jit_m267 jit_m268 jit_m269)
 foreach(test_name IN LISTS AMIVM_TESTS)
  add_executable(amivm_${test_name}_tests tests/test_${test_name}.c)
  target_link_libraries(amivm_${test_name}_tests PRIVATE amivm_core)
