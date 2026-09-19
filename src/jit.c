@@ -434,6 +434,41 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
             rc = emit32(code, insn);
             if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode == AMIVM_IR_TST_L) {
+            const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+            if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            if ((d_offset & 3u) != 0u || d_offset > (4095u * 4u) ||
+                (sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                return AMIVM_JIT_UNSUPPORTED;
+            /* LDR w9, [x0,#d_offset]; derive 68k N/Z in w11. */
+            insn = 0xb9400009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x7100013fu); /* cmp w9,#0 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x1a9f17ebu); /* cset w11,eq */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531f7d29u); /* lsr w9,w9,#31 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531e756bu); /* lsl w11,w11,#2 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531d7129u); /* lsl w9,w9,#3 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a09016bu); /* orr w11,w11,w9 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            /* Preserve X and unrelated SR bits, clear NZVC, merge N/Z. */
+            insn = 0x7940000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x121c2d4au); /* and w10,w10,#0xfff0 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au); /* orr w10,w10,w11 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
