@@ -578,6 +578,43 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             rc = emit32(code, 0x2a0a016bu); if (rc != AMIVM_JIT_OK) return rc;
             insn = 0x7900000bu | (((uint32_t)sr_offset / 2u) << 10u);
             rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode == AMIVM_IR_AND_L ||
+                   op->opcode == AMIVM_IR_OR_L ||
+                   op->opcode == AMIVM_IR_EOR_L) {
+            const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+            size_t src_offset;
+            if (op->reg >= 8u || op->src_reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            src_offset = offsetof(struct amivm_cpu_state, d) +
+                         ((size_t)op->src_reg * sizeof(uint32_t));
+            if ((d_offset & 3u) != 0u || (src_offset & 3u) != 0u ||
+                d_offset > (4095u * 4u) || src_offset > (4095u * 4u) ||
+                (sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                return AMIVM_JIT_UNSUPPORTED;
+            insn = 0xb9400009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0xb940000au | (((uint32_t)src_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            if (op->opcode == AMIVM_IR_AND_L) insn = 0x0a0a0129u;
+            else if (op->opcode == AMIVM_IR_OR_L) insn = 0x2a0a0129u;
+            else insn = 0x4a0a0129u;
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0xb9000009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            /* Logical ops set N/Z, clear V/C and preserve X. */
+            rc = emit32(code, 0x7100013fu); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x1a9f17ebu); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531e756bu); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531f7d29u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531d7129u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a09016bu); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x7940000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x121c2d4au); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
