@@ -15,7 +15,7 @@ AmiVM is intended for:
 - Linux/m68k, including m68kDeb development and qualification
 - NetBSD/m68k
 - OpenBSD/m68k where the maintained port and machine requirements permit
-- high-performance 68k development and CI workloads
+- high-performance native 68k compilation, development and CI workloads
 - workstation applications such as rendering, scenery generation and animation
 - future workstation-style and appliance use
 
@@ -86,6 +86,20 @@ AmiVM treats operating-system support as a first-class compatibility contract ra
 - **AmigaOS 3.x** — Tier 1 classic Amiga target through the Amiga-compatible bootstrap/device path.
 
 The Hyper profile remains a clean high-performance 68k VM for operating systems able to use AmiVM-native devices. The Compatibility profile adds Amiga conventions only where required by AmigaOS-class software.
+
+## Performance workloads
+
+AmiVM explicitly targets workloads that benefit from a 68k machine unconstrained by historical hardware performance:
+
+- native m68k compilation with GCC/binutils/make and other native toolchains;
+- full native package builds inside Linux/m68k and m68kDeb;
+- AmigaOS/AROS native software builds and qualification;
+- CPU/FPU-heavy classic workstation software;
+- Vista and VistaPro rendering;
+- Scenery Animator workloads;
+- reproducible build and benchmark jobs suitable for CI.
+
+Native compilation is a first-class performance goal: AmiVM should make it practical to build m68k software inside a real m68k guest while approaching the convenience expected from modern development infrastructure.
 
 ## Relationship to existing emulators
 
