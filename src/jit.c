@@ -328,6 +328,8 @@ int amivm_jit_host_arch(void)
 {
 #if defined(__x86_64__) || defined(_M_X64)
     return AMIVM_JIT_ARCH_X86_64;
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    return AMIVM_JIT_ARCH_AARCH64;
 #else
     return AMIVM_JIT_ARCH_NONE;
 #endif
