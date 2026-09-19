@@ -106,9 +106,13 @@ The boot contract should support:
 
 The final handoff format will be selected after validating what is least invasive for upstream or maintained Linux/m68k support.
 
+### BSD guests
+
+NetBSD/m68k is a Tier-1 guest target and should use the Hyper machine contracts where practical. OpenBSD/m68k is a supported target where its current m68k port and machine requirements permit practical bring-up. Guest-specific support should prefer native AmiVM drivers rather than changing Hyper into a historical machine model.
+
 ### AmigaOS / AROS
 
-These guests are not required to use the Linux boot contract.
+AROS/m68k and AmigaOS 3.x are Tier-1 guest targets. These guests are not required to use the Linux boot contract.
 
 AmiVM will provide a separate compatibility/bootstrap layer and native guest drivers where necessary. The Hyper machine should not become coupled to undocumented historical hardware behaviour merely to make this path work.
 
