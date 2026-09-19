@@ -13,6 +13,8 @@ AmiVM is intended for:
 - AmigaOS-class 68k operating systems
 - AROS/m68k
 - Linux/m68k, including m68kDeb development and qualification
+- NetBSD/m68k
+- OpenBSD/m68k where the maintained port and machine requirements permit
 - high-performance 68k development and CI workloads
 - workstation applications such as rendering, scenery generation and animation
 - future workstation-style and appliance use
@@ -71,7 +73,19 @@ The M1 device registry and map are intentionally small and deterministic. They m
 - `vmgfx` — linear framebuffer / RTG-class graphics
 - `vmaudio.device` — low-overhead audio path
 
-Linux/m68k may use native AmiVM drivers instead of AmigaOS device interfaces.
+Linux/m68k, NetBSD/m68k and OpenBSD/m68k may use native AmiVM drivers instead of AmigaOS device interfaces. AROS/m68k and AmigaOS use Amiga-compatible bindings and, where appropriate, the Compatibility profile.
+
+## Guest operating-system targets
+
+AmiVM treats operating-system support as a first-class compatibility contract rather than an incidental side effect. The primary targets are:
+
+- **Linux/m68k** — Tier 1; first kernel bring-up target and m68kDeb qualification platform.
+- **NetBSD/m68k** — Tier 1 BSD target.
+- **OpenBSD/m68k** — supported where the maintained m68k port and machine requirements make an AmiVM target practical.
+- **AROS/m68k** — Tier 1 Amiga-compatible target and a key freely redistributable CI guest.
+- **AmigaOS 3.x** — Tier 1 classic Amiga target through the Amiga-compatible bootstrap/device path.
+
+The Hyper profile remains a clean high-performance 68k VM for operating systems able to use AmiVM-native devices. The Compatibility profile adds Amiga conventions only where required by AmigaOS-class software.
 
 ## Relationship to existing emulators
 
