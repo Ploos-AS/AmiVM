@@ -627,6 +627,69 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
             insn = 0xb9000009u | (((uint32_t)pc_offset / 4u) << 10u);
             rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode == AMIVM_IR_BRANCH_CC) {
+            const size_t pc_offset = offsetof(struct amivm_cpu_state, pc);
+            const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+            uint32_t taken = op->guest_pc + 2u + (uint32_t)op->imm;
+            uint32_t fallthrough = op->guest_pc + 2u;
+            uint32_t cond;
+            if ((pc_offset & 3u) != 0u || pc_offset > (4095u * 4u) ||
+                (sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                return AMIVM_JIT_UNSUPPORTED;
+            if (op->condition == AMIVM_IR_CC_T) {
+                cond = 1u;
+            } else {
+                /* Compute condition at compile-generated runtime from 68k SR.
+                   w9=SR, w10=boolean. */
+                insn = 0x79400009u | (((uint32_t)sr_offset / 2u) << 10u);
+                rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+                switch (op->condition) {
+                case AMIVM_IR_CC_HI: cond = 0x5u; break; /* !(C|Z) */
+                case AMIVM_IR_CC_LS: cond = 0x5u; break;
+                case AMIVM_IR_CC_CC: cond = SR_C; break;
+                case AMIVM_IR_CC_CS: cond = SR_C; break;
+                case AMIVM_IR_CC_NE: cond = SR_Z; break;
+                case AMIVM_IR_CC_EQ: cond = SR_Z; break;
+                case AMIVM_IR_CC_VC: cond = SR_V; break;
+                case AMIVM_IR_CC_VS: cond = SR_V; break;
+                case AMIVM_IR_CC_PL: cond = SR_N; break;
+                case AMIVM_IR_CC_MI: cond = SR_N; break;
+                default: return AMIVM_JIT_UNSUPPORTED;
+                }
+                rc = emit32(code, 0x12001d2au | ((cond & 0x3fu) << 10u));
+                if (rc != AMIVM_JIT_OK) return rc; /* and w10,w9,#mask */
+                rc = emit32(code, 0x7100015fu); if (rc != AMIVM_JIT_OK) return rc;
+                if (op->condition == AMIVM_IR_CC_LS ||
+                    op->condition == AMIVM_IR_CC_CS ||
+                    op->condition == AMIVM_IR_CC_EQ ||
+                    op->condition == AMIVM_IR_CC_VS ||
+                    op->condition == AMIVM_IR_CC_MI)
+                    rc = emit32(code, 0x1a9f07eau); /* cset w10,ne */
+                else
+                    rc = emit32(code, 0x1a9f17eau); /* cset w10,eq */
+                if (rc != AMIVM_JIT_OK) return rc;
+                cond = 0u;
+            }
+            /* w11=fallthrough, w12=taken; select target into w9. */
+            insn = 0x5280000bu | ((fallthrough & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x72a0000bu | (((fallthrough >> 16u) & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x5280000cu | ((taken & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x72a0000cu | (((taken >> 16u) & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            if (op->condition == AMIVM_IR_CC_T) {
+                rc = emit32(code, 0x2a0c03e9u); /* mov w9,w12 */
+            } else {
+                rc = emit32(code, 0x7100015fu); /* cmp w10,#0 */
+                if (rc == AMIVM_JIT_OK)
+                    rc = emit32(code, 0x1a8b1189u); /* csel w9,w12,w11,ne */
+            }
+            if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0xb9000009u | (((uint32_t)pc_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            (void)cond;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
