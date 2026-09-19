@@ -45,14 +45,26 @@ M1 is complete when the host can instantiate the Hyper/040 machine model without
 - Interpreter/reference mode for debugging where practical.
 - Begin x86-64 and AArch64 JIT/dynarec qualification.
 
-## M3 — Linux/m68k bring-up
+## M3 — 68k guest OS bring-up
 
-- Define Linux machine/boot contract.
-- Kernel command line and initrd handoff.
+Linux/m68k is the first bring-up guest, but the machine and device contracts must remain OS-neutral so BSD and Amiga-family guests can follow without redesigning Hyper/040.
+
+- Define an OS-neutral Hyper/040 machine and boot contract.
+- Linux/m68k kernel command line and initrd handoff.
 - `vmserial` Linux driver or early-console equivalent.
 - Timer and interrupt support.
-- First kernel boot to early userspace.
+- First Linux kernel boot to early userspace.
 - Integrate AmiVM as an m68kDeb runtime target.
+- Bring up NetBSD/m68k on Hyper/040 and add native AmiVM device support where required.
+- Bring up OpenBSD/m68k where the maintained port and machine requirements permit a practical AmiVM target.
+- Bring up AROS/m68k using the Hyper machine where possible and Amiga-compatible bindings where required.
+- Establish the AmigaOS 3.x bootstrap/device contract for the Compatibility profile.
+
+### M3 target matrix
+
+- **Tier 1:** Linux/m68k, NetBSD/m68k, AROS/m68k, AmigaOS 3.x.
+- **Supported/qualified where practical:** OpenBSD/m68k, subject to the maintained port and its machine requirements.
+- Guest-specific boot mechanisms and drivers must not force unrelated historical hardware into the Hyper profile.
 
 ## M4 — High-performance virtual I/O
 
@@ -104,6 +116,9 @@ M1 is complete when the host can instantiate the Hyper/040 machine model without
 - stable machine ABI/versioning.
 - guest driver packages.
 - Linux/m68k reference images.
+- NetBSD/m68k reference/test images where redistribution permits.
+- OpenBSD/m68k qualification recipes where applicable.
+- AROS/m68k reference/test images.
 - Amiga-compatible driver bundles.
 - reproducible release builds.
 - amd64 and arm64 release artifacts.
