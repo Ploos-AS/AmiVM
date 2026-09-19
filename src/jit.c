@@ -469,6 +469,60 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
             rc = emit32(code, insn);
             if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode == AMIVM_IR_ADDQ_L ||
+                   op->opcode == AMIVM_IR_SUBQ_L) {
+            const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+            uint32_t quick = (uint32_t)op->imm;
+            if (op->reg >= 8u || quick == 0u || quick > 8u)
+                return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            if ((d_offset & 3u) != 0u || d_offset > (4095u * 4u) ||
+                (sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                return AMIVM_JIT_UNSUPPORTED;
+            /* LDR w9,[x0,#d]; ADDS/SUBS w9,w9,#quick; STR w9. */
+            insn = 0xb9400009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = (op->opcode == AMIVM_IR_ADDQ_L ? 0x31000129u : 0x71000129u) |
+                   (quick << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0xb9000009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            /* Build 68k XNZVC from AArch64 NZCV. C is inverted for SUBS. */
+            rc = emit32(code, 0x1a9f57eau); /* cset w10,mi (N) */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531d714au); /* lsl w10,w10,#3 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x1a9f17ebu); /* cset w11,eq (Z) */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531e756bu); /* lsl w11,w11,#2 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au); /* orr w10,w10,w11 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x1a9f77ebu); /* cset w11,vs (V) */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531f796bu); /* lsl w11,w11,#1 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, op->opcode == AMIVM_IR_ADDQ_L ?
+                        0x1a9f37ebu : 0x1a9f27ebu); /* cset cs / cc */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au); /* merge C */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x531c716bu); /* lsl w11,w11,#4 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0b014au); /* merge X */
+            if (rc != AMIVM_JIT_OK) return rc;
+            /* Preserve upper SR bits; replace XNZVC. */
+            insn = 0x7940000bu | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x121b296bu); /* and w11,w11,#0xffe0 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x2a0a016bu); /* orr w11,w11,w10 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x7900000bu | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
