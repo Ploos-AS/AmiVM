@@ -411,6 +411,29 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 rc = emit32(code, insn);
                 if (rc != AMIVM_JIT_OK) return rc;
             }
+        } else if (op->opcode == AMIVM_IR_CLR_L) {
+            const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+            if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            if ((d_offset & 3u) != 0u || d_offset > (4095u * 4u) ||
+                (sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                return AMIVM_JIT_UNSUPPORTED;
+            /* STR wzr, [x0, #d_offset]. */
+            insn = 0xb900001fu | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            /* CLR.L clears N/V/C, sets Z and preserves X. */
+            insn = 0x7940000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x121c2d4au); /* and w10,w10,#0xfff0 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0x321e014au); /* orr w10,w10,#0x4 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
