@@ -134,6 +134,14 @@ M2 starts by defining that internal CPU-backend API, reset semantics and interru
 
 Raw benchmark speed is not sufficient if exception/MMU behaviour prevents modern kernels from running correctly.
 
+### Native development workload
+
+Fast native m68k development is a first-class AmiVM use case. Linux/m68k, m68kDeb, AROS/m68k and AmigaOS guests should be able to run native compilers, assemblers, linkers and build tools efficiently. Native GCC/binutils/make builds will therefore be used as both functional qualification and performance benchmarks. This complements cross-compilation: cross builds remain useful for throughput, while AmiVM provides fast execution in the actual target architecture for native builds, package construction and qualification.
+
+### Classic workstation workload
+
+The Amiga-compatible path explicitly targets CPU/FPU-intensive workstation applications. Vista, VistaPro and Scenery Animator are named qualification targets, subject to legal availability of the software and benchmark material. Reproducible rendering/scenery workloads should measure CPU/FPU execution, memory performance and storage behaviour without requiring cycle-exact chipset timing.
+
 ## 8. Lessons adopted from existing projects
 
 ### ARAnyM
