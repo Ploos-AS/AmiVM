@@ -354,9 +354,34 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
         return AMIVM_JIT_INVALID;
     amivm_jit_code_init(code);
     if (code->arch == AMIVM_JIT_ARCH_AARCH64) {
-        /* M2.60: minimal native AArch64 block. Full IR lowering follows. */
-        if (block->op_count != 1u || block->ops[0].opcode != AMIVM_IR_NOP)
+        const struct amivm_ir_op *op;
+        size_t d_offset;
+        uint32_t value;
+        uint32_t insn;
+
+        if (block->op_count != 1u) return AMIVM_JIT_UNSUPPORTED;
+        op = &block->ops[0];
+        if (op->opcode == AMIVM_IR_MOVEQ) {
+            if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+            value = (uint32_t)op->imm;
+            d_offset = offsetof(struct amivm_cpu_state, d) +
+                       ((size_t)op->reg * sizeof(uint32_t));
+            if ((d_offset & 3u) != 0u || d_offset > (4095u * 4u))
+                return AMIVM_JIT_UNSUPPORTED;
+            /* MOVZ/MOVK w9 materialize the 32-bit MOVEQ result. */
+            insn = 0x52800009u | ((value & 0xffffu) << 5u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x72a00009u | (((value >> 16u) & 0xffffu) << 5u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+            /* STR w9, [x0, #d_offset]. */
+            insn = 0xb9000009u | (((uint32_t)d_offset / 4u) << 10u);
+            rc = emit32(code, insn);
+            if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
+        }
         rc = emit32(code, 0x52800020u); /* mov w0, #1 */
         if (rc != AMIVM_JIT_OK) return rc;
         rc = emit32(code, 0xd65f03c0u); /* ret */
