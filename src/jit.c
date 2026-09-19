@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
 #include <sys/mman.h>
 #endif
 
@@ -353,6 +353,19 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
     if (block == NULL || code == NULL || block->op_count == 0u)
         return AMIVM_JIT_INVALID;
     amivm_jit_code_init(code);
+    if (code->arch == AMIVM_JIT_ARCH_AARCH64) {
+        /* M2.60: minimal native AArch64 block. Full IR lowering follows. */
+        if (block->op_count != 1u || block->ops[0].opcode != AMIVM_IR_NOP)
+            return AMIVM_JIT_UNSUPPORTED;
+        rc = emit32(code, 0x52800020u); /* mov w0, #1 */
+        if (rc != AMIVM_JIT_OK) return rc;
+        rc = emit32(code, 0xd65f03c0u); /* ret */
+        if (rc != AMIVM_JIT_OK) return rc;
+        code->guest_instructions = 1u;
+        code->guest_start_pc = block->guest_start_pc;
+        code->guest_end_pc = block->guest_end_pc;
+        return AMIVM_JIT_OK;
+    }
     if (code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_UNSUPPORTED;
 
     for (i = 0u; i < block->op_count; ++i) {
@@ -474,7 +487,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
 int amivm_jit_execute(const struct amivm_jit_code *code,
                       struct amivm_cpu_state *cpu)
 {
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
     typedef int (*jit_fn)(struct amivm_cpu_state *);
     void *mapping;
     void *entry;
@@ -482,7 +495,8 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
     int rc;
 
     if (code == NULL || cpu == NULL || code->size == 0u ||
-        code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_INVALID;
+        code->arch != (enum amivm_jit_arch)amivm_jit_host_arch())
+        return AMIVM_JIT_INVALID;
     mapping = mmap(NULL, code->size, PROT_READ | PROT_WRITE,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapping == MAP_FAILED) return AMIVM_JIT_EXEC_UNAVAILABLE;
