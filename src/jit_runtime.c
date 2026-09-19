@@ -6,7 +6,7 @@
 
 #include <string.h>
 
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
 #include <sys/mman.h>
 #endif
 
@@ -21,11 +21,12 @@ void amivm_jit_runtime_init(struct amivm_jit_runtime *runtime)
 int amivm_jit_runtime_prepare(struct amivm_jit_runtime *runtime,
                               const struct amivm_jit_code *code)
 {
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
     void *mapping;
 
     if (runtime == NULL || code == NULL || code->size == 0u ||
-        code->arch != AMIVM_JIT_ARCH_X86_64) return AMIVM_JIT_INVALID;
+        code->arch != (enum amivm_jit_arch)amivm_jit_host_arch())
+        return AMIVM_JIT_INVALID;
 
     amivm_jit_runtime_release(runtime);
     mapping = mmap(NULL, code->size, PROT_READ | PROT_WRITE,
@@ -51,7 +52,7 @@ int amivm_jit_runtime_execute_context(const struct amivm_jit_runtime *runtime,
                                       struct amivm_cpu_state *cpu,
                                       struct amivm_jit_context *context)
 {
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
     typedef int (*jit_fn)(struct amivm_cpu_state *, struct amivm_jit_context *);
     void *entry;
     jit_fn fn;
@@ -81,7 +82,7 @@ int amivm_jit_runtime_execute(const struct amivm_jit_runtime *runtime,
 void amivm_jit_runtime_release(struct amivm_jit_runtime *runtime)
 {
     if (runtime == NULL) return;
-#if defined(__x86_64__) && defined(__linux__)
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
     if (runtime->mapping != NULL && runtime->mapping_size != 0u)
         (void)munmap(runtime->mapping, runtime->mapping_size);
 #endif
