@@ -615,6 +615,18 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             rc = emit32(code, 0x2a0b014au); if (rc != AMIVM_JIT_OK) return rc;
             insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
             rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+        } else if (op->opcode == AMIVM_IR_BRANCH) {
+            const size_t pc_offset = offsetof(struct amivm_cpu_state, pc);
+            uint32_t target = op->guest_pc + 2u + (uint32_t)op->imm;
+            if ((pc_offset & 3u) != 0u || pc_offset > (4095u * 4u))
+                return AMIVM_JIT_UNSUPPORTED;
+            /* Materialize branch target in w9 and store CPU PC. */
+            insn = 0x52800009u | ((target & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0x72a00009u | (((target >> 16u) & 0xffffu) << 5u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            insn = 0xb9000009u | (((uint32_t)pc_offset / 4u) << 10u);
+            rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
