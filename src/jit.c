@@ -721,6 +721,56 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             (void)cond;
         } else if ((op->opcode == AMIVM_IR_JSR ||
                     op->opcode == AMIVM_IR_JMP) &&
+                   (op->ea_mode == AMIVM_IR_EA_D16_AN ||
+                    op->ea_mode == AMIVM_IR_EA_PC_D16)) {
+            uintptr_t helper;
+            unsigned shift;
+            uint32_t return_pc = op->guest_pc +
+                                 (op->instruction_bytes ? op->instruction_bytes : 4u);
+            uint32_t encoded;
+            if (op->ea_mode == AMIVM_IR_EA_D16_AN) {
+                if (op->reg >= 8u) return AMIVM_JIT_INVALID;
+                encoded = ((uint32_t)op->reg & 7u) |
+                          ((uint32_t)(uint16_t)op->imm << 16u);
+                helper = (uintptr_t)(op->opcode == AMIVM_IR_JSR ?
+                         amivm_jit_helper_jsr_d16_an : amivm_jit_helper_jmp_d16_an);
+            } else {
+                /* PC-relative d16 target is static: extension-word PC + displacement. */
+                uint32_t target = op->guest_pc + 2u + (uint32_t)op->imm;
+                helper = (uintptr_t)(op->opcode == AMIVM_IR_JSR ?
+                         amivm_jit_helper_bsr : amivm_jit_helper_jmp_abs);
+                encoded = target;
+            }
+            code->requires_context = 1;
+            rc = emit32(code, 0xaa0103e0u); if (rc != AMIVM_JIT_OK) return rc;
+            if (op->opcode == AMIVM_IR_JSR) {
+                rc = emit32(code, 0x52800001u | ((return_pc & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x72a00001u | (((return_pc >> 16u) & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x52800002u | ((encoded & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x72a00002u | (((encoded >> 16u) & 0xffffu) << 5u));
+            } else {
+                rc = emit32(code, 0x52800001u | ((encoded & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x72a00001u | (((encoded >> 16u) & 0xffffu) << 5u));
+            }
+            if (rc != AMIVM_JIT_OK) return rc;
+            for (shift = 0u; shift < 64u; shift += 16u) {
+                uint32_t part = (uint32_t)((helper >> shift) & 0xffffu);
+                insn = (shift == 0u ? 0xd2800010u : 0xf2800010u) |
+                       (part << 5u) | ((shift / 16u) << 21u);
+                rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            }
+            rc = emit32(code, 0xd63f0200u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0xd65f03c0u); if (rc != AMIVM_JIT_OK) return rc;
+            code->guest_instructions = 1u;
+            code->guest_start_pc = block->guest_start_pc;
+            code->guest_end_pc = block->guest_end_pc;
+            return AMIVM_JIT_OK;
+        } else if ((op->opcode == AMIVM_IR_JSR ||
+                    op->opcode == AMIVM_IR_JMP) &&
                    (op->ea_mode == AMIVM_IR_EA_ABS_W ||
                     op->ea_mode == AMIVM_IR_EA_ABS_L)) {
             uintptr_t helper = (uintptr_t)(op->opcode == AMIVM_IR_JSR ?
