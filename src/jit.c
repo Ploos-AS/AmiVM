@@ -2,7 +2,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include "jit.h"
+#include "jit.h"\n#include "jit_helpers.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -719,6 +719,44 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             insn = 0xb9000009u | (((uint32_t)pc_offset / 4u) << 10u);
             rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
             (void)cond;
+        } else if (op->opcode == AMIVM_IR_BSR ||
+                   op->opcode == AMIVM_IR_RTS) {
+            uintptr_t helper = (uintptr_t)(op->opcode == AMIVM_IR_BSR ?
+                               amivm_jit_helper_bsr : amivm_jit_helper_rts);
+            unsigned shift;
+            code->requires_context = 1;
+            /* AArch64 context entry ABI is x0=cpu, x1=context.
+               Helpers take context as x0. */
+            rc = emit32(code, 0xaa0103e0u); /* mov x0,x1 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            if (op->opcode == AMIVM_IR_BSR) {
+                uint32_t return_pc = op->guest_pc +
+                                     (op->instruction_bytes ? op->instruction_bytes : 2u);
+                uint32_t target_pc = op->guest_pc + 2u + (uint32_t)op->imm;
+                rc = emit32(code, 0x52800001u | ((return_pc & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x72a00001u | (((return_pc >> 16u) & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x52800002u | ((target_pc & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, 0x72a00002u | (((target_pc >> 16u) & 0xffffu) << 5u));
+                if (rc != AMIVM_JIT_OK) return rc;
+            }
+            /* Materialize helper address in x16, then BLR x16. */
+            for (shift = 0u; shift < 64u; shift += 16u) {
+                uint32_t part = (uint32_t)((helper >> shift) & 0xffffu);
+                insn = (shift == 0u ? 0xd2800010u : 0xf2800010u) |
+                       (part << 5u) | ((shift / 16u) << 21u);
+                rc = emit32(code, insn); if (rc != AMIVM_JIT_OK) return rc;
+            }
+            rc = emit32(code, 0xd63f0200u); /* blr x16 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, 0xd65f03c0u); /* ret; helper rc already in w0 */
+            if (rc != AMIVM_JIT_OK) return rc;
+            code->guest_instructions = 1u;
+            code->guest_start_pc = block->guest_start_pc;
+            code->guest_end_pc = block->guest_end_pc;
+            return AMIVM_JIT_OK;
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
