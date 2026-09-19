@@ -379,6 +379,38 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             insn = 0xb9000009u | (((uint32_t)d_offset / 4u) << 10u);
             rc = emit32(code, insn);
             if (rc != AMIVM_JIT_OK) return rc;
+            /* MOVEQ updates N/Z and clears V/C while preserving X.
+               Load/store SR as a halfword; immediates are known at compile time. */
+            {
+                const size_t sr_offset = offsetof(struct amivm_cpu_state, sr);
+                uint16_t flags = 0u;
+                uint16_t sr_clear = (uint16_t)~SR_NZVC;
+                if ((value & 0x80000000u) != 0u) flags |= SR_N;
+                if (value == 0u) flags |= SR_Z;
+                if ((sr_offset & 1u) != 0u || sr_offset > (4095u * 2u))
+                    return AMIVM_JIT_UNSUPPORTED;
+                /* LDRH w10, [x0, #sr_offset] */
+                insn = 0x7940000au | (((uint32_t)sr_offset / 2u) << 10u);
+                rc = emit32(code, insn);
+                if (rc != AMIVM_JIT_OK) return rc;
+                /* AND w10, w10, #0xfff0 (logical immediate). */
+                insn = 0x121c2d4au;
+                rc = emit32(code, insn);
+                if (rc != AMIVM_JIT_OK) return rc;
+                (void)sr_clear;
+                if (flags != 0u) {
+                    /* MOVZ w11, #flags; ORR w10,w10,w11. */
+                    insn = 0x5280000bu | ((uint32_t)flags << 5u);
+                    rc = emit32(code, insn);
+                    if (rc != AMIVM_JIT_OK) return rc;
+                    rc = emit32(code, 0x2a0b014au);
+                    if (rc != AMIVM_JIT_OK) return rc;
+                }
+                /* STRH w10, [x0, #sr_offset] */
+                insn = 0x7900000au | (((uint32_t)sr_offset / 2u) << 10u);
+                rc = emit32(code, insn);
+                if (rc != AMIVM_JIT_OK) return rc;
+            }
         } else if (op->opcode != AMIVM_IR_NOP) {
             return AMIVM_JIT_UNSUPPORTED;
         }
