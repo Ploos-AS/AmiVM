@@ -55,6 +55,7 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Timer and interrupt support.
 - First Linux kernel boot to early userspace.
 - Integrate AmiVM as an m68kDeb runtime target.
+- Qualify native m68k GCC/binutils/make builds inside Linux/m68k and record a reproducible build-performance baseline.
 - Bring up NetBSD/m68k on Hyper/040 and add native AmiVM device support where required.
 - Bring up OpenBSD/m68k where the maintained port and machine requirements permit a practical AmiVM target.
 - Bring up AROS/m68k using the Hyper machine where possible and Amiga-compatible bindings where required.
@@ -100,7 +101,11 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - reduced interrupt overhead.
 - zero-copy opportunities.
 - benchmark against Amiberry, FS-UAE, ARAnyM and QEMU/m68k where comparisons are meaningful.
-- add CPU/rendering workstation benchmarks representative of Vista/VistaPro, Scenery Animator and similar applications when suitable test material is available.
+- make native m68k compilation a primary performance benchmark, including clean GCC/binutils/make project builds and representative m68kDeb package builds.
+- compare native AmiVM build throughput with representative physical/emulated 68k environments where meaningful.
+- qualify Vista, VistaPro and Scenery Animator as named Amiga workstation workloads where legally available.
+- record CPU/FPU rendering timings using reproducible scenes/workloads suitable for redistribution or documented user-supplied test data.
+- track benchmark regressions in CI where licensing and runtime requirements permit.
 
 ## M8 — Developer and automation platform
 
