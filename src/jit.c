@@ -2,7 +2,8 @@
 #define _GNU_SOURCE
 #endif
 
-#include "jit.h"\n#include "jit_helpers.h"
+#include "jit.h"
+#include "jit_helpers.h"
 
 #include <stddef.h>
 #include <stdint.h>
