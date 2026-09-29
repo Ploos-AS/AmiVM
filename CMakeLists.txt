@@ -28,3 +28,13 @@ foreach(test_name IN LISTS AMIVM_TESTS)
  add_test(NAME amivm_${test_name} COMMAND amivm_${test_name}_tests)
 endforeach()
 add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
+
+# M2 qualification gate: keep the architectural exit-contract tests grouped
+# under one CTest label so CI can prove the CPU execution foundation
+# independently from the full regression suite.
+set_tests_properties(
+  amivm_cpu
+  amivm_fpu
+  amivm_fpu_decode
+  PROPERTIES LABELS "m2-qualification"
+)
