@@ -111,9 +111,11 @@ bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root)
     uint32_t upper;
     if (root == NULL) return false;
     upper = (uint32_t)(raw >> 32u);
-    root->limit_word = upper;
+    root->lower_limit = (upper & 0x80000000u) != 0u;
+    root->limit = (uint16_t)((upper >> 16u) & 0x7fffu);
+    root->shared_globally = (upper & 0x00000200u) != 0u;
     root->type = (enum amivm_pmmu51_root_type)(upper & 3u);
-    root->table_address = (uint32_t)raw;
+    root->table_address = (uint32_t)raw & 0xfffffff0u;
     return root->type != AMIVM_PMMU51_ROOT_INVALID;
 }
 
@@ -240,6 +242,11 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
             return AMIVM_MMU_FAULT_ROOT;
+        }
+        if ((!rp.lower_limit && i1 > rp.limit) ||
+            (rp.lower_limit && i1 < rp.limit)) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_LIMIT;
+            return AMIVM_MMU_FAULT_LIMIT;
         }
         root = rp.table_address & PMMU51_ADDR_MASK;
     }
