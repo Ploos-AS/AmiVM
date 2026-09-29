@@ -649,9 +649,9 @@ static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 
     /* MC68851 PMOVE format-1 extension: class 010, P-register in 12..10,
-     * direction in bit 9. M2.92 initially qualifies longword TC via Dn.
+     * direction in bit 9. M2.93 qualifies longword TC via Dn and (An).
      */
-    if ((ext & 0xe1ffu) != 0x4000u || mode != 0u) {
+    if ((ext & 0xe1ffu) != 0x4000u || (mode != 0u && mode != 2u)) {
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
     }
@@ -667,10 +667,17 @@ static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
             return deliver_fault(cpu, vm, instruction_pc);
         }
-        cpu->d[reg] = value;
-    } else if (!amivm_pmmu51_write_register(cpu, AMIVM_PMMU51_REG_TC, cpu->d[reg])) {
-        set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
-        return deliver_fault(cpu, vm, instruction_pc);
+        if (mode == 0u) cpu->d[reg] = value;
+        else if (!cpu_write32(cpu, vm, cpu->a[reg], true, value))
+            return deliver_fault(cpu, vm, instruction_pc);
+    } else {
+        if (mode == 0u) value = cpu->d[reg];
+        else if (!cpu_read32(cpu, vm, cpu->a[reg], true, &value))
+            return deliver_fault(cpu, vm, instruction_pc);
+        if (!amivm_pmmu51_write_register(cpu, AMIVM_PMMU51_REG_TC, value)) {
+            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
+        }
     }
 
     cpu->pc = next_pc + 2u;
