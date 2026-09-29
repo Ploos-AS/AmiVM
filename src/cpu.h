@@ -39,6 +39,14 @@ enum amivm_control_register {
     AMIVM_CR_SRP = 0x807,
 };
 
+enum amivm_pmmu51_status {
+    AMIVM_PMMU51_PSR_OK = 0u,
+    AMIVM_PMMU51_PSR_ROOT = 1u << 0,
+    AMIVM_PMMU51_PSR_PAGE = 1u << 1,
+    AMIVM_PMMU51_PSR_WRITE_PROTECT = 1u << 2,
+    AMIVM_PMMU51_PSR_TABLE_BUS = 1u << 3,
+};
+
 enum amivm_mmu_result {
     AMIVM_MMU_OK = 0,
     AMIVM_MMU_FAULT_ROOT = -1,
