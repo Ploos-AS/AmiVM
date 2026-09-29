@@ -147,6 +147,18 @@ static int mmu_translate_table(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return AMIVM_MMU_OK;
 }
 
+static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                               uint32_t logical, bool write, bool supervisor,
+                               uint32_t *physical)
+{
+    /*
+     * M2.87 PMMU foundation: the external 68851 owns an independent dispatch
+     * boundary and fault/status path. Descriptor-format expansion follows in
+     * later milestones; do not route this through the 68040 backend.
+     */
+    return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
+}
+
 static int mmu_translate_68030(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                uint32_t logical, bool write, bool supervisor,
                                uint32_t *physical)
@@ -188,8 +200,7 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     switch (profile->mmu_model) {
     case AMIVM_MMU_68851:
-        /* M2.86 composition boundary. 68851 descriptor semantics are scaffolded. */
-        return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
+        return mmu_translate_68851(cpu, vm, logical, write, supervisor, physical);
     case AMIVM_MMU_68030:
         return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
     case AMIVM_MMU_68040:
