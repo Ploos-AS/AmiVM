@@ -228,6 +228,8 @@ static bool read_cr(const struct amivm_cpu_state *cpu, uint16_t cr, uint32_t *va
 {
     const struct amivm_cpu_profile *profile = active_profile(cpu);
     if (value == NULL) return false;
+    if (!profile->has_master_stack && (cr == AMIVM_CR_MSP || cr == AMIVM_CR_ISP))
+        return false;
     if (!profile->has_mmu &&
         (cr == AMIVM_CR_TC || cr == AMIVM_CR_MMUSR ||
          cr == AMIVM_CR_URP || cr == AMIVM_CR_SRP)) return false;
@@ -249,6 +251,8 @@ static bool read_cr(const struct amivm_cpu_state *cpu, uint16_t cr, uint32_t *va
 static bool write_cr(struct amivm_cpu_state *cpu, uint16_t cr, uint32_t value)
 {
     const struct amivm_cpu_profile *profile = active_profile(cpu);
+    if (!profile->has_master_stack && (cr == AMIVM_CR_MSP || cr == AMIVM_CR_ISP))
+        return false;
     if (!profile->has_mmu &&
         (cr == AMIVM_CR_TC || cr == AMIVM_CR_URP || cr == AMIVM_CR_SRP))
         return false;
