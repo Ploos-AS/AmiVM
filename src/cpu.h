@@ -54,7 +54,9 @@ enum amivm_pmmu51_root_type {
 };
 
 struct amivm_pmmu51_root {
-    uint32_t limit_word;
+    uint16_t limit;
+    bool lower_limit;
+    bool shared_globally;
     uint32_t table_address;
     enum amivm_pmmu51_root_type type;
 };
@@ -65,6 +67,7 @@ enum amivm_pmmu51_status {
     AMIVM_PMMU51_PSR_PAGE = 1u << 1,
     AMIVM_PMMU51_PSR_WRITE_PROTECT = 1u << 2,
     AMIVM_PMMU51_PSR_TABLE_BUS = 1u << 3,
+    AMIVM_PMMU51_PSR_LIMIT = 1u << 4,
 };
 
 enum amivm_mmu_result {
@@ -73,6 +76,7 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_PAGE = -2,
     AMIVM_MMU_FAULT_WRITE_PROTECT = -3,
     AMIVM_MMU_FAULT_TABLE_BUS = -4,
+    AMIVM_MMU_FAULT_LIMIT = -5,
 };
 
 struct amivm_cpu_state {
