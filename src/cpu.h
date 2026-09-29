@@ -53,6 +53,17 @@ enum amivm_pmmu51_root_type {
     AMIVM_PMMU51_ROOT_TABLE_LONG = 3,
 };
 
+struct amivm_pmmu51_long_descriptor {
+    uint16_t limit;
+    bool lower_limit;
+    bool shared_globally;
+    bool supervisor_only;
+    uint8_t read_access_level;
+    uint8_t write_access_level;
+    uint32_t table_address;
+    enum amivm_pmmu51_root_type type;
+};
+
 struct amivm_pmmu51_root {
     uint16_t limit;
     bool lower_limit;
@@ -132,6 +143,8 @@ bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
                              enum amivm_pmmu51_register reg,
                              uint64_t value);
 bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root);
+bool amivm_pmmu51_decode_long_descriptor(uint64_t raw,
+                                         struct amivm_pmmu51_long_descriptor *desc);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
