@@ -37,8 +37,8 @@ int main(void)
     cpu.urp=0u;
     cpu.srp=0u;
     cpu.pmmu_tc=0x80000000u;
-    cpu.pmmu_crp=root;
-    cpu.pmmu_srp=supervisor_root;
+    cpu.pmmu_crp=(UINT64_C(0x7fff0002)<<32)|root;
+    cpu.pmmu_srp=(UINT64_C(0x7fff0002)<<32)|supervisor_root;
     put32(&vm.ram[0x2000u+4u],l2|2u);
     put32(&vm.ram[0x3000u+4u],page|1u);
     put32(&vm.ram[0x4000u+4u],supervisor_l2|2u);
