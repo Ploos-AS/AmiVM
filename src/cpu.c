@@ -164,34 +164,35 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
+    cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->mmusr = 0u;
     root = (supervisor ? cpu->pmmu_srp : cpu->pmmu_crp) & PMMU51_ADDR_MASK;
     if (root == 0u) {
-        cpu->mmusr = MMUSR_ROOT;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
     }
 
     l1_addr = root + i1 * 4u;
     if (!phys_read32(vm, l1_addr, &l1)) {
-        cpu->mmusr = MMUSR_TABLE;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
         return AMIVM_MMU_FAULT_TABLE_BUS;
     }
     if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
-        cpu->mmusr = MMUSR_ROOT;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
     }
 
     l2_addr = (l1 & PMMU51_ADDR_MASK) + i2 * 4u;
     if (!phys_read32(vm, l2_addr, &l2)) {
-        cpu->mmusr = MMUSR_TABLE;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
         return AMIVM_MMU_FAULT_TABLE_BUS;
     }
     if ((l2 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_PAGE) {
-        cpu->mmusr = MMUSR_PAGE;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_PAGE;
         return AMIVM_MMU_FAULT_PAGE;
     }
     if (write && (l2 & PMMU51_DESC_WP) != 0u) {
-        cpu->mmusr = MMUSR_WP;
+        cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_PROTECT;
         return AMIVM_MMU_FAULT_WRITE_PROTECT;
     }
 
