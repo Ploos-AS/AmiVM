@@ -39,6 +39,13 @@ enum amivm_control_register {
     AMIVM_CR_SRP = 0x807,
 };
 
+enum amivm_pmmu51_register {
+    AMIVM_PMMU51_REG_TC = 0,
+    AMIVM_PMMU51_REG_CRP,
+    AMIVM_PMMU51_REG_SRP,
+    AMIVM_PMMU51_REG_PSR,
+};
+
 enum amivm_pmmu51_status {
     AMIVM_PMMU51_PSR_OK = 0u,
     AMIVM_PMMU51_PSR_ROOT = 1u << 0,
@@ -95,6 +102,12 @@ const struct amivm_cpu_backend *amivm_cpu_reference_backend(void);
 void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
                            const struct amivm_cpu_profile *profile);
 const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
+bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
+                                enum amivm_pmmu51_register reg,
+                                uint32_t *value);
+bool amivm_pmmu51_write_register(struct amivm_cpu_state *cpu,
+                                 enum amivm_pmmu51_register reg,
+                                 uint32_t value);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
