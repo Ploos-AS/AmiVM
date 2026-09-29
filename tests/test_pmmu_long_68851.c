@@ -30,8 +30,15 @@ int main(void){
  CHECK(amivm_pmmu51_set_access_level(&cpu,2u));
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);
  CHECK(pa==page+0x234u);
+ p32(vm.ram+0x2008,0x00010c02u);
+ CHECK(amivm_pmmu51_set_access_level(&cpu,2u));
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,true,false,&pa)==AMIVM_MMU_FAULT_WRITE_ACCESS);
+ CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_WRITE_ACCESS);
+ CHECK(amivm_pmmu51_set_access_level(&cpu,3u));
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,true,false,&pa)==AMIVM_MMU_OK);
+ CHECK(pa==page+0x234u);
  p32(vm.ram+0x2008,0x00000002u);
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_LIMIT);
  CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_LIMIT);
- amivm_vm_destroy(&vm);puts("AmiVM M2.103 68851 read access levels: PASS");return 0;
+ amivm_vm_destroy(&vm);puts("AmiVM M2.104 68851 read/write access levels: PASS");return 0;
 }
