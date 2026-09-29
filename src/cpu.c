@@ -386,6 +386,23 @@ static bool cpu_write32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
            cpu_write8(cpu, vm, addr + 3u, supervisor, (uint8_t)value);
 }
 
+static bool cpu_read64(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                       uint32_t addr, bool supervisor, uint64_t *value)
+{
+    uint32_t hi, lo;
+    if (value == NULL || !cpu_read32(cpu, vm, addr, supervisor, &hi) ||
+        !cpu_read32(cpu, vm, addr + 4u, supervisor, &lo)) return false;
+    *value = ((uint64_t)hi << 32u) | lo;
+    return true;
+}
+
+static bool cpu_write64(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t addr, bool supervisor, uint64_t value)
+{
+    return cpu_write32(cpu, vm, addr, supervisor, (uint32_t)(value >> 32u)) &&
+           cpu_write32(cpu, vm, addr + 4u, supervisor, (uint32_t)value);
+}
+
 static void set_nz32(struct amivm_cpu_state *cpu, uint32_t value)
 {
     cpu->sr &= (uint16_t)~(SR_N | SR_Z | SR_V | SR_C);
@@ -657,6 +674,8 @@ static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     unsigned preg;
     bool pmmu_to_ea;
     uint32_t value;
+    uint64_t root_value;
+    enum amivm_pmmu51_register root_reg;
 
     if (!is_supervisor(cpu)) {
         set_fault(cpu, AMIVM_CPU_FAULT_PRIVILEGE, instruction_pc, opcode);
@@ -667,41 +686,48 @@ static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
     }
-
-    /* MC68851 PMOVE format-1 extension: class 010, P-register in 12..10,
-     * direction in bit 9. M2.93 qualifies longword TC via Dn and (An).
-     */
     if ((ext & 0xe1ffu) != 0x4000u || (mode != 0u && mode != 2u)) {
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
     }
+
     preg = (unsigned)((ext >> 10u) & 7u);
     pmmu_to_ea = (ext & 0x0200u) != 0u;
-    if (preg != 0u) {
-        set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
-        return deliver_fault(cpu, vm, instruction_pc);
-    }
 
-    if (pmmu_to_ea) {
-        if (!amivm_pmmu51_read_register(cpu, AMIVM_PMMU51_REG_TC, &value)) {
-            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
-            return deliver_fault(cpu, vm, instruction_pc);
+    if (preg == 0u) {
+        if (pmmu_to_ea) {
+            if (!amivm_pmmu51_read_register(cpu, AMIVM_PMMU51_REG_TC, &value)) goto illegal;
+            if (mode == 0u) cpu->d[reg] = value;
+            else if (!cpu_write32(cpu, vm, cpu->a[reg], true, value))
+                return deliver_fault(cpu, vm, instruction_pc);
+        } else {
+            if (mode == 0u) value = cpu->d[reg];
+            else if (!cpu_read32(cpu, vm, cpu->a[reg], true, &value))
+                return deliver_fault(cpu, vm, instruction_pc);
+            if (!amivm_pmmu51_write_register(cpu, AMIVM_PMMU51_REG_TC, value)) goto illegal;
         }
-        if (mode == 0u) cpu->d[reg] = value;
-        else if (!cpu_write32(cpu, vm, cpu->a[reg], true, value))
-            return deliver_fault(cpu, vm, instruction_pc);
+    } else if (preg == 2u || preg == 3u) {
+        if (mode != 2u) goto illegal;
+        root_reg = preg == 2u ? AMIVM_PMMU51_REG_SRP : AMIVM_PMMU51_REG_CRP;
+        if (pmmu_to_ea) {
+            if (!amivm_pmmu51_read_root(cpu, root_reg, &root_value)) goto illegal;
+            if (!cpu_write64(cpu, vm, cpu->a[reg], true, root_value))
+                return deliver_fault(cpu, vm, instruction_pc);
+        } else {
+            if (!cpu_read64(cpu, vm, cpu->a[reg], true, &root_value))
+                return deliver_fault(cpu, vm, instruction_pc);
+            if (!amivm_pmmu51_write_root(cpu, root_reg, root_value)) goto illegal;
+        }
     } else {
-        if (mode == 0u) value = cpu->d[reg];
-        else if (!cpu_read32(cpu, vm, cpu->a[reg], true, &value))
-            return deliver_fault(cpu, vm, instruction_pc);
-        if (!amivm_pmmu51_write_register(cpu, AMIVM_PMMU51_REG_TC, value)) {
-            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
-            return deliver_fault(cpu, vm, instruction_pc);
-        }
+        goto illegal;
     }
 
     cpu->pc = next_pc + 2u;
     return 1;
+
+illegal:
+    set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+    return deliver_fault(cpu, vm, instruction_pc);
 }
 
 static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
