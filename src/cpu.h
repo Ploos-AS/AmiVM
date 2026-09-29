@@ -96,6 +96,17 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_WRITE_ACCESS = -8,
 };
 
+#define AMIVM_PMMU51_ATC_ENTRIES 16u
+
+struct amivm_pmmu51_atc_entry {
+    uint32_t logical_page;
+    uint32_t physical_page;
+    uint8_t access_level;
+    bool supervisor;
+    bool shared_globally;
+    bool valid;
+};
+
 struct amivm_cpu_state {
     const struct amivm_cpu_profile *profile;
     uint32_t d[8];
@@ -117,6 +128,8 @@ struct amivm_cpu_state {
     uint32_t pmmu_psr;
     uint8_t pmmu_access_level;
     bool pmmu_last_shared_globally;
+    struct amivm_pmmu51_atc_entry pmmu_atc[AMIVM_PMMU51_ATC_ENTRIES];
+    uint8_t pmmu_atc_next;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
@@ -156,6 +169,7 @@ bool amivm_pmmu51_decode_long_descriptor(uint64_t raw,
 bool amivm_pmmu51_set_access_level(struct amivm_cpu_state *cpu, uint8_t level);
 uint8_t amivm_pmmu51_get_access_level(const struct amivm_cpu_state *cpu);
 bool amivm_pmmu51_last_shared_globally(const struct amivm_cpu_state *cpu);
+void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
