@@ -18,8 +18,13 @@ int main(void){
  p32(vm.ram+0x2008,(uint32_t)(ld>>32));p32(vm.ram+0x200c,(uint32_t)ld);
  p32(vm.ram+0x3004,page|1u);
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
+ p32(vm.ram+0x2008,0x00010102u);
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_SUPERVISOR);
+ CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_SUPERVISOR);
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);
+ CHECK(pa==page+0x234u);
  p32(vm.ram+0x2008,0x00000002u);
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_LIMIT);
  CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_LIMIT);
- amivm_vm_destroy(&vm);puts("AmiVM M2.100 68851 long descriptor limits: PASS");return 0;
+ amivm_vm_destroy(&vm);puts("AmiVM M2.101 68851 supervisor protection: PASS");return 0;
 }
