@@ -148,6 +148,11 @@ uint8_t amivm_pmmu51_get_access_level(const struct amivm_cpu_state *cpu)
     return cpu == NULL ? 0u : (uint8_t)(cpu->pmmu_access_level & 7u);
 }
 
+bool amivm_pmmu51_last_shared_globally(const struct amivm_cpu_state *cpu)
+{
+    return cpu != NULL && cpu->pmmu_last_shared_globally;
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
@@ -258,6 +263,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
+    cpu->pmmu_last_shared_globally = false;
     cpu->mmusr = 0u;
     {
         struct amivm_pmmu51_root rp;
@@ -329,6 +335,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_ACCESS;
             return AMIVM_MMU_FAULT_WRITE_ACCESS;
         }
+        cpu->pmmu_last_shared_globally = ld.shared_globally;
         l2_addr = (ld.table_address & PMMU51_ADDR_MASK) + i2 * 4u;
     } else {
         if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
