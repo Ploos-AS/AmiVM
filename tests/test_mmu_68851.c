@@ -46,6 +46,7 @@ int main(void)
 
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_OK);
     CHECK(physical==page+0x234u);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_OK);
     CHECK(cpu.mmusr==0u);
 
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,true,&physical)==AMIVM_MMU_OK);
@@ -53,24 +54,30 @@ int main(void)
 
     put32(&vm.ram[0x3000u+4u],page|5u);
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,true,false,&physical)==AMIVM_MMU_FAULT_WRITE_PROTECT);
-    CHECK(cpu.mmusr!=0u);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_WRITE_PROTECT);
+    CHECK(cpu.mmusr==0u);
 
     /* A table descriptor is not a terminal page descriptor. */
     put32(&vm.ram[0x3000u+4u],page|2u);
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_PAGE);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_PAGE);
 
     put32(&vm.ram[0x3000u+4u],0u);
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_PAGE);
-    CHECK(cpu.mmusr!=0u);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_PAGE);
+    CHECK(cpu.mmusr==0u);
 
     cpu.pmmu_crp=0u;
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_ROOT);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_ROOT);
+    CHECK(cpu.mmusr==0u);
 
     cpu.pmmu_tc=0u;
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_OK);
     CHECK(physical==logical);
+    CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_OK);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.89 68851 PMMU root/control state: PASS");
+    puts("AmiVM M2.90 68851 PMMU status: PASS");
     return 0;
 }
