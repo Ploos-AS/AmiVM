@@ -46,7 +46,7 @@ Completed or substantially implemented work must still be treated separately fro
 - Supervisor/user state transitions.
 - Exceptions and interrupt injection.
 - MMU support required for Linux/m68k.
-- CPU-profile/MMU dispatch: 68040/Hyper040 is the qualified M2 baseline; 68030 and 68060 MMU backends remain scaffolded until their model-specific table-walk, status and exception semantics are qualified.
+- CPU-profile/MMU dispatch: 68040/Hyper040 is the qualified M2 baseline; 68030 and 68060 MMU backends remain scaffolded until their model-specific table-walk, status and exception semantics are qualified. The external 68851 path now has an independent descriptor walker and fault/protection qualification, but remains scaffolded until the configurable PMMU table geometry, root-pointer formats and PMMU instruction/control-register contract are implemented.
 - FPU baseline.
 - Interpreter/reference mode for debugging where practical.
 - Begin x86-64 and AArch64 JIT/dynarec qualification. **IN PROGRESS** — both tier-1 hosts are now exercised; AArch64 cache-coherency work is included.
