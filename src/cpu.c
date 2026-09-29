@@ -106,6 +106,17 @@ bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
     return false;
 }
 
+bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root)
+{
+    uint32_t upper;
+    if (root == NULL) return false;
+    upper = (uint32_t)(raw >> 32u);
+    root->limit_word = upper;
+    root->type = (enum amivm_pmmu51_root_type)(upper & 3u);
+    root->table_address = (uint32_t)raw;
+    return root->type != AMIVM_PMMU51_ROOT_INVALID;
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
@@ -217,7 +228,21 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->mmusr = 0u;
-    root = (uint32_t)(supervisor ? cpu->pmmu_srp : cpu->pmmu_crp) & PMMU51_ADDR_MASK;
+    {
+        struct amivm_pmmu51_root rp;
+        uint64_t raw = supervisor ? cpu->pmmu_srp : cpu->pmmu_crp;
+        if (!amivm_pmmu51_decode_root(raw, &rp)) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
+            return AMIVM_MMU_FAULT_ROOT;
+        }
+        /* M2.96 interprets DT and the table-address half. Limit checking and
+         * DT=PAGE/long-descriptor walks remain scaffolded for later milestones. */
+        if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
+            return AMIVM_MMU_FAULT_ROOT;
+        }
+        root = rp.table_address & PMMU51_ADDR_MASK;
+    }
     if (root == 0u) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
