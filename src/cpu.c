@@ -30,6 +30,22 @@
 #define MMUSR_WP 0x00000004u
 #define MMUSR_TABLE 0x00000008u
 
+static const struct amivm_cpu_profile *active_profile(const struct amivm_cpu_state *cpu)
+{
+    return cpu != NULL && cpu->profile != NULL ? cpu->profile : amivm_cpu_profile_default();
+}
+
+void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
+                           const struct amivm_cpu_profile *profile)
+{
+    if (cpu != NULL) cpu->profile = profile != NULL ? profile : amivm_cpu_profile_default();
+}
+
+const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu)
+{
+    return active_profile(cpu);
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
@@ -93,7 +109,7 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     if (cpu == NULL || vm == NULL || physical == NULL) return AMIVM_MMU_FAULT_TABLE_BUS;
     cpu->mmusr = 0u;
-    if ((cpu->tc & TC_ENABLE) == 0u) {
+    if (!active_profile(cpu)->has_mmu || (cpu->tc & TC_ENABLE) == 0u) {
         *physical = logical;
         return AMIVM_MMU_OK;
     }
@@ -210,7 +226,11 @@ static void set_nz32(struct amivm_cpu_state *cpu, uint32_t value)
 
 static bool read_cr(const struct amivm_cpu_state *cpu, uint16_t cr, uint32_t *value)
 {
+    const struct amivm_cpu_profile *profile = active_profile(cpu);
     if (value == NULL) return false;
+    if (!profile->has_mmu &&
+        (cr == AMIVM_CR_TC || cr == AMIVM_CR_MMUSR ||
+         cr == AMIVM_CR_URP || cr == AMIVM_CR_SRP)) return false;
     switch (cr) {
     case AMIVM_CR_SFC: *value = cpu->sfc; return true;
     case AMIVM_CR_DFC: *value = cpu->dfc; return true;
@@ -228,6 +248,10 @@ static bool read_cr(const struct amivm_cpu_state *cpu, uint16_t cr, uint32_t *va
 
 static bool write_cr(struct amivm_cpu_state *cpu, uint16_t cr, uint32_t value)
 {
+    const struct amivm_cpu_profile *profile = active_profile(cpu);
+    if (!profile->has_mmu &&
+        (cr == AMIVM_CR_TC || cr == AMIVM_CR_URP || cr == AMIVM_CR_SRP))
+        return false;
     switch (cr) {
     case AMIVM_CR_SFC: cpu->sfc = (uint8_t)(value & 7u); return true;
     case AMIVM_CR_DFC: cpu->dfc = (uint8_t)(value & 7u); return true;
@@ -401,6 +425,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     if (!phys_read32(vm, AMIVM_ROM_BASE, &initial_sp) ||
         !phys_read32(vm, AMIVM_ROM_BASE + 4u, &initial_pc)) return -1;
     for (i = 0; i < 8u; ++i) { cpu->d[i] = 0u; cpu->a[i] = 0u; }
+    if (cpu->profile == NULL) cpu->profile = amivm_cpu_profile_default();
     cpu->usp = 0u;
     cpu->isp = initial_sp;
     cpu->msp = initial_sp;
@@ -470,8 +495,13 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     next_pc = cpu->pc + 2u;
 
     if (opcode == OP_NOP) { cpu->pc = next_pc; return 1; }
-    if (opcode == OP_FPU_GEN)
+    if (opcode == OP_FPU_GEN) {
+        if (!active_profile(cpu)->has_fpu) {
+            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
+        }
         return execute_fpu_register(cpu, vm, instruction_pc, next_pc, opcode);
+    }
 
     if (opcode == OP_RTE) {
         uint16_t restored_sr, format_vector;
