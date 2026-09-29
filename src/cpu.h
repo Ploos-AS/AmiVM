@@ -111,6 +111,7 @@ struct amivm_cpu_state {
     uint64_t pmmu_srp;
     uint32_t pmmu_tc;
     uint32_t pmmu_psr;
+    uint8_t pmmu_access_level;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
@@ -147,6 +148,8 @@ bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
 bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root);
 bool amivm_pmmu51_decode_long_descriptor(uint64_t raw,
                                          struct amivm_pmmu51_long_descriptor *desc);
+bool amivm_pmmu51_set_access_level(struct amivm_cpu_state *cpu, uint8_t level);
+uint8_t amivm_pmmu51_get_access_level(const struct amivm_cpu_state *cpu);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
