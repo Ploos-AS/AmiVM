@@ -79,6 +79,7 @@ enum amivm_pmmu51_status {
     AMIVM_PMMU51_PSR_WRITE_PROTECT = 1u << 2,
     AMIVM_PMMU51_PSR_TABLE_BUS = 1u << 3,
     AMIVM_PMMU51_PSR_LIMIT = 1u << 4,
+    AMIVM_PMMU51_PSR_SUPERVISOR = 1u << 5,
 };
 
 enum amivm_mmu_result {
@@ -88,6 +89,7 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_WRITE_PROTECT = -3,
     AMIVM_MMU_FAULT_TABLE_BUS = -4,
     AMIVM_MMU_FAULT_LIMIT = -5,
+    AMIVM_MMU_FAULT_SUPERVISOR = -6,
 };
 
 struct amivm_cpu_state {
