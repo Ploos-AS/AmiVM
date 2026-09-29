@@ -46,6 +46,7 @@ Completed or substantially implemented work must still be treated separately fro
 - Supervisor/user state transitions.
 - Exceptions and interrupt injection.
 - MMU support required for Linux/m68k.
+- CPU-profile/MMU dispatch: 68040/Hyper040 is the qualified M2 baseline; 68030 and 68060 MMU backends remain scaffolded until their model-specific table-walk, status and exception semantics are qualified.
 - FPU baseline.
 - Interpreter/reference mode for debugging where practical.
 - Begin x86-64 and AArch64 JIT/dynarec qualification. **IN PROGRESS** — both tier-1 hosts are now exercised; AArch64 cache-coherency work is included.
@@ -75,7 +76,7 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Timer and interrupt support.
 - First Linux kernel boot to early userspace.
 - Integrate AmiVM as an m68kDeb runtime and CI target.
-- Boot and qualify Linux/m68k under an explicit 68020-compatible CPU profile as the minimum build/test contract.
+- Boot and qualify Linux/m68k under an explicit 68020-compatible CPU profile plus the required external-MMU contract as the minimum build/test target; do not imply that a bare 68020 contains an MMU.
 - Add 68030, 68040 and 68060 Linux/m68k qualification profiles as CPU support matures.
 - Provide Hyper/040 and later Hyper/060 builder profiles for maximum native package-build throughput.
 - Qualify native m68k GCC/binutils/make builds inside Linux/m68k and record a reproducible build-performance baseline.
