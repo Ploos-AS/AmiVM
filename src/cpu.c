@@ -99,11 +99,10 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
     return true;
 }
 
-int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                        uint32_t logical, bool write, bool supervisor,
-                        uint32_t *physical)
-{
-    uint32_t root, l1, l2, l1_addr, l2_addr;
+static int mmu_translate_table(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                               uint32_t logical, bool write, bool supervisor,
+                               uint32_t *physical)
+{    uint32_t root, l1, l2, l1_addr, l2_addr;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
@@ -148,6 +147,59 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return AMIVM_MMU_OK;
 }
 
+static int mmu_translate_68030(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                               uint32_t logical, bool write, bool supervisor,
+                               uint32_t *physical)
+{
+    /* M2.84 dispatch boundary. Detailed 68030 table-walk semantics follow. */
+    return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
+}
+
+static int mmu_translate_68040(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                               uint32_t logical, bool write, bool supervisor,
+                               uint32_t *physical)
+{
+    return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
+}
+
+static int mmu_translate_68060(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                               uint32_t logical, bool write, bool supervisor,
+                               uint32_t *physical)
+{
+    /* M2.84 dispatch boundary. Detailed 68060 status semantics follow. */
+    return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
+}
+
+int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, bool write, bool supervisor,
+                        uint32_t *physical)
+{
+    const struct amivm_cpu_profile *profile;
+    if (cpu == NULL || vm == NULL || physical == NULL)
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+
+    profile = active_profile(cpu);
+    if (!profile->has_mmu || profile->mmu_model == AMIVM_MMU_NONE ||
+        (cpu->tc & TC_ENABLE) == 0u) {
+        cpu->mmusr = 0u;
+        *physical = logical;
+        return AMIVM_MMU_OK;
+    }
+
+    switch (profile->mmu_model) {
+    case AMIVM_MMU_68030:
+        return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
+    case AMIVM_MMU_68040:
+        return mmu_translate_68040(cpu, vm, logical, write, supervisor, physical);
+    case AMIVM_MMU_68060:
+        return mmu_translate_68060(cpu, vm, logical, write, supervisor, physical);
+    case AMIVM_MMU_NONE:
+    default:
+        cpu->mmusr = 0u;
+        *physical = logical;
+        return AMIVM_MMU_OK;
+    }
+}
 static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                       uint32_t addr, bool supervisor, uint8_t *value)
 {
