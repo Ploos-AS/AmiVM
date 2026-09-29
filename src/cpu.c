@@ -30,6 +30,15 @@
 #define MMUSR_WP 0x00000004u
 #define MMUSR_TABLE 0x00000008u
 
+/* M2.88 68851-local descriptor vocabulary. Kept separate from the 040
+ * foundation so PMMU semantics can evolve without coupling the backends. */
+#define PMMU51_DESC_TYPE_MASK 0x00000003u
+#define PMMU51_DESC_INVALID   0x00000000u
+#define PMMU51_DESC_PAGE      0x00000001u
+#define PMMU51_DESC_TABLE     0x00000002u
+#define PMMU51_DESC_WP        0x00000004u
+#define PMMU51_ADDR_MASK      0xfffff000u
+
 static const struct amivm_cpu_profile *active_profile(const struct amivm_cpu_state *cpu)
 {
     return cpu != NULL && cpu->profile != NULL ? cpu->profile : amivm_cpu_profile_default();
@@ -151,12 +160,43 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                uint32_t logical, bool write, bool supervisor,
                                uint32_t *physical)
 {
-    /*
-     * M2.87 PMMU foundation: the external 68851 owns an independent dispatch
-     * boundary and fault/status path. Descriptor-format expansion follows in
-     * later milestones; do not route this through the 68040 backend.
-     */
-    return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
+    uint32_t root, l1, l2, l1_addr, l2_addr;
+    uint32_t i1 = logical >> 22u;
+    uint32_t i2 = (logical >> 12u) & 0x3ffu;
+
+    cpu->mmusr = 0u;
+    root = (supervisor ? cpu->srp : cpu->urp) & PMMU51_ADDR_MASK;
+    if (root == 0u) {
+        cpu->mmusr = MMUSR_ROOT;
+        return AMIVM_MMU_FAULT_ROOT;
+    }
+
+    l1_addr = root + i1 * 4u;
+    if (!phys_read32(vm, l1_addr, &l1)) {
+        cpu->mmusr = MMUSR_TABLE;
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+    }
+    if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
+        cpu->mmusr = MMUSR_ROOT;
+        return AMIVM_MMU_FAULT_ROOT;
+    }
+
+    l2_addr = (l1 & PMMU51_ADDR_MASK) + i2 * 4u;
+    if (!phys_read32(vm, l2_addr, &l2)) {
+        cpu->mmusr = MMUSR_TABLE;
+        return AMIVM_MMU_FAULT_TABLE_BUS;
+    }
+    if ((l2 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_PAGE) {
+        cpu->mmusr = MMUSR_PAGE;
+        return AMIVM_MMU_FAULT_PAGE;
+    }
+    if (write && (l2 & PMMU51_DESC_WP) != 0u) {
+        cpu->mmusr = MMUSR_WP;
+        return AMIVM_MMU_FAULT_WRITE_PROTECT;
+    }
+
+    *physical = (l2 & PMMU51_ADDR_MASK) | (logical & 0xfffu);
+    return AMIVM_MMU_OK;
 }
 
 static int mmu_translate_68030(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
