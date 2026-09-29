@@ -4,6 +4,7 @@
 
 - Define project scope and non-goals.
 - Define the initial `Hyper/040` machine contract.
+- Define 68020/68030/68040/68060 guest CPU profiles over one shared execution architecture, with Hyper/040 and Hyper/060 performance profiles.
 - Define the future `Compatibility` profile boundary.
 - Compare ARAnyM, UAE/Amiberry, QEMU/m68k and related design approaches.
 - Select CPU execution strategy and host architecture priorities.
@@ -55,6 +56,15 @@ M2 is complete when the Hyper/040 machine can execute a deterministic 68040-clas
 
 The immediate handoff to M3 is a guest-boot harness capable of loading the Linux/m68k bring-up payload and producing deterministic serial/early-console evidence.
 
+## Cross-milestone qualification contracts
+
+Two workload contracts apply across all later milestones and are release-significant:
+
+- **Build/CI contract:** Linux/m68k must become capable of reproducible native package builds and test execution. Qualification must include a 68020 guest-visible baseline plus 68030/68040/68060 profiles as those contracts mature. Hyper profiles may be used for maximum-throughput builders.
+- **Amiga workstation contract:** AmigaOS/AROS must be able to exploit high CPU/FPU throughput, large memory and low-overhead virtual I/O. Representative heavy workloads include Vista/VistaPro and Scenery Animator where software/test assets are legally available.
+
+Performance work must measure these contracts directly. Cycle accuracy and historical chipset fidelity are not performance goals for Hyper profiles.
+
 ## M3 — 68k guest OS bring-up
 
 Linux/m68k is the first bring-up guest, but the machine and device contracts must remain OS-neutral so BSD and Amiga-family guests can follow without redesigning Hyper/040.
@@ -64,7 +74,10 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - `vmserial` Linux driver or early-console equivalent.
 - Timer and interrupt support.
 - First Linux kernel boot to early userspace.
-- Integrate AmiVM as an m68kDeb runtime target.
+- Integrate AmiVM as an m68kDeb runtime and CI target.
+- Boot and qualify Linux/m68k under an explicit 68020-compatible CPU profile as the minimum build/test contract.
+- Add 68030, 68040 and 68060 Linux/m68k qualification profiles as CPU support matures.
+- Provide Hyper/040 and later Hyper/060 builder profiles for maximum native package-build throughput.
 - Qualify native m68k GCC/binutils/make builds inside Linux/m68k and record a reproducible build-performance baseline.
 - Bring up NetBSD/m68k on Hyper/040 and add native AmiVM device support where required.
 - Bring up OpenBSD/m68k where the maintained port and machine requirements permit a practical AmiVM target.
@@ -103,6 +116,8 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Qualify representative AmigaOS and AROS workloads.
 
 ## M7 — Performance engineering
+
+Performance success is defined by useful work completed, not by reproducing physical 68k timing. The two headline benchmark families are native m68k build throughput and heavy Amiga workstation throughput.
 
 - JIT optimization on x86-64.
 - JIT optimization on AArch64.
