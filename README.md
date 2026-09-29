@@ -25,14 +25,36 @@ AmiVM is **not** primarily intended to replace cycle-accurate Amiga emulators fo
 
 1. **Performance first** — avoid emulating historical bottlenecks that software does not require.
 2. **68k-native guest model** — the guest sees a 68k machine, not a translated non-68k ABI.
-3. **040/060-class baseline** — MMU and FPU are first-class requirements.
+3. **CPU profiles, one fast engine** — expose 68020, 68030, 68040 and 68060 guest contracts from one execution/IR/JIT architecture; MMU/FPU capabilities follow the selected profile.
 4. **Dynarec/JIT first** — x86-64 and AArch64 are tier-1 host architectures.
 5. **Large memory** — do not impose historical Amiga RAM limits unless a compatibility profile requires them.
 6. **Paravirtual I/O** — provide efficient virtual storage, networking, framebuffer, audio and host integration.
 7. **Compatibility as a profile** — keep a separate compatibility machine for software that expects traditional Amiga hardware conventions.
 8. **Automation first** — serial console, deterministic launch configuration, headless mode, snapshots and CI-friendly execution are part of the architecture.
 
-## Initial machine profiles
+## CPU and machine profiles
+
+AmiVM separates the guest-visible CPU contract from host execution speed. Selecting `68020` must not deliberately reproduce the performance of a physical 68020; it selects the ISA and architectural capabilities visible to the guest while AmiVM executes that contract as fast as practical.
+
+The planned CPU profiles are:
+
+- **68020** — minimum build/CI compatibility profile, especially for software intended for the broad Linux/m68k baseline.
+- **68030** — 68020-class software plus the appropriate 68030 MMU/system contract.
+- **68040** — integrated MMU/FPU workstation and OS profile; the first implementation baseline.
+- **68060** — high-end classic CPU contract, including its architectural differences and missing/emulated instructions rather than treating it as a simple 68040 extension.
+- **Hyper/040** — AmiVM high-performance workstation using a 68040-class guest contract with virtual hardware unconstrained by historical Amiga bottlenecks.
+- **Hyper/060** — maximum-performance Amiga workstation profile using a 68060-class guest contract.
+
+These are profiles over shared execution infrastructure, not separate emulator cores. The reference/interpreter path exists for correctness and differential testing; optimized JIT/dynarec execution is the normal high-performance path.
+
+## Primary workloads
+
+AmiVM has two co-equal primary workloads:
+
+1. **m68k build and CI platform** — run native Linux/m68k and Amiga-family toolchains, package builds and test suites at high speed while allowing qualification against explicit 020/030/040/060 CPU contracts.
+2. **Amiga power workstation** — run CPU-, FPU-, memory- and storage-intensive Amiga applications as fast as practical, including rendering, scenery generation, animation, compilation and other productivity workloads.
+
+The project should reject architectural choices that improve historical emulation fidelity at a material cost to these workloads unless a Compatibility profile specifically requires that fidelity.
 
 ### AmiVM Hyper/040
 
