@@ -64,8 +64,7 @@ bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
         active_profile(cpu)->mmu_model != AMIVM_MMU_68851) return false;
     switch (reg) {
     case AMIVM_PMMU51_REG_TC: *value = cpu->pmmu_tc; return true;
-    case AMIVM_PMMU51_REG_CRP: *value = cpu->pmmu_crp; return true;
-    case AMIVM_PMMU51_REG_SRP: *value = cpu->pmmu_srp; return true;
+    case AMIVM_PMMU51_REG_CRP:\n    case AMIVM_PMMU51_REG_SRP: return false;
     case AMIVM_PMMU51_REG_PSR: *value = cpu->pmmu_psr; return true;
     default: return false;
     }
@@ -79,11 +78,32 @@ bool amivm_pmmu51_write_register(struct amivm_cpu_state *cpu,
         return false;
     switch (reg) {
     case AMIVM_PMMU51_REG_TC: cpu->pmmu_tc = value; return true;
-    case AMIVM_PMMU51_REG_CRP: cpu->pmmu_crp = value; return true;
-    case AMIVM_PMMU51_REG_SRP: cpu->pmmu_srp = value; return true;
+    case AMIVM_PMMU51_REG_CRP:\n    case AMIVM_PMMU51_REG_SRP: return false;
     case AMIVM_PMMU51_REG_PSR: return false;
     default: return false;
     }
+}
+
+bool amivm_pmmu51_read_root(const struct amivm_cpu_state *cpu,
+                            enum amivm_pmmu51_register reg,
+                            uint64_t *value)
+{
+    if (cpu == NULL || value == NULL ||
+        active_profile(cpu)->mmu_model != AMIVM_MMU_68851) return false;
+    if (reg == AMIVM_PMMU51_REG_CRP) { *value = cpu->pmmu_crp; return true; }
+    if (reg == AMIVM_PMMU51_REG_SRP) { *value = cpu->pmmu_srp; return true; }
+    return false;
+}
+
+bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
+                             enum amivm_pmmu51_register reg,
+                             uint64_t value)
+{
+    if (cpu == NULL || active_profile(cpu)->mmu_model != AMIVM_MMU_68851)
+        return false;
+    if (reg == AMIVM_PMMU51_REG_CRP) { cpu->pmmu_crp = value; return true; }
+    if (reg == AMIVM_PMMU51_REG_SRP) { cpu->pmmu_srp = value; return true; }
+    return false;
 }
 
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
@@ -197,7 +217,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->mmusr = 0u;
-    root = (supervisor ? cpu->pmmu_srp : cpu->pmmu_crp) & PMMU51_ADDR_MASK;
+    root = (uint32_t)(supervisor ? cpu->pmmu_srp : cpu->pmmu_crp) & PMMU51_ADDR_MASK;
     if (root == 0u) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
