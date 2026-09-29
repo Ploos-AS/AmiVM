@@ -136,6 +136,18 @@ bool amivm_pmmu51_decode_long_descriptor(
     return desc->type != AMIVM_PMMU51_ROOT_INVALID;
 }
 
+bool amivm_pmmu51_set_access_level(struct amivm_cpu_state *cpu, uint8_t level)
+{
+    if (cpu == NULL || level > 7u) return false;
+    cpu->pmmu_access_level = level;
+    return true;
+}
+
+uint8_t amivm_pmmu51_get_access_level(const struct amivm_cpu_state *cpu)
+{
+    return cpu == NULL ? 0u : (uint8_t)(cpu->pmmu_access_level & 7u);
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
