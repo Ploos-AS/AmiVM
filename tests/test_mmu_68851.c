@@ -32,16 +32,20 @@ int main(void)
     amivm_cpu_set_profile(&cpu,&p);
     cpu.tc=0x80000000u;
     cpu.urp=root;
-    put32(&vm.ram[0x2000u+4u],l2|1u);
+    put32(&vm.ram[0x2000u+4u],l2|2u);
     put32(&vm.ram[0x3000u+4u],page|1u);
 
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_OK);
     CHECK(physical==page+0x234u);
     CHECK(cpu.mmusr==0u);
 
-    put32(&vm.ram[0x3000u+4u],page|3u);
+    put32(&vm.ram[0x3000u+4u],page|5u);
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,true,false,&physical)==AMIVM_MMU_FAULT_WRITE_PROTECT);
     CHECK(cpu.mmusr!=0u);
+
+    /* A table descriptor is not a terminal page descriptor. */
+    put32(&vm.ram[0x3000u+4u],page|2u);
+    CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_PAGE);
 
     put32(&vm.ram[0x3000u+4u],0u);
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_PAGE);
@@ -51,6 +55,6 @@ int main(void)
     CHECK(amivm_mmu_translate(&cpu,&vm,logical,false,false,&physical)==AMIVM_MMU_FAULT_ROOT);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.87 68851 PMMU foundation: PASS");
+    puts("AmiVM M2.88 68851 descriptor walk: PASS");
     return 0;
 }
