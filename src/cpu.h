@@ -61,6 +61,11 @@ struct amivm_cpu_state {
     uint32_t urp;
     uint32_t srp;
     uint32_t mmusr;
+    /* External 68851 PMMU state. Kept separate from 040/060 URP/SRP. */
+    uint32_t pmmu_crp;
+    uint32_t pmmu_srp;
+    uint32_t pmmu_tc;
+    uint32_t pmmu_psr;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
