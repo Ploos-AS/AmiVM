@@ -13,16 +13,16 @@ int main(void)
     CHECK(p != NULL && p->id == AMIVM_CPU_HYPER040 && p->hyper);
 
     p = amivm_cpu_profile_by_name("68020");
-    CHECK(p != NULL && p->isa_level == 20u && !p->has_mmu && !p->has_fpu && p->mmu_model == AMIVM_MMU_NONE && p->fpu_model == AMIVM_FPU_NONE && !p->has_master_stack && !p->hyper);
+    CHECK(p != NULL && p->isa_level == 20u && !p->has_mmu && !p->has_fpu && p->mmu_model == AMIVM_MMU_NONE && p->mmu_maturity == AMIVM_MMU_MATURITY_NONE && p->fpu_model == AMIVM_FPU_NONE && !p->has_master_stack && !p->hyper);
 
     p = amivm_cpu_profile_by_name("68030");
-    CHECK(p != NULL && p->has_mmu && !p->has_fpu && p->mmu_model == AMIVM_MMU_68030 && !p->has_master_stack);
+    CHECK(p != NULL && p->has_mmu && !p->has_fpu && p->mmu_model == AMIVM_MMU_68030 && p->mmu_maturity == AMIVM_MMU_MATURITY_SCAFFOLD && !p->has_master_stack);
 
     p = amivm_cpu_profile_by_name("68040");
-    CHECK(p != NULL && p->has_mmu && p->has_fpu && p->mmu_model == AMIVM_MMU_68040 && p->fpu_model == AMIVM_FPU_68040 && p->has_master_stack && !p->hyper);
+    CHECK(p != NULL && p->has_mmu && p->has_fpu && p->mmu_model == AMIVM_MMU_68040 && p->mmu_maturity == AMIVM_MMU_MATURITY_QUALIFIED && p->fpu_model == AMIVM_FPU_68040 && p->has_master_stack && !p->hyper);
 
     p = amivm_cpu_profile_by_name("68060");
-    CHECK(p != NULL && p->isa_level == 60u && p->has_mmu && p->has_fpu && p->mmu_model == AMIVM_MMU_68060 && p->fpu_model == AMIVM_FPU_68060 && p->has_master_stack);
+    CHECK(p != NULL && p->isa_level == 60u && p->has_mmu && p->has_fpu && p->mmu_model == AMIVM_MMU_68060 && p->mmu_maturity == AMIVM_MMU_MATURITY_SCAFFOLD && p->fpu_model == AMIVM_FPU_68060 && p->has_master_stack);
 
     p = amivm_cpu_profile_by_name("hyper040");
     CHECK(p != NULL && p->id == AMIVM_CPU_HYPER040 && p->hyper);
