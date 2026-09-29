@@ -33,7 +33,11 @@
 
 M1 is complete when the host can instantiate the Hyper/040 machine model without a CPU backend, expose its deterministic physical map and registered devices, load a bootstrap ROM, exercise RAM/MMIO safely, and pass the VM-core test suite in CI.
 
-## M2 — 68k execution
+## M2 — 68k execution — IN PROGRESS
+
+Implementation has progressed through the internal M2.79 development sequence. JIT/dynarec host qualification is active on both tier-1 host architectures. In particular, AArch64 executable-cache coherency and persistent JIT mapping synchronization are implemented and qualified, native x86-64/AArch64 CI paths have been introduced, and recent fixes have hardened JIT helper integration.
+
+Completed or substantially implemented work must still be treated separately from the M2 exit contract below; M2 remains open until the complete 68040-class execution path required for guest OS bring-up is qualified.
 
 - Integrate initial 68040-class execution backend.
 - Define the internal CPU-backend API independently from the chosen implementation.
@@ -43,7 +47,13 @@ M1 is complete when the host can instantiate the Hyper/040 machine model without
 - MMU support required for Linux/m68k.
 - FPU baseline.
 - Interpreter/reference mode for debugging where practical.
-- Begin x86-64 and AArch64 JIT/dynarec qualification.
+- Begin x86-64 and AArch64 JIT/dynarec qualification. **IN PROGRESS** — both tier-1 hosts are now exercised; AArch64 cache-coherency work is included.
+
+### M2 exit criteria
+
+M2 is complete when the Hyper/040 machine can execute a deterministic 68040-class bootstrap through the CPU-backend abstraction and the execution path has qualified reset/startup, supervisor/user transitions, exceptions and interrupt injection, the MMU functionality required for Linux/m68k bring-up, and the FPU baseline. Tier-1 host execution must be qualified on x86-64 and AArch64, with an interpreter/reference path retained where practical for differential debugging.
+
+The immediate handoff to M3 is a guest-boot harness capable of loading the Linux/m68k bring-up payload and producing deterministic serial/early-console evidence.
 
 ## M3 — 68k guest OS bring-up
 
