@@ -23,8 +23,15 @@ int main(void){
  CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_SUPERVISOR);
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);
  CHECK(pa==page+0x234u);
+ p32(vm.ram+0x2008,0x00014002u);
+ CHECK(amivm_pmmu51_set_access_level(&cpu,1u));
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_READ_ACCESS);
+ CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_READ_ACCESS);
+ CHECK(amivm_pmmu51_set_access_level(&cpu,2u));
+ CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);
+ CHECK(pa==page+0x234u);
  p32(vm.ram+0x2008,0x00000002u);
  CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_LIMIT);
  CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_LIMIT);
- amivm_vm_destroy(&vm);puts("AmiVM M2.101 68851 supervisor protection: PASS");return 0;
+ amivm_vm_destroy(&vm);puts("AmiVM M2.103 68851 read access levels: PASS");return 0;
 }
