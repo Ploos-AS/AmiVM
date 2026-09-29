@@ -119,6 +119,23 @@ bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root)
     return root->type != AMIVM_PMMU51_ROOT_INVALID;
 }
 
+bool amivm_pmmu51_decode_long_descriptor(
+    uint64_t raw, struct amivm_pmmu51_long_descriptor *desc)
+{
+    uint32_t upper;
+    if (desc == NULL) return false;
+    upper = (uint32_t)(raw >> 32u);
+    desc->lower_limit = (upper & 0x80000000u) != 0u;
+    desc->limit = (uint16_t)((upper >> 16u) & 0x7fffu);
+    desc->read_access_level = (uint8_t)((upper >> 13u) & 7u);
+    desc->write_access_level = (uint8_t)((upper >> 10u) & 7u);
+    desc->shared_globally = (upper & 0x00000200u) != 0u;
+    desc->supervisor_only = (upper & 0x00000100u) != 0u;
+    desc->type = (enum amivm_pmmu51_root_type)(upper & 3u);
+    desc->table_address = (uint32_t)raw & 0xfffffff0u;
+    return desc->type != AMIVM_PMMU51_ROOT_INVALID;
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
@@ -175,7 +192,7 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 static int mmu_translate_table(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                uint32_t logical, bool write, bool supervisor,
                                uint32_t *physical)
-{    uint32_t root, l1, l2, l1_addr, l2_addr;
+{    uint32_t root, l1, l2, l1_addr, l2_addr;\n    bool root_long = false;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
@@ -255,8 +272,8 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             return AMIVM_MMU_FAULT_ROOT;
         }
         root = rp.table_address & PMMU51_ADDR_MASK;
-        l1_addr = root + i1 *
-            (rp.type == AMIVM_PMMU51_ROOT_TABLE_LONG ? 8u : 4u);
+        root_long = rp.type == AMIVM_PMMU51_ROOT_TABLE_LONG;
+        l1_addr = root + i1 * (root_long ? 8u : 4u);
     }
     if (root == 0u) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
@@ -267,12 +284,33 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
         return AMIVM_MMU_FAULT_TABLE_BUS;
     }
-    if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
-        cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
-        return AMIVM_MMU_FAULT_ROOT;
+    if (root_long) {
+        uint32_t l1_low;
+        struct amivm_pmmu51_long_descriptor ld;
+        uint64_t raw;
+        if (!phys_read32(vm, l1_addr + 4u, &l1_low)) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
+            return AMIVM_MMU_FAULT_TABLE_BUS;
+        }
+        raw = ((uint64_t)l1 << 32u) | l1_low;
+        if (!amivm_pmmu51_decode_long_descriptor(raw, &ld) ||
+            ld.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
+            return AMIVM_MMU_FAULT_ROOT;
+        }
+        if ((!ld.lower_limit && i2 > ld.limit) ||
+            (ld.lower_limit && i2 < ld.limit)) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_LIMIT;
+            return AMIVM_MMU_FAULT_LIMIT;
+        }
+        l2_addr = (ld.table_address & PMMU51_ADDR_MASK) + i2 * 4u;
+    } else {
+        if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
+            return AMIVM_MMU_FAULT_ROOT;
+        }
+        l2_addr = (l1 & PMMU51_ADDR_MASK) + i2 * 4u;
     }
-
-    l2_addr = (l1 & PMMU51_ADDR_MASK) + i2 * 4u;
     if (!phys_read32(vm, l2_addr, &l2)) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
         return AMIVM_MMU_FAULT_TABLE_BUS;
