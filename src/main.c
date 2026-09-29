@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "cpu_profile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,7 @@
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "Usage: %s [--version] [--dump-machine] [--selftest] [--ram-mib N] [--rom PATH]\n",
+            "Usage: %s [--version] [--dump-machine] [--selftest] [--cpu PROFILE] [--ram-mib N] [--rom PATH]\n",
             prog);
 }
 
@@ -19,6 +20,7 @@ int main(int argc, char **argv)
     struct amivm_vm vm;
     int i;
     bool dump_machine = false;
+    const struct amivm_cpu_profile *cpu_profile = amivm_cpu_profile_default();
 
     amivm_config_init(&config);
 
@@ -32,6 +34,13 @@ int main(int argc, char **argv)
         }
         if (strcmp(argv[i], "--dump-machine") == 0) {
             dump_machine = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--cpu") == 0) {
+            if (++i >= argc || (cpu_profile = amivm_cpu_profile_by_name(argv[i])) == NULL) {
+                fprintf(stderr, "Invalid --cpu profile (use 68020, 68030, 68040, 68060, hyper040 or hyper060)\n");
+                return 2;
+            }
             continue;
         }
         if (strcmp(argv[i], "--ram-mib") == 0) {
@@ -63,6 +72,7 @@ int main(int argc, char **argv)
         amivm_dump_machine(&vm, stdout);
     } else {
         puts("AmiVM M1 VM core skeleton initialized");
+        printf("CPU: %s\n", cpu_profile->name);
         printf("RAM: %zu MiB\n", vm.ram_size / (1024u * 1024u));
         if (vm.rom_used != 0u) {
             printf("ROM: %zu bytes loaded\n", vm.rom_used);
