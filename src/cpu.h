@@ -77,8 +77,8 @@ struct amivm_cpu_state {
     uint32_t srp;
     uint32_t mmusr;
     /* External 68851 PMMU state. Kept separate from 040/060 URP/SRP. */
-    uint32_t pmmu_crp;
-    uint32_t pmmu_srp;
+    uint64_t pmmu_crp;
+    uint64_t pmmu_srp;
     uint32_t pmmu_tc;
     uint32_t pmmu_psr;
     uint8_t sfc;
@@ -108,6 +108,12 @@ bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
 bool amivm_pmmu51_write_register(struct amivm_cpu_state *cpu,
                                  enum amivm_pmmu51_register reg,
                                  uint32_t value);
+bool amivm_pmmu51_read_root(const struct amivm_cpu_state *cpu,
+                            enum amivm_pmmu51_register reg,
+                            uint64_t *value);
+bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
+                             enum amivm_pmmu51_register reg,
+                             uint64_t value);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
