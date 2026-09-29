@@ -27,5 +27,7 @@ jobs:
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: M2 qualification
+        run: ctest --test-dir build -L m2-qualification --output-on-failure
       - name: Machine description
         run: ./build/amivm --dump-machine
