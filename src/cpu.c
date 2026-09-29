@@ -187,6 +187,9 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 
     switch (profile->mmu_model) {
+    case AMIVM_MMU_68851:
+        /* M2.86 composition boundary. 68851 descriptor semantics are scaffolded. */
+        return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
     case AMIVM_MMU_68030:
         return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
     case AMIVM_MMU_68040:
