@@ -14,6 +14,7 @@ enum amivm_cpu_profile_id {
 
 enum amivm_mmu_model {
     AMIVM_MMU_NONE = 0,
+    AMIVM_MMU_68851,
     AMIVM_MMU_68030,
     AMIVM_MMU_68040,
     AMIVM_MMU_68060,
@@ -47,5 +48,8 @@ struct amivm_cpu_profile {
 const struct amivm_cpu_profile *amivm_cpu_profile_default(void);
 const struct amivm_cpu_profile *amivm_cpu_profile_by_name(const char *name);
 const struct amivm_cpu_profile *amivm_cpu_profile_by_id(enum amivm_cpu_profile_id id);
+bool amivm_cpu_profile_attach_mmu(struct amivm_cpu_profile *out,
+                                  const struct amivm_cpu_profile *base,
+                                  enum amivm_mmu_model mmu_model);
 
 #endif
