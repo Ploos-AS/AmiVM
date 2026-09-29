@@ -55,6 +55,36 @@ const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_sta
     return active_profile(cpu);
 }
 
+bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
+                                enum amivm_pmmu51_register reg,
+                                uint32_t *value)
+{
+    if (cpu == NULL || value == NULL ||
+        active_profile(cpu)->mmu_model != AMIVM_MMU_68851) return false;
+    switch (reg) {
+    case AMIVM_PMMU51_REG_TC: *value = cpu->pmmu_tc; return true;
+    case AMIVM_PMMU51_REG_CRP: *value = cpu->pmmu_crp; return true;
+    case AMIVM_PMMU51_REG_SRP: *value = cpu->pmmu_srp; return true;
+    case AMIVM_PMMU51_REG_PSR: *value = cpu->pmmu_psr; return true;
+    default: return false;
+    }
+}
+
+bool amivm_pmmu51_write_register(struct amivm_cpu_state *cpu,
+                                 enum amivm_pmmu51_register reg,
+                                 uint32_t value)
+{
+    if (cpu == NULL || active_profile(cpu)->mmu_model != AMIVM_MMU_68851)
+        return false;
+    switch (reg) {
+    case AMIVM_PMMU51_REG_TC: cpu->pmmu_tc = value; return true;
+    case AMIVM_PMMU51_REG_CRP: cpu->pmmu_crp = value; return true;
+    case AMIVM_PMMU51_REG_SRP: cpu->pmmu_srp = value; return true;
+    case AMIVM_PMMU51_REG_PSR: return false;
+    default: return false;
+    }
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
