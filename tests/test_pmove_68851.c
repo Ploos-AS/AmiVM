@@ -16,11 +16,14 @@ int main(void)
     amivm_cpu_set_profile(&cpu,&p);
 
     CHECK(amivm_pmmu51_write_register(&cpu,AMIVM_PMMU51_REG_TC,0x80000000u));
-    CHECK(amivm_pmmu51_write_register(&cpu,AMIVM_PMMU51_REG_CRP,0x10002000u));
-    CHECK(amivm_pmmu51_write_register(&cpu,AMIVM_PMMU51_REG_SRP,0x10004000u));
+    CHECK(amivm_pmmu51_write_root(&cpu,AMIVM_PMMU51_REG_CRP,UINT64_C(0x1234567810002000)));
+    CHECK(amivm_pmmu51_write_root(&cpu,AMIVM_PMMU51_REG_SRP,UINT64_C(0xabcdef0110004000)));
     CHECK(amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_TC,&value) && value==0x80000000u);
-    CHECK(amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_CRP,&value) && value==0x10002000u);
-    CHECK(amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_SRP,&value) && value==0x10004000u);
+    { uint64_t root=0u;
+      CHECK(amivm_pmmu51_read_root(&cpu,AMIVM_PMMU51_REG_CRP,&root) && root==UINT64_C(0x1234567810002000));
+      CHECK(amivm_pmmu51_read_root(&cpu,AMIVM_PMMU51_REG_SRP,&root) && root==UINT64_C(0xabcdef0110004000));
+      CHECK(!amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_CRP,&value));
+    }
 
     cpu.pmmu_psr=AMIVM_PMMU51_PSR_PAGE;
     CHECK(amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_PSR,&value));
@@ -31,6 +34,6 @@ int main(void)
     CHECK(!amivm_pmmu51_read_register(&cpu,AMIVM_PMMU51_REG_TC,&value));
     CHECK(!amivm_pmmu51_write_register(&cpu,AMIVM_PMMU51_REG_TC,0u));
 
-    puts("AmiVM M2.91 68851 PMOVE register foundation: PASS");
+    puts("AmiVM M2.94 68851 64-bit root registers: PASS");
     return 0;
 }
