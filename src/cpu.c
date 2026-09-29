@@ -237,16 +237,21 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
             return AMIVM_MMU_FAULT_ROOT;
         }
-        /* M2.96 interprets DT and the table-address half. Limit checking and
-         * DT=PAGE/long-descriptor walks remain scaffolded for later milestones. */
-        if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
-            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
-            return AMIVM_MMU_FAULT_ROOT;
-        }
         if ((!rp.lower_limit && i1 > rp.limit) ||
             (rp.lower_limit && i1 < rp.limit)) {
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_LIMIT;
             return AMIVM_MMU_FAULT_LIMIT;
+        }
+        if (rp.type == AMIVM_PMMU51_ROOT_PAGE) {
+            /* Root page descriptor terminates the walk. At this scaffold's
+             * 4 KiB page size the root address supplies the physical page. */
+            *physical = (rp.table_address & PMMU51_ADDR_MASK) |
+                        (logical & 0xfffu);
+            return AMIVM_MMU_OK;
+        }
+        if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
+            return AMIVM_MMU_FAULT_ROOT;
         }
         root = rp.table_address & PMMU51_ADDR_MASK;
     }
