@@ -33,3 +33,19 @@ const struct amivm_cpu_profile *amivm_cpu_profile_by_name(const char *name)
         if (strcmp(profiles[i].name, name) == 0) return &profiles[i];
     return NULL;
 }
+
+
+bool amivm_cpu_profile_attach_mmu(struct amivm_cpu_profile *out,
+                                  const struct amivm_cpu_profile *base,
+                                  enum amivm_mmu_model mmu_model)
+{
+    if (out == NULL || base == NULL) return false;
+    if (base->has_mmu || mmu_model != AMIVM_MMU_68851) return false;
+    if (base->id != AMIVM_CPU_68020) return false;
+
+    *out = *base;
+    out->has_mmu = true;
+    out->mmu_model = AMIVM_MMU_68851;
+    out->mmu_maturity = AMIVM_MMU_MATURITY_SCAFFOLD;
+    return true;
+}
