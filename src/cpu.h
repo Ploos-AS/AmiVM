@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "fpu.h"
+#include "cpu_profile.h"
 
 struct amivm_vm;
 
@@ -47,6 +48,7 @@ enum amivm_mmu_result {
 };
 
 struct amivm_cpu_state {
+    const struct amivm_cpu_profile *profile;
     uint32_t d[8];
     uint32_t a[8];
     uint32_t usp;
@@ -77,6 +79,9 @@ struct amivm_cpu_backend {
 };
 
 const struct amivm_cpu_backend *amivm_cpu_reference_backend(void);
+void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
+                           const struct amivm_cpu_profile *profile);
+const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
