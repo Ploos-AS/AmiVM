@@ -817,7 +817,7 @@ static int fetch32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return 0;
 }
 
-static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                 uint32_t instruction_pc, uint32_t next_pc,
                                 uint16_t opcode)
 {
@@ -839,6 +839,15 @@ static int execute_pmove_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
     }
+
+    /* MC68851 PFLUSHA is the exact F000/2400 form.  It invalidates the
+     * complete address translation cache and has no effective address. */
+    if (opcode == OP_PMMU_BASE && ext == 0x2400u) {
+        amivm_pmmu51_atc_flush(cpu);
+        cpu->pc = next_pc + 2u;
+        return 1;
+    }
+
     if ((ext & 0xe1ffu) != 0x4000u || (mode != 0u && mode != 2u)) {
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
@@ -905,7 +914,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 
     if (opcode == OP_NOP) { cpu->pc = next_pc; return 1; }
     if ((opcode & 0xffc0u) == OP_PMMU_BASE)
-        return execute_pmove_68851(cpu, vm, instruction_pc, next_pc, opcode);
+        return execute_pmmu_68851(cpu, vm, instruction_pc, next_pc, opcode);
     if (opcode == OP_FPU_GEN) {
         if (!active_profile(cpu)->has_fpu) {
             set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
