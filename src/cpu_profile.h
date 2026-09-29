@@ -19,6 +19,12 @@ enum amivm_mmu_model {
     AMIVM_MMU_68060,
 };
 
+enum amivm_mmu_maturity {
+    AMIVM_MMU_MATURITY_NONE = 0,
+    AMIVM_MMU_MATURITY_SCAFFOLD,
+    AMIVM_MMU_MATURITY_QUALIFIED,
+};
+
 enum amivm_fpu_model {
     AMIVM_FPU_NONE = 0,
     AMIVM_FPU_68040,
@@ -32,6 +38,7 @@ struct amivm_cpu_profile {
     bool has_mmu;
     bool has_fpu;
     enum amivm_mmu_model mmu_model;
+    enum amivm_mmu_maturity mmu_maturity;
     enum amivm_fpu_model fpu_model;
     bool has_master_stack;
     bool hyper;
