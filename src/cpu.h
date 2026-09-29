@@ -81,6 +81,7 @@ enum amivm_pmmu51_status {
     AMIVM_PMMU51_PSR_LIMIT = 1u << 4,
     AMIVM_PMMU51_PSR_SUPERVISOR = 1u << 5,
     AMIVM_PMMU51_PSR_READ_ACCESS = 1u << 6,
+    AMIVM_PMMU51_PSR_WRITE_ACCESS = 1u << 7,
 };
 
 enum amivm_mmu_result {
@@ -92,6 +93,7 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_LIMIT = -5,
     AMIVM_MMU_FAULT_SUPERVISOR = -6,
     AMIVM_MMU_FAULT_READ_ACCESS = -7,
+    AMIVM_MMU_FAULT_WRITE_ACCESS = -8,
 };
 
 struct amivm_cpu_state {
