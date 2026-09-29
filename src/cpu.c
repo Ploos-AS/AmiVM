@@ -153,6 +153,46 @@ bool amivm_pmmu51_last_shared_globally(const struct amivm_cpu_state *cpu)
     return cpu != NULL && cpu->pmmu_last_shared_globally;
 }
 
+void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu)
+{
+    if (cpu == NULL) return;
+    memset(cpu->pmmu_atc, 0, sizeof cpu->pmmu_atc);
+    cpu->pmmu_atc_next = 0u;
+}
+
+static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
+                              bool supervisor, uint32_t *physical)
+{
+    uint32_t page = logical & 0xfffff000u;
+    uint8_t level = amivm_pmmu51_get_access_level(cpu);
+    for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
+        struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
+        if (e->valid && e->logical_page == page &&
+            (e->shared_globally ||
+             (e->supervisor == supervisor && e->access_level == level))) {
+            *physical = e->physical_page | (logical & 0xfffu);
+            cpu->pmmu_last_shared_globally = e->shared_globally;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
+                            uint32_t physical, bool supervisor)
+{
+    struct amivm_pmmu51_atc_entry *e =
+        &cpu->pmmu_atc[cpu->pmmu_atc_next % AMIVM_PMMU51_ATC_ENTRIES];
+    e->logical_page = logical & 0xfffff000u;
+    e->physical_page = physical & 0xfffff000u;
+    e->access_level = amivm_pmmu51_get_access_level(cpu);
+    e->supervisor = supervisor;
+    e->shared_globally = cpu->pmmu_last_shared_globally;
+    e->valid = true;
+    cpu->pmmu_atc_next =
+        (uint8_t)((cpu->pmmu_atc_next + 1u) % AMIVM_PMMU51_ATC_ENTRIES);
+}
+
 static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    uint32_t addr, uint16_t *value);
 
@@ -265,6 +305,8 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->pmmu_last_shared_globally = false;
     cpu->mmusr = 0u;
+    if (pmmu51_atc_lookup(cpu, logical, supervisor, physical))
+        return AMIVM_MMU_OK;
     {
         struct amivm_pmmu51_root rp;
         uint64_t raw = supervisor ? cpu->pmmu_srp : cpu->pmmu_crp;
@@ -358,6 +400,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
 
     *physical = (l2 & PMMU51_ADDR_MASK) | (logical & 0xfffu);
+    pmmu51_atc_fill(cpu, logical, *physical, supervisor);
     return AMIVM_MMU_OK;
 }
 
