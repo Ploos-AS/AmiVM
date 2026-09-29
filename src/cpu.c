@@ -324,6 +324,11 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_READ_ACCESS;
             return AMIVM_MMU_FAULT_READ_ACCESS;
         }
+        if (write &&
+            amivm_pmmu51_get_access_level(cpu) < ld.write_access_level) {
+            cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_ACCESS;
+            return AMIVM_MMU_FAULT_WRITE_ACCESS;
+        }
         l2_addr = (ld.table_address & PMMU51_ADDR_MASK) + i2 * 4u;
     } else {
         if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
