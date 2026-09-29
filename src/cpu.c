@@ -165,7 +165,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
     cpu->mmusr = 0u;
-    root = (supervisor ? cpu->srp : cpu->urp) & PMMU51_ADDR_MASK;
+    root = (supervisor ? cpu->pmmu_srp : cpu->pmmu_crp) & PMMU51_ADDR_MASK;
     if (root == 0u) {
         cpu->mmusr = MMUSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
@@ -231,8 +231,19 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return AMIVM_MMU_FAULT_TABLE_BUS;
 
     profile = active_profile(cpu);
-    if (!profile->has_mmu || profile->mmu_model == AMIVM_MMU_NONE ||
-        (cpu->tc & TC_ENABLE) == 0u) {
+    if (!profile->has_mmu || profile->mmu_model == AMIVM_MMU_NONE) {
+        cpu->mmusr = 0u;
+        *physical = logical;
+        return AMIVM_MMU_OK;
+    }
+    if (profile->mmu_model == AMIVM_MMU_68851) {
+        if ((cpu->pmmu_tc & TC_ENABLE) == 0u) {
+            cpu->pmmu_psr = 0u;
+            cpu->mmusr = 0u;
+            *physical = logical;
+            return AMIVM_MMU_OK;
+        }
+    } else if ((cpu->tc & TC_ENABLE) == 0u) {
         cpu->mmusr = 0u;
         *physical = logical;
         return AMIVM_MMU_OK;
