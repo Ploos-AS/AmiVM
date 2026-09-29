@@ -249,18 +249,20 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                         (logical & 0xfffu);
             return AMIVM_MMU_OK;
         }
-        if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT) {
+        if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT &&
+            rp.type != AMIVM_PMMU51_ROOT_TABLE_LONG) {
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
             return AMIVM_MMU_FAULT_ROOT;
         }
         root = rp.table_address & PMMU51_ADDR_MASK;
+        l1_addr = root + i1 *
+            (rp.type == AMIVM_PMMU51_ROOT_TABLE_LONG ? 8u : 4u);
     }
     if (root == 0u) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
     }
 
-    l1_addr = root + i1 * 4u;
     if (!phys_read32(vm, l1_addr, &l1)) {
         cpu->pmmu_psr = AMIVM_PMMU51_PSR_TABLE_BUS;
         return AMIVM_MMU_FAULT_TABLE_BUS;
