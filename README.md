@@ -53,7 +53,7 @@ The initial reference machine.
 
 A later profile providing additional Amiga-compatible devices and conventions for AmigaOS software that cannot use the Hyper profile directly.
 
-## Current M1 machine map
+## Current machine map
 
 - ROM/bootstrap: `0x00f00000`, 1 MiB
 - RAM: starts at `0x10000000`, configurable with `--ram-mib`
@@ -62,7 +62,7 @@ A later profile providing additional Amiga-compatible devices and conventions fo
 - timer: `0xff001000`
 - interrupt controller: `0xff002000`
 
-The M1 device registry and map are intentionally small and deterministic. They may evolve before the stable guest ABI milestone.
+The device registry and map remain intentionally small and deterministic. They may evolve before the stable guest ABI milestone.
 
 ## Planned virtual devices
 
@@ -115,7 +115,13 @@ ARAnyM is an important architectural reference because it demonstrates the value
 
 The host now has configurable RAM and ROM loading, a guest physical memory map, explicit MMIO device registration, interrupt/timer baselines, `vmserial`, deterministic machine description and Release-safe VM-core tests.
 
-**Next: M2 — 68k execution.** The next proof point is a CPU-backend abstraction followed by reset-vector and first-instruction execution for the Hyper/040 guest.
+**M2 — 68k execution: in progress.**
+
+M2 has advanced beyond the initial CPU-backend bring-up. The implementation now includes active JIT/dynarec work and qualification on the tier-1 x86-64 and AArch64 hosts. Recent work includes AArch64 executable-cache coherency, persistent JIT mapping synchronization, native host qualification and JIT helper integration fixes.
+
+M2 is deliberately not marked complete until its full execution contract is qualified, including the 68040-class CPU path, exception/interrupt behavior, supervisor/user transitions, the MMU requirements needed by Linux/m68k, and the FPU baseline.
+
+**Next proof point:** close the remaining M2 exit criteria and begin **M3 — Linux/m68k guest OS bring-up**, with serial/early-console output as the first visible boot milestone.
 
 See [ROADMAP.md](ROADMAP.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
