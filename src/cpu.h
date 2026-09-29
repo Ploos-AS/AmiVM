@@ -46,6 +46,19 @@ enum amivm_pmmu51_register {
     AMIVM_PMMU51_REG_PSR,
 };
 
+enum amivm_pmmu51_root_type {
+    AMIVM_PMMU51_ROOT_INVALID = 0,
+    AMIVM_PMMU51_ROOT_PAGE = 1,
+    AMIVM_PMMU51_ROOT_TABLE_SHORT = 2,
+    AMIVM_PMMU51_ROOT_TABLE_LONG = 3,
+};
+
+struct amivm_pmmu51_root {
+    uint32_t limit_word;
+    uint32_t table_address;
+    enum amivm_pmmu51_root_type type;
+};
+
 enum amivm_pmmu51_status {
     AMIVM_PMMU51_PSR_OK = 0u,
     AMIVM_PMMU51_PSR_ROOT = 1u << 0,
@@ -114,6 +127,7 @@ bool amivm_pmmu51_read_root(const struct amivm_cpu_state *cpu,
 bool amivm_pmmu51_write_root(struct amivm_cpu_state *cpu,
                              enum amivm_pmmu51_register reg,
                              uint64_t value);
+bool amivm_pmmu51_decode_root(uint64_t raw, struct amivm_pmmu51_root *root);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
