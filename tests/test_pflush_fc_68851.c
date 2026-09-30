@@ -12,5 +12,8 @@ int main(void){
  cpu.pmmu_atc[0].valid=true;cpu.pmmu_atc[0].function_code=1u;
  amivm_pmmu51_atc_flush_fc(&cpu,1u,3u);
  CHECK(!cpu.pmmu_atc[0].valid);CHECK(!cpu.pmmu_atc[1].valid);CHECK(cpu.pmmu_atc[2].valid);
- puts("AmiVM M2.108 MC68851 selective FC ATC flush: PASS");return 0;
+ cpu.pmmu_atc[0].valid=true;cpu.pmmu_atc[0].function_code=1u;cpu.pmmu_atc[0].shared_globally=true;
+ amivm_pmmu51_atc_flush_fc(&cpu,1u,7u);CHECK(cpu.pmmu_atc[0].valid);
+ amivm_pmmu51_atc_flushs_fc(&cpu,1u,7u);CHECK(!cpu.pmmu_atc[0].valid);
+ puts("AmiVM M2.117 MC68851 PFLUSH/PFLUSHS shared semantics: PASS");return 0;
 }
