@@ -35,5 +35,8 @@ struct amivm_ea_index_extension {
 
 int amivm_ea_parse_index_extension(const uint16_t *words, size_t word_count,
                                    struct amivm_ea_index_extension *result);
+int amivm_ea_resolve_brief_index(uint32_t base, uint16_t extension,
+                                 const uint32_t d[8], const uint32_t a[8],
+                                 uint32_t *address);
 
 #endif
