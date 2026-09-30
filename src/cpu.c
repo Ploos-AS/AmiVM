@@ -66,7 +66,8 @@ bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
         active_profile(cpu)->mmu_model != AMIVM_MMU_68851) return false;
     switch (reg) {
     case AMIVM_PMMU51_REG_TC: *value = cpu->pmmu_tc; return true;
-    case AMIVM_PMMU51_REG_CRP:\n    case AMIVM_PMMU51_REG_SRP: return false;
+    case AMIVM_PMMU51_REG_CRP:
+    case AMIVM_PMMU51_REG_SRP: return false;
     case AMIVM_PMMU51_REG_PSR: *value = cpu->pmmu_psr; return true;
     default: return false;
     }
@@ -80,7 +81,8 @@ bool amivm_pmmu51_write_register(struct amivm_cpu_state *cpu,
         return false;
     switch (reg) {
     case AMIVM_PMMU51_REG_TC: cpu->pmmu_tc = value; return true;
-    case AMIVM_PMMU51_REG_CRP:\n    case AMIVM_PMMU51_REG_SRP: return false;
+    case AMIVM_PMMU51_REG_CRP:
+    case AMIVM_PMMU51_REG_SRP: return false;
     case AMIVM_PMMU51_REG_PSR: return false;
     default: return false;
     }
