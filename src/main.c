@@ -37,6 +37,23 @@ int main(int argc, char **argv)
             dump_machine = true;
             continue;
         }
+        if (strncmp(argv[i], "--cpu=", 6u) == 0) {
+            cpu_profile = amivm_cpu_profile_by_name(argv[i] + 6u);
+            if (cpu_profile == NULL) {
+                fprintf(stderr, "Invalid --cpu profile (use 68020, 68030, 68040, 68060, hyper040 or hyper060)\n");
+                return 2;
+            }
+            config.cpu_profile = cpu_profile;
+            continue;
+        }
+        if (strcmp(argv[i], "--mmu=68851") == 0) {
+            config.external_mmu = AMIVM_MMU_68851;
+            continue;
+        }
+        if (strncmp(argv[i], "--mmu=", 6u) == 0) {
+            fprintf(stderr, "Invalid --mmu value (currently only 68851 is supported)\n");
+            return 2;
+        }
         if (strcmp(argv[i], "--cpu") == 0) {
             if (++i >= argc || (cpu_profile = amivm_cpu_profile_by_name(argv[i])) == NULL) {
                 fprintf(stderr, "Invalid --cpu profile (use 68020, 68030, 68040, 68060, hyper040 or hyper060)\n");
