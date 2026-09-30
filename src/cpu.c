@@ -173,6 +173,22 @@ void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
     }
 }
 
+void amivm_pmmu51_atc_flush_fc_page(struct amivm_cpu_state *cpu,
+                                    uint8_t function_code, uint8_t mask,
+                                    uint32_t logical_address)
+{
+    uint8_t fc = (uint8_t)(function_code & 0x0fu);
+    uint8_t m = (uint8_t)(mask & 0x0fu);
+    uint32_t page = logical_address & 0xfffff000u;
+    if (cpu == NULL) return;
+    for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
+        struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
+        if (e->valid && e->logical_page == page &&
+            ((e->function_code & m) == (fc & m)))
+            e->valid = false;
+    }
+}
+
 static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
                               bool supervisor, uint32_t *physical)
 {
