@@ -374,12 +374,17 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
     bool effective_shared = false;
+    bool effective_supervisor_only = false;
+    uint8_t effective_read_level = 0u;
+    uint8_t effective_write_level = 0u;
 
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->pmmu_last_shared_globally = false;
     cpu->mmusr = 0u;
-    if (pmmu51_atc_lookup(cpu, logical, supervisor, physical))
-        return AMIVM_MMU_OK;
+    {
+        int atc_rc = pmmu51_atc_lookup(cpu, logical, write, supervisor, physical);
+        if (atc_rc != 1) return atc_rc;
+    }
     {
         struct amivm_pmmu51_root rp;
         uint64_t raw = supervisor ? cpu->pmmu_srp : cpu->pmmu_crp;
@@ -399,7 +404,8 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_last_shared_globally = effective_shared;
             *physical = (rp.table_address & PMMU51_ADDR_MASK) |
                         (logical & 0xfffu);
-            pmmu51_atc_fill(cpu, logical, *physical, supervisor);
+            pmmu51_atc_fill(cpu, logical, *physical, supervisor,
+                              false, false, 0u, 0u);
             return AMIVM_MMU_OK;
         }
         if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT &&
@@ -454,6 +460,11 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             return AMIVM_MMU_FAULT_WRITE_ACCESS;
         }
         effective_shared = effective_shared || ld.shared_globally;
+        effective_supervisor_only = effective_supervisor_only || ld.supervisor_only;
+        if (ld.read_access_level > effective_read_level)
+            effective_read_level = ld.read_access_level;
+        if (ld.write_access_level > effective_write_level)
+            effective_write_level = ld.write_access_level;
         cpu->pmmu_last_shared_globally = effective_shared;
         l2_addr = (ld.table_address & PMMU51_ADDR_MASK) + i2 * 4u;
     } else {
@@ -478,7 +489,10 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     cpu->pmmu_last_shared_globally = effective_shared;
     *physical = (l2 & PMMU51_ADDR_MASK) | (logical & 0xfffu);
-    pmmu51_atc_fill(cpu, logical, *physical, supervisor);
+    pmmu51_atc_fill(cpu, logical, *physical, supervisor,
+                      effective_supervisor_only,
+                      (l2 & PMMU51_DESC_WP) != 0u,
+                      effective_read_level, effective_write_level);
     return AMIVM_MMU_OK;
 }
 
