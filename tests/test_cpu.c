@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "vm.h"
 
+#include <stdint.h>
 #include <stdio.h>
 
 #define CHECK(expr) do { \
