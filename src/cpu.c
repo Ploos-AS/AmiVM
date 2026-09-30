@@ -887,7 +887,6 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         uint8_t mask = (uint8_t)((ext >> 5u) & 0x0fu);
         uint8_t fc_field = (uint8_t)(ext & 0x1fu);
         uint8_t fc;
-        if (mask > 7u) goto illegal;
         if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
         else if (fc_field == 1u) fc = (uint8_t)(cpu->dfc & 7u);
         else if ((fc_field & 0x18u) == 0x08u)
@@ -905,7 +904,6 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         uint8_t mask = (uint8_t)((ext >> 5u) & 0x0fu);
         uint8_t fc_field = (uint8_t)(ext & 0x1fu);
         uint8_t fc;
-        if (mask > 7u) goto illegal;
         if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
         else if (fc_field == 1u) fc = (uint8_t)(cpu->dfc & 7u);
         else if ((fc_field & 0x18u) == 0x08u)
