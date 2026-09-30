@@ -3,6 +3,7 @@
 #include "ea.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #define SR_T 0xc000u
 #define SR_S 0x2000u
