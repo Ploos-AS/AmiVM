@@ -924,14 +924,36 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                 address = (uint32_t)((int64_t)cpu->a[reg] + (int16_t)displacement);
                 end_pc += 2u;
             } else if (mode == 6u) {
-                uint16_t index_ext;
-                if (fetch16(cpu, vm, end_pc, &index_ext) != 0)
+                uint16_t words[3];
+                struct amivm_ea_index_extension parsed;
+                size_t available = 1u;
+                if (fetch16(cpu, vm, end_pc, &words[0]) != 0)
                     return deliver_fault(cpu, vm, instruction_pc);
-                if (amivm_ea_resolve_brief_index(cpu->a[reg], index_ext,
-                                                 cpu->d, cpu->a, &address) !=
-                    AMIVM_EA_PARSE_OK)
-                    goto illegal;
-                end_pc += 2u;
+                if ((words[0] & 0x0100u) == 0u) {
+                    if (amivm_ea_resolve_brief_index(cpu->a[reg], words[0],
+                                                     cpu->d, cpu->a, &address) !=
+                        AMIVM_EA_PARSE_OK)
+                        goto illegal;
+                    end_pc += 2u;
+                } else {
+                    uint8_t bd_code = (uint8_t)((words[0] >> 4u) & 3u);
+                    if (bd_code == 2u) available = 2u;
+                    else if (bd_code == 3u) available = 3u;
+                    if (available > 1u &&
+                        fetch16(cpu, vm, end_pc + 2u, &words[1]) != 0)
+                        return deliver_fault(cpu, vm, instruction_pc);
+                    if (available > 2u &&
+                        fetch16(cpu, vm, end_pc + 4u, &words[2]) != 0)
+                        return deliver_fault(cpu, vm, instruction_pc);
+                    if (amivm_ea_parse_index_extension(words, available, &parsed) !=
+                            AMIVM_EA_PARSE_OK ||
+                        parsed.indirect_mode != AMIVM_EA_INDIRECT_NONE ||
+                        amivm_ea_resolve_full_index(cpu->a[reg], &parsed,
+                                                   cpu->d, cpu->a, &address) !=
+                            AMIVM_EA_PARSE_OK)
+                        goto illegal;
+                    end_pc += (uint32_t)(parsed.words_consumed * 2u);
+                }
             } else {
                 goto illegal;
             }
