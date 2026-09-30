@@ -103,7 +103,11 @@ struct amivm_pmmu51_atc_entry {
     uint32_t physical_page;
     uint8_t access_level;
     uint8_t function_code;
+    uint8_t read_access_level;
+    uint8_t write_access_level;
     bool supervisor;
+    bool supervisor_only;
+    bool write_protected;
     bool shared_globally;
     bool valid;
 };
