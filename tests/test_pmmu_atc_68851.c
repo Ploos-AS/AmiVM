@@ -15,5 +15,6 @@ int main(void){
  p32(vm.ram+0x3004,alt|1u);
  CHECK(amivm_pmmu51_set_access_level(&cpu,7u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
  amivm_pmmu51_atc_flush(&cpu);CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);
- amivm_vm_destroy(&vm);puts("AmiVM M2.106 68851 ATC: PASS");return 0;
+ amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_crp=(UINT64_C(0x7fff0203)<<32)|root;p32(vm.ram+0x2008,0x7fff0002u);p32(vm.ram+0x200c,l2);p32(vm.ram+0x3004,page|1u);CHECK(amivm_pmmu51_set_access_level(&cpu,0u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);CHECK(cpu.pmmu_atc[0].shared_globally);p32(vm.ram+0x3004,alt|1u);CHECK(amivm_pmmu51_set_access_level(&cpu,7u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.116 68851 effective SG/ATC inheritance: PASS");return 0;
 }
