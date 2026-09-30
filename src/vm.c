@@ -36,6 +36,8 @@ void amivm_config_init(struct amivm_config *config)
 {
     config->ram_size = (size_t)AMIVM_DEFAULT_RAM_MIB * 1024u * 1024u;
     config->rom_path = NULL;
+    config->cpu_profile = amivm_cpu_profile_default();
+    config->external_mmu = AMIVM_MMU_NONE;
 }
 
 bool amivm_parse_size_mib(const char *text, size_t *bytes_out)
@@ -64,6 +66,15 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     }
 
     memset(vm, 0, sizeof(*vm));
+    if (config->cpu_profile == NULL) return -1;
+    if (config->external_mmu != AMIVM_MMU_NONE) {
+        if (!amivm_cpu_profile_attach_mmu(&vm->cpu_profile,
+                                          config->cpu_profile,
+                                          config->external_mmu))
+            return -1;
+    } else {
+        vm->cpu_profile = *config->cpu_profile;
+    }
     vm->ram = calloc(1, config->ram_size);
     if (vm->ram == NULL) {
         return -1;
