@@ -54,6 +54,9 @@ int main(void)
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68020");
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(config.cpu_profile != NULL);
     CHECK(amivm_vm_init(&vm, &config) == 0);
 
     put32_be(&vm.rom[0], initial_sp);
@@ -129,7 +132,9 @@ int main(void)
         cpu.pmmu_atc[0].logical_page = 0x12345000u;
         cpu.pmmu_atc_next = 7u;
         CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
-        CHECK(amivm_cpu_get_profile(&cpu) == selected);
+        CHECK(amivm_cpu_get_profile(&cpu) == &vm.cpu_profile);
+        CHECK(amivm_cpu_get_profile(&cpu)->id == selected->id);
+        CHECK(amivm_cpu_get_profile(&cpu)->mmu_model == AMIVM_MMU_68851);
         CHECK(cpu.pmmu_crp == 0u && cpu.pmmu_srp == 0u);
         CHECK(cpu.pmmu_tc == 0u && cpu.pmmu_psr == AMIVM_PMMU51_PSR_OK);
         CHECK(cpu.pmmu_access_level == 0u);
