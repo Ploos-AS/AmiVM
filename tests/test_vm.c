@@ -73,6 +73,40 @@ static int test_devices(void)
     return 0;
 }
 
+static int test_machine_dump_profile(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    FILE *fp;
+    char dump[2048];
+    size_t n;
+
+    amivm_config_init(&config);
+    config.ram_size = 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68020");
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    fp = tmpfile();
+    CHECK(fp != NULL);
+    amivm_dump_machine(&vm, fp);
+    CHECK(fflush(fp) == 0);
+    CHECK(fseek(fp, 0L, SEEK_SET) == 0);
+    n = fread(dump, 1u, sizeof(dump) - 1u, fp);
+    dump[n] = '\0';
+    fclose(fp);
+
+    CHECK(strstr(dump, "cpu=68020\n") != NULL);
+    CHECK(strstr(dump, "isa_level=20\n") != NULL);
+    CHECK(strstr(dump, "mmu=yes\n") != NULL);
+    CHECK(strstr(dump, "fpu=no\n") != NULL);
+    CHECK(strstr(dump, "hyper=no\n") != NULL);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -89,7 +123,8 @@ static int test_config(void)
 
 int main(void)
 {
-    if (test_memory_map() != 0 || test_devices() != 0 || test_config() != 0) {
+    if (test_memory_map() != 0 || test_devices() != 0 ||
+        test_machine_dump_profile() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M1 VM-core tests: PASS");
