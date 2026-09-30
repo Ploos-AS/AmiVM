@@ -900,6 +900,25 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return 1;
     }
 
+    /* M2.111: MC68851 PFLUSH FC,MASK,<ea>, initially (An) only. */
+    if (opcode == OP_PMMU_BASE && (ext & 0xf800u) == 0x3800u) {
+        uint8_t mask = (uint8_t)((ext >> 5u) & 0x0fu);
+        uint8_t fc_field = (uint8_t)(ext & 0x1fu);
+        uint8_t fc;
+        if (mask > 7u) goto illegal;
+        if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
+        else if (fc_field == 1u) fc = (uint8_t)(cpu->dfc & 7u);
+        else if ((fc_field & 0x18u) == 0x08u)
+            fc = (uint8_t)(cpu->d[fc_field & 7u] & 0x0fu);
+        else if ((fc_field & 0x10u) != 0u)
+            fc = (uint8_t)(fc_field & 0x0fu);
+        else goto illegal;
+        if (mode != 2u) goto illegal;
+        amivm_pmmu51_atc_flush_fc_page(cpu, fc, mask, cpu->a[reg]);
+        cpu->pc = next_pc + 2u;
+        return 1;
+    }
+
     if ((ext & 0xe1ffu) != 0x4000u || (mode != 0u && mode != 2u)) {
         set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
         return deliver_fault(cpu, vm, instruction_pc);
