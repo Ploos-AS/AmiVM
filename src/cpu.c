@@ -1033,72 +1033,13 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         else if ((fc_field & 0x10u) != 0u)
             fc = (uint8_t)(fc_field & 7u);
         else goto illegal;
-        if (mode == 2u) {
-            address = cpu->a[reg];
-        } else if (mode == 5u) {
-            uint16_t displacement;
-            if (fetch16(cpu, vm, end_pc, &displacement) != 0)
+        {
+            int ea_rc = pmmu51_resolve_flush_ea(cpu, vm, mode, reg,
+                                                next_pc + 2u, &address, &end_pc);
+            if (ea_rc == AMIVM_EA_PARSE_TRUNCATED)
                 return deliver_fault(cpu, vm, instruction_pc);
-            address = (uint32_t)((int64_t)cpu->a[reg] + (int16_t)displacement);
-            end_pc += 2u;
-        } else if (mode == 6u) {
-            uint16_t words[5];
-            struct amivm_ea_index_extension parsed;
-            size_t available = 1u;
-            if (fetch16(cpu, vm, end_pc, &words[0]) != 0)
-                return deliver_fault(cpu, vm, instruction_pc);
-            if ((words[0] & 0x0100u) == 0u) {
-                if (amivm_ea_resolve_brief_index(cpu->a[reg], words[0],
-                                                 cpu->d, cpu->a, &address) !=
-                    AMIVM_EA_PARSE_OK)
-                    goto illegal;
-                end_pc += 2u;
-            } else {
-                uint8_t bd_code = (uint8_t)((words[0] >> 4u) & 3u);
-                uint8_t iis = (uint8_t)(words[0] & 7u);
-                size_t bd_words = bd_code == 2u ? 1u : (bd_code == 3u ? 2u : 0u);
-                size_t od_words = (iis == 2u || iis == 6u) ? 1u :
-                                  ((iis == 3u || iis == 7u) ? 2u : 0u);
-                available = 1u + bd_words + od_words;
-                for (size_t wi = 1u; wi < available; ++wi)
-                    if (fetch16(cpu, vm, end_pc + (uint32_t)(wi * 2u),
-                                &words[wi]) != 0)
-                        return deliver_fault(cpu, vm, instruction_pc);
-                if (amivm_ea_parse_index_extension(words, available, &parsed) !=
-                    AMIVM_EA_PARSE_OK)
-                    goto illegal;
-                if (parsed.indirect_mode == AMIVM_EA_INDIRECT_NONE) {
-                    if (amivm_ea_resolve_full_index(cpu->a[reg], &parsed,
-                                                   cpu->d, cpu->a, &address) !=
-                        AMIVM_EA_PARSE_OK)
-                        goto illegal;
-                } else {
-                    uint32_t raw;
-                    int32_t index = 0;
-                    uint32_t indirect;
-                    int64_t base_value = parsed.base_suppress ? 0 : (int64_t)cpu->a[reg];
-                    if (!parsed.index_suppress) {
-                        raw = parsed.index_is_addr ? cpu->a[parsed.index_reg]
-                                                   : cpu->d[parsed.index_reg];
-                        index = parsed.index_long ? (int32_t)raw
-                                                  : (int16_t)(raw & 0xffffu);
-                    }
-                    base_value += parsed.base_displacement;
-                    if (parsed.indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED)
-                        base_value += (int64_t)index * parsed.index_scale;
-                    if (!cpu_read32(cpu, vm, (uint32_t)base_value, true, &indirect))
-                        return deliver_fault(cpu, vm, instruction_pc);
-                    address = indirect;
-                    if (parsed.indirect_mode == AMIVM_EA_INDIRECT_POSTINDEXED)
-                        address = (uint32_t)((int64_t)address +
-                                  (int64_t)index * parsed.index_scale);
-                    address = (uint32_t)((int64_t)address +
-                              parsed.outer_displacement);
-                }
-                end_pc += (uint32_t)(parsed.words_consumed * 2u);
-            }
-        } else {
-            goto illegal;
+            if (ea_rc != AMIVM_EA_PARSE_OK)
+                goto illegal;
         }
         amivm_pmmu51_atc_flushs_fc_page(cpu, fc, mask, address);
         cpu->pc = end_pc;
@@ -1119,74 +1060,13 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         else goto illegal;
         {
             uint32_t address;
-            uint32_t end_pc = next_pc + 2u;
-            if (mode == 2u) {
-                address = cpu->a[reg];
-            } else if (mode == 5u) {
-                uint16_t displacement;
-                if (fetch16(cpu, vm, end_pc, &displacement) != 0)
-                    return deliver_fault(cpu, vm, instruction_pc);
-                address = (uint32_t)((int64_t)cpu->a[reg] + (int16_t)displacement);
-                end_pc += 2u;
-            } else if (mode == 6u) {
-                uint16_t words[5];
-                struct amivm_ea_index_extension parsed;
-                size_t available = 1u;
-                if (fetch16(cpu, vm, end_pc, &words[0]) != 0)
-                    return deliver_fault(cpu, vm, instruction_pc);
-                if ((words[0] & 0x0100u) == 0u) {
-                    if (amivm_ea_resolve_brief_index(cpu->a[reg], words[0],
-                                                     cpu->d, cpu->a, &address) !=
-                        AMIVM_EA_PARSE_OK)
-                        goto illegal;
-                    end_pc += 2u;
-                } else {
-                    uint8_t bd_code = (uint8_t)((words[0] >> 4u) & 3u);
-                    uint8_t iis = (uint8_t)(words[0] & 7u);
-                    size_t bd_words = bd_code == 2u ? 1u : (bd_code == 3u ? 2u : 0u);
-                    size_t od_words = (iis == 2u || iis == 6u) ? 1u :
-                                      ((iis == 3u || iis == 7u) ? 2u : 0u);
-                    available = 1u + bd_words + od_words;
-                    for (size_t wi = 1u; wi < available; ++wi)
-                        if (fetch16(cpu, vm, end_pc + (uint32_t)(wi * 2u),
-                                    &words[wi]) != 0)
-                            return deliver_fault(cpu, vm, instruction_pc);
-                    if (amivm_ea_parse_index_extension(words, available, &parsed) !=
-                        AMIVM_EA_PARSE_OK)
-                        goto illegal;
-                    if (parsed.indirect_mode == AMIVM_EA_INDIRECT_NONE) {
-                        if (amivm_ea_resolve_full_index(cpu->a[reg], &parsed,
-                                                       cpu->d, cpu->a, &address) !=
-                            AMIVM_EA_PARSE_OK)
-                            goto illegal;
-                    } else {
-                        uint32_t raw;
-                        int32_t index = 0;
-                        uint32_t indirect;
-                        int64_t base_value = parsed.base_suppress ? 0 : (int64_t)cpu->a[reg];
-                        if (!parsed.index_suppress) {
-                            raw = parsed.index_is_addr ? cpu->a[parsed.index_reg]
-                                                       : cpu->d[parsed.index_reg];
-                            index = parsed.index_long ? (int32_t)raw
-                                                      : (int16_t)(raw & 0xffffu);
-                        }
-                        base_value += parsed.base_displacement;
-                        if (parsed.indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED)
-                            base_value += (int64_t)index * parsed.index_scale;
-                        if (!cpu_read32(cpu, vm, (uint32_t)base_value, true, &indirect))
-                            return deliver_fault(cpu, vm, instruction_pc);
-                        address = indirect;
-                        if (parsed.indirect_mode == AMIVM_EA_INDIRECT_POSTINDEXED)
-                            address = (uint32_t)((int64_t)address +
-                                      (int64_t)index * parsed.index_scale);
-                        address = (uint32_t)((int64_t)address +
-                                  parsed.outer_displacement);
-                    }
-                    end_pc += (uint32_t)(parsed.words_consumed * 2u);
-                }
-            } else {
+            uint32_t end_pc;
+            int ea_rc = pmmu51_resolve_flush_ea(cpu, vm, mode, reg,
+                                                next_pc + 2u, &address, &end_pc);
+            if (ea_rc == AMIVM_EA_PARSE_TRUNCATED)
+                return deliver_fault(cpu, vm, instruction_pc);
+            if (ea_rc != AMIVM_EA_PARSE_OK)
                 goto illegal;
-            }
             amivm_pmmu51_atc_flush_fc_page(cpu, fc, mask, address);
             cpu->pc = end_pc;
             return 1;
