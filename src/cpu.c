@@ -163,8 +163,8 @@ void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu)
 void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
                                uint8_t function_code, uint8_t mask)
 {
-    uint8_t fc = (uint8_t)(function_code & 7u);
-    uint8_t m = (uint8_t)(mask & 7u);
+    uint8_t fc = (uint8_t)(function_code & 0x0fu);
+    uint8_t m = (uint8_t)(mask & 0x0fu);
     if (cpu == NULL) return;
     for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
         struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
@@ -875,9 +875,9 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
         else if (fc_field == 1u) fc = (uint8_t)(cpu->dfc & 7u);
         else if ((fc_field & 0x18u) == 0x08u)
-            fc = (uint8_t)(cpu->d[fc_field & 7u] & 7u);
+            fc = (uint8_t)(cpu->d[fc_field & 7u] & 0x0fu);
         else if ((fc_field & 0x10u) != 0u)
-            fc = (uint8_t)(fc_field & 7u);
+            fc = (uint8_t)(fc_field & 0x0fu);
         else goto illegal;
         amivm_pmmu51_atc_flush_fc(cpu, fc, mask);
         cpu->pc = next_pc + 2u;
