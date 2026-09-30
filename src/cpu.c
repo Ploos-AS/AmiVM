@@ -334,6 +334,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t root, l1, l2, l1_addr, l2_addr;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
+    bool effective_shared = false;
 
     cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
     cpu->pmmu_last_shared_globally = false;
@@ -352,11 +353,14 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_LIMIT;
             return AMIVM_MMU_FAULT_LIMIT;
         }
+        effective_shared = rp.shared_globally;
         if (rp.type == AMIVM_PMMU51_ROOT_PAGE) {
             /* Root page descriptor terminates the walk. At this scaffold's
              * 4 KiB page size the root address supplies the physical page. */
+            cpu->pmmu_last_shared_globally = effective_shared;
             *physical = (rp.table_address & PMMU51_ADDR_MASK) |
                         (logical & 0xfffu);
+            pmmu51_atc_fill(cpu, logical, *physical, supervisor);
             return AMIVM_MMU_OK;
         }
         if (rp.type != AMIVM_PMMU51_ROOT_TABLE_SHORT &&
@@ -410,7 +414,8 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_ACCESS;
             return AMIVM_MMU_FAULT_WRITE_ACCESS;
         }
-        cpu->pmmu_last_shared_globally = ld.shared_globally;
+        effective_shared = effective_shared || ld.shared_globally;
+        cpu->pmmu_last_shared_globally = effective_shared;
         l2_addr = (ld.table_address & PMMU51_ADDR_MASK) + i2 * 4u;
     } else {
         if ((l1 & PMMU51_DESC_TYPE_MASK) != PMMU51_DESC_TABLE) {
@@ -432,6 +437,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return AMIVM_MMU_FAULT_WRITE_PROTECT;
     }
 
+    cpu->pmmu_last_shared_globally = effective_shared;
     *physical = (l2 & PMMU51_ADDR_MASK) | (logical & 0xfffu);
     pmmu51_atc_fill(cpu, logical, *physical, supervisor);
     return AMIVM_MMU_OK;
