@@ -32,5 +32,9 @@ int main(void){
  CHECK(amivm_cpu_step(&cpu,&vm,amivm_cpu_reference_backend())==1);CHECK(cpu.pc==la+2u);CHECK(cpu.pmmu_atc[0].valid);CHECK(cpu.pmmu_atc[0].function_code==6u);
  p32(vm.ram+0x3004,alt|1u);CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,5u,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);CHECK(cpu.pmmu_atc[1].valid);CHECK(cpu.pmmu_atc[1].function_code==5u);
  CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,6u,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
- amivm_vm_destroy(&vm);puts("AmiVM M2.130 68851 instruction/data FC execution: PASS");return 0;
+ amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_tc=0x80000000u;cpu.pmmu_crp=(UINT64_C(0x7fff0003)<<32)|root;cpu.sr=0x0000u;cpu.pc=la;p32(vm.ram+0x3004,page|1u);p32(vm.ram+(page-AMIVM_RAM_BASE)+0x234u,0x4e710000u);
+ CHECK(amivm_cpu_step(&cpu,&vm,amivm_cpu_reference_backend())==1);CHECK(cpu.pc==la+2u);CHECK(cpu.pmmu_atc[0].valid);CHECK(cpu.pmmu_atc[0].function_code==2u);
+ p32(vm.ram+0x3004,alt|1u);CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,1u,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);CHECK(cpu.pmmu_atc[1].valid);CHECK(cpu.pmmu_atc[1].function_code==1u);
+ CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,2u,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.131 68851 user instruction/data FC execution: PASS");return 0;
 }
