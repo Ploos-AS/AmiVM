@@ -21,5 +21,7 @@ int main(void){
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.d[3]=0x1000;cpu.pmmu_atc[0].logical_page=0x1000;cpu.pmmu_atc[1].logical_page=0x2000;cpu.pmmu_atc[1].function_code=1;p16(vm.ram,0xf032);p16(vm.ram+2,0x39f1);p16(vm.ram+4,0x3dc0);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(cpu.pc==AMIVM_RAM_BASE+6u);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.a[2]=AMIVM_RAM_BASE+0x100;cpu.d[3]=0x20;cpu.pmmu_atc[0].logical_page=0x3000;cpu.pmmu_atc[1].logical_page=0x4000;cpu.pmmu_atc[1].function_code=1;vm.ram[0x120]=0x00;vm.ram[0x121]=0x00;vm.ram[0x122]=0x30;vm.ram[0x123]=0x00;p16(vm.ram,0xf032);p16(vm.ram+2,0x39f1);p16(vm.ram+4,0x3911);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.a[2]=AMIVM_RAM_BASE+0x180;cpu.d[3]=0x1000;cpu.pmmu_atc[0].logical_page=0x5000;cpu.pmmu_atc[1].logical_page=0x6000;cpu.pmmu_atc[1].function_code=1;vm.ram[0x180]=0x00;vm.ram[0x181]=0x00;vm.ram[0x182]=0x40;vm.ram[0x183]=0x00;p16(vm.ram,0xf032);p16(vm.ram+2,0x39f1);p16(vm.ram+4,0x3915);p16(vm.ram+6,0x0000);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
- amivm_vm_destroy(&vm);puts("AmiVM M2.115 MC68851 PFLUSH memory-indirect EA: PASS");return 0;
+ seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.pmmu_atc[0].shared_globally=true;p16(vm.ram,0xf000);p16(vm.ram+2,0x31f1);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(cpu.pmmu_atc[0].valid);
+ cpu.pc=AMIVM_RAM_BASE;p16(vm.ram+2,0x35f1);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(!cpu.pmmu_atc[0].valid);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.117 MC68851 PFLUSHS shared-entry qualification: PASS");return 0;
 }
