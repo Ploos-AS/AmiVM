@@ -904,11 +904,29 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return 1;
     }
 
+    /* MC68851 PFLUSHS includes shared ATC entries. GNU binutils
+     * encodes the no-EA form in the 0x3400 command class. */
+    if (opcode == OP_PMMU_BASE && (ext & 0xfc00u) == 0x3400u) {
+        uint8_t mask = (uint8_t)((ext >> 5u) & 7u);
+        uint8_t fc_field = (uint8_t)(ext & 0x1fu);
+        uint8_t fc;
+        if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
+        else if (fc_field == 1u) fc = (uint8_t)(cpu->dfc & 7u);
+        else if ((fc_field & 0x18u) == 0x08u)
+            fc = (uint8_t)(cpu->d[fc_field & 7u] & 7u);
+        else if ((fc_field & 0x10u) != 0u)
+            fc = (uint8_t)(fc_field & 7u);
+        else goto illegal;
+        amivm_pmmu51_atc_flushs_fc(cpu, fc, mask);
+        cpu->pc = next_pc + 2u;
+        return 1;
+    }
+
     /* MC68851 PFLUSH FC,MASK without an effective address.
      * Command word: 001 100 0 MASK FC.  FC encodings are SFC (00000),
      * DFC (00001), Dn (01RRR), or immediate (1DDDD). */
     if (opcode == OP_PMMU_BASE && (ext & 0xf800u) == 0x3000u) {
-        uint8_t mask = (uint8_t)((ext >> 5u) & 0x0fu);
+        uint8_t mask = (uint8_t)((ext >> 5u) & 7u);
         uint8_t fc_field = (uint8_t)(ext & 0x1fu);
         uint8_t fc;
         if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
@@ -925,7 +943,7 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     /* M2.111: MC68851 PFLUSH FC,MASK,<ea>, initially (An) only. */
     if (opcode == OP_PMMU_BASE && (ext & 0xf800u) == 0x3800u) {
-        uint8_t mask = (uint8_t)((ext >> 5u) & 0x0fu);
+        uint8_t mask = (uint8_t)((ext >> 5u) & 7u);
         uint8_t fc_field = (uint8_t)(ext & 0x1fu);
         uint8_t fc;
         if (fc_field == 0u) fc = (uint8_t)(cpu->sfc & 7u);
