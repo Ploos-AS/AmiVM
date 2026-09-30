@@ -161,33 +161,50 @@ void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu)
     cpu->pmmu_atc_next = 0u;
 }
 
-void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
-                               uint8_t function_code, uint8_t mask)
+static void pmmu51_atc_flush_select(struct amivm_cpu_state *cpu,
+                                    uint8_t function_code, uint8_t mask,
+                                    bool include_shared, bool match_page,
+                                    uint32_t logical_address)
 {
-    uint8_t fc = (uint8_t)(function_code & 0x0fu);
-    uint8_t m = (uint8_t)(mask & 0x0fu);
+    uint8_t fc = (uint8_t)(function_code & 7u);
+    uint8_t m = (uint8_t)(mask & 7u);
+    uint32_t page = logical_address & 0xfffff000u;
     if (cpu == NULL) return;
     for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
         struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
-        if (e->valid && ((e->function_code & m) == (fc & m)))
+        if (e->valid && (include_shared || !e->shared_globally) &&
+            (!match_page || e->logical_page == page) &&
+            ((e->function_code & m) == (fc & m)))
             e->valid = false;
     }
+}
+
+void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
+                               uint8_t function_code, uint8_t mask)
+{
+    pmmu51_atc_flush_select(cpu, function_code, mask, false, false, 0u);
 }
 
 void amivm_pmmu51_atc_flush_fc_page(struct amivm_cpu_state *cpu,
                                     uint8_t function_code, uint8_t mask,
                                     uint32_t logical_address)
 {
-    uint8_t fc = (uint8_t)(function_code & 0x0fu);
-    uint8_t m = (uint8_t)(mask & 0x0fu);
-    uint32_t page = logical_address & 0xfffff000u;
-    if (cpu == NULL) return;
-    for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
-        struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
-        if (e->valid && e->logical_page == page &&
-            ((e->function_code & m) == (fc & m)))
-            e->valid = false;
-    }
+    pmmu51_atc_flush_select(cpu, function_code, mask, false, true,
+                            logical_address);
+}
+
+void amivm_pmmu51_atc_flushs_fc(struct amivm_cpu_state *cpu,
+                                uint8_t function_code, uint8_t mask)
+{
+    pmmu51_atc_flush_select(cpu, function_code, mask, true, false, 0u);
+}
+
+void amivm_pmmu51_atc_flushs_fc_page(struct amivm_cpu_state *cpu,
+                                     uint8_t function_code, uint8_t mask,
+                                     uint32_t logical_address)
+{
+    pmmu51_atc_flush_select(cpu, function_code, mask, true, true,
+                            logical_address);
 }
 
 static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
