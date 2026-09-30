@@ -85,3 +85,22 @@ int amivm_ea_parse_index_extension(const uint16_t *words, size_t word_count,
     result->words_consumed = cursor;
     return AMIVM_EA_PARSE_OK;
 }
+
+int amivm_ea_resolve_brief_index(uint32_t base, uint16_t extension,
+                                 const uint32_t d[8], const uint32_t a[8],
+                                 uint32_t *address)
+{
+    uint32_t raw;
+    int32_t index;
+    unsigned reg;
+    unsigned scale;
+    if (d == NULL || a == NULL || address == NULL || (extension & 0x0100u) != 0u)
+        return AMIVM_EA_PARSE_RESERVED;
+    reg = (unsigned)((extension >> 12u) & 7u);
+    raw = (extension & 0x8000u) != 0u ? a[reg] : d[reg];
+    index = (extension & 0x0800u) != 0u ? (int32_t)raw : (int16_t)(raw & 0xffffu);
+    scale = 1u << ((extension >> 9u) & 3u);
+    *address = (uint32_t)((int64_t)base + (int8_t)(extension & 0xffu) +
+                          (int64_t)index * (int64_t)scale);
+    return AMIVM_EA_PARSE_OK;
+}
