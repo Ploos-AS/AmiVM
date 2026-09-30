@@ -10,7 +10,7 @@
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "Usage: %s [--version] [--dump-machine] [--selftest] [--cpu PROFILE] [--ram-mib N] [--rom PATH]\n",
+            "Usage: %s [--version] [--dump-machine] [--selftest] [--cpu PROFILE] [--mmu 68851] [--ram-mib N] [--rom PATH]\n",
             prog);
 }
 
@@ -20,9 +20,10 @@ int main(int argc, char **argv)
     struct amivm_vm vm;
     int i;
     bool dump_machine = false;
-    const struct amivm_cpu_profile *cpu_profile = amivm_cpu_profile_default();
+    const struct amivm_cpu_profile *cpu_profile;
 
     amivm_config_init(&config);
+    cpu_profile = config.cpu_profile;
 
     for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--version") == 0) {
@@ -41,6 +42,15 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Invalid --cpu profile (use 68020, 68030, 68040, 68060, hyper040 or hyper060)\n");
                 return 2;
             }
+            config.cpu_profile = cpu_profile;
+            continue;
+        }
+        if (strcmp(argv[i], "--mmu") == 0) {
+            if (++i >= argc || strcmp(argv[i], "68851") != 0) {
+                fprintf(stderr, "Invalid --mmu value (currently only 68851 is supported)\n");
+                return 2;
+            }
+            config.external_mmu = AMIVM_MMU_68851;
             continue;
         }
         if (strcmp(argv[i], "--ram-mib") == 0) {
@@ -72,7 +82,9 @@ int main(int argc, char **argv)
         amivm_dump_machine(&vm, stdout);
     } else {
         puts("AmiVM M1 VM core skeleton initialized");
-        printf("CPU: %s\n", cpu_profile->name);
+        printf("CPU: %s\n", vm.cpu_profile.name);
+        if (vm.cpu_profile.mmu_model == AMIVM_MMU_68851)
+            puts("MMU: 68851");
         printf("RAM: %zu MiB\n", vm.ram_size / (1024u * 1024u));
         if (vm.rom_used != 0u) {
             printf("ROM: %zu bytes loaded\n", vm.rom_used);
