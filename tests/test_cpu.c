@@ -325,6 +325,39 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.7 CPU/MMU foundation tests: PASS");
+
+    {
+        struct amivm_config ttr_config;
+        struct amivm_vm ttr_vm;
+        struct amivm_cpu_state ttr_cpu;
+        struct amivm_ttr ttr = {
+            .base = AMIVM_RAM_BASE,
+            .mask = 0xfffff000u,
+            .function_code = 2u,
+            .function_code_mask = 7u,
+            .enabled = true,
+            .write_protected = false,
+            .supervisor_only = false
+        };
+        uint32_t physical = 0u;
+        amivm_config_init(&ttr_config);
+        ttr_config.ram_size = 1024u * 1024u;
+        ttr_config.cpu_profile = amivm_cpu_profile_by_name("68030");
+        CHECK(amivm_vm_init(&ttr_vm, &ttr_config) == 0);
+        CHECK(amivm_cpu_reset(&ttr_cpu, &ttr_vm, backend) == 0);
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        ttr_cpu.tc = 0x80000000u;
+        CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
+                                     false, 2u, &physical) == AMIVM_MMU_OK);
+        CHECK(physical == AMIVM_RAM_BASE + 0x123u);
+        ttr.write_protected = true;
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
+                                     true, 2u, &physical) ==
+              AMIVM_MMU_FAULT_WRITE_PROTECT);
+        amivm_vm_destroy(&ttr_vm);
+    }
+
+    puts("AmiVM M2.132 native TTR qualification: PASS");
     return 0;
 }
