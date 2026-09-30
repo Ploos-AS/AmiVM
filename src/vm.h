@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "cpu_profile.h"
 
 #define AMIVM_DEFAULT_RAM_MIB 128u
 #define AMIVM_RAM_BASE 0x10000000u
@@ -20,6 +21,8 @@
 struct amivm_config {
     size_t ram_size;
     const char *rom_path;
+    const struct amivm_cpu_profile *cpu_profile;
+    enum amivm_mmu_model external_mmu;
 };
 
 struct amivm_device_desc {
@@ -39,6 +42,7 @@ struct amivm_vm {
     uint32_t irq_pending;
     uint64_t timer_ticks;
     uint64_t memory_write_generation;
+    struct amivm_cpu_profile cpu_profile;
 };
 
 void amivm_config_init(struct amivm_config *config);
