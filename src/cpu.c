@@ -913,10 +913,18 @@ static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ADDRESS, addr, 0u);
         return -3;
     }
-    if (!cpu_read16(cpu, vm, addr, is_supervisor(cpu), value)) {
-        if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+    {
+        uint32_t physical;
+        uint8_t function_code = is_supervisor(cpu) ? 6u : 2u;
+        if (amivm_mmu_translate_fc(cpu, vm, addr, false, function_code,
+                                   &physical) != AMIVM_MMU_OK) {
+            set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
+            return -4;
+        }
+        if (!amivm_read16(vm, physical, value)) {
             set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
-        return -4;
+            return -4;
+        }
     }
     return 0;
 }
@@ -928,10 +936,18 @@ static int fetch32(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_ADDRESS, addr, 0u);
         return -3;
     }
-    if (!cpu_read32(cpu, vm, addr, is_supervisor(cpu), value)) {
-        if (cpu->last_fault == AMIVM_CPU_FAULT_NONE)
+    {
+        uint32_t physical;
+        uint8_t function_code = is_supervisor(cpu) ? 6u : 2u;
+        if (amivm_mmu_translate_fc(cpu, vm, addr, false, function_code,
+                                   &physical) != AMIVM_MMU_OK) {
+            set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
+            return -4;
+        }
+        if (!amivm_read32(vm, physical, value)) {
             set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
-        return -4;
+            return -4;
+        }
     }
     return 0;
 }
