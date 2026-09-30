@@ -104,3 +104,25 @@ int amivm_ea_resolve_brief_index(uint32_t base, uint16_t extension,
                           (int64_t)index * (int64_t)scale);
     return AMIVM_EA_PARSE_OK;
 }
+
+int amivm_ea_resolve_full_index(uint32_t base,
+                                const struct amivm_ea_index_extension *ext,
+                                const uint32_t d[8], const uint32_t a[8],
+                                uint32_t *address)
+{
+    uint32_t raw = 0u;
+    int32_t index = 0;
+    int64_t value;
+    if (ext == NULL || d == NULL || a == NULL || address == NULL ||
+        !ext->full_format || ext->indirect_mode != AMIVM_EA_INDIRECT_NONE)
+        return AMIVM_EA_PARSE_RESERVED;
+    if (!ext->index_suppress) {
+        raw = ext->index_is_addr ? a[ext->index_reg] : d[ext->index_reg];
+        index = ext->index_long ? (int32_t)raw : (int16_t)(raw & 0xffffu);
+    }
+    value = ext->base_suppress ? 0 : (int64_t)base;
+    value += ext->base_displacement;
+    value += (int64_t)index * ext->index_scale;
+    *address = (uint32_t)value;
+    return AMIVM_EA_PARSE_OK;
+}
