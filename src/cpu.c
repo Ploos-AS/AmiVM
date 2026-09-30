@@ -207,8 +207,8 @@ void amivm_pmmu51_atc_flushs_fc_page(struct amivm_cpu_state *cpu,
                             logical_address);
 }
 
-static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
-                              bool supervisor, uint32_t *physical)
+static int pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
+                             bool write, bool supervisor, uint32_t *physical)
 {
     uint32_t page = logical & 0xfffff000u;
     uint8_t level = amivm_pmmu51_get_access_level(cpu);
@@ -217,16 +217,34 @@ static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
         if (e->valid && e->logical_page == page &&
             (e->shared_globally ||
              (e->supervisor == supervisor && e->access_level == level))) {
+            if (e->supervisor_only && !supervisor) {
+                cpu->pmmu_psr = AMIVM_PMMU51_PSR_SUPERVISOR;
+                return AMIVM_MMU_FAULT_SUPERVISOR;
+            }
+            if (write && e->write_protected) {
+                cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_PROTECT;
+                return AMIVM_MMU_FAULT_WRITE_PROTECT;
+            }
+            if (!write && level < e->read_access_level) {
+                cpu->pmmu_psr = AMIVM_PMMU51_PSR_READ_ACCESS;
+                return AMIVM_MMU_FAULT_READ_ACCESS;
+            }
+            if (write && level < e->write_access_level) {
+                cpu->pmmu_psr = AMIVM_PMMU51_PSR_WRITE_ACCESS;
+                return AMIVM_MMU_FAULT_WRITE_ACCESS;
+            }
             *physical = e->physical_page | (logical & 0xfffu);
             cpu->pmmu_last_shared_globally = e->shared_globally;
-            return true;
+            return AMIVM_MMU_OK;
         }
     }
-    return false;
+    return 1;
 }
 
 static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
-                            uint32_t physical, bool supervisor)
+                            uint32_t physical, bool supervisor,
+                            bool supervisor_only, bool write_protected,
+                            uint8_t read_level, uint8_t write_level)
 {
     struct amivm_pmmu51_atc_entry *e =
         &cpu->pmmu_atc[cpu->pmmu_atc_next % AMIVM_PMMU51_ATC_ENTRIES];
@@ -237,6 +255,10 @@ static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
      * normal 68k data-space FC convention: user=1, supervisor=5. */
     e->function_code = supervisor ? 5u : 1u;
     e->supervisor = supervisor;
+    e->supervisor_only = supervisor_only;
+    e->write_protected = write_protected;
+    e->read_access_level = read_level;
+    e->write_access_level = write_level;
     e->shared_globally = cpu->pmmu_last_shared_globally;
     e->valid = true;
     cpu->pmmu_atc_next =
