@@ -860,7 +860,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     if (!phys_read32(vm, AMIVM_ROM_BASE, &initial_sp) ||
         !phys_read32(vm, AMIVM_ROM_BASE + 4u, &initial_pc)) return -1;
     for (i = 0; i < 8u; ++i) { cpu->d[i] = 0u; cpu->a[i] = 0u; }
-    if (cpu->profile == NULL) cpu->profile = amivm_cpu_profile_default();
+    cpu->profile = &vm->cpu_profile;
     cpu->usp = 0u;
     cpu->isp = initial_sp;
     cpu->msp = initial_sp;
