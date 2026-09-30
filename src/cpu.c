@@ -322,7 +322,9 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 static int mmu_translate_table(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                uint32_t logical, bool write, bool supervisor,
                                uint32_t *physical)
-{    uint32_t root, l1, l2, l1_addr, l2_addr;\n    bool root_long = false;
+{
+    uint32_t root, l1, l2, l1_addr, l2_addr;
+    bool root_long = false;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
 
@@ -374,6 +376,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t root, l1, l2, l1_addr, l2_addr;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
+    bool root_long = false;
     bool effective_shared = false;
     bool effective_supervisor_only = false;
     uint8_t effective_read_level = 0u;
