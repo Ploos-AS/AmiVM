@@ -16,5 +16,9 @@ int main(void){
  CHECK(amivm_pmmu51_set_access_level(&cpu,7u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
  amivm_pmmu51_atc_flush(&cpu);CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);
  amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_crp=(UINT64_C(0x7fff0203)<<32)|root;p32(vm.ram+0x2008,0x7fff0002u);p32(vm.ram+0x200c,l2);p32(vm.ram+0x3004,page|1u);CHECK(amivm_pmmu51_set_access_level(&cpu,0u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);CHECK(cpu.pmmu_atc[0].shared_globally);p32(vm.ram+0x3004,alt|1u);CHECK(amivm_pmmu51_set_access_level(&cpu,7u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,true,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
- amivm_vm_destroy(&vm);puts("AmiVM M2.116 68851 effective SG/ATC inheritance: PASS");return 0;
+ amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_crp=(UINT64_C(0x7fff0003)<<32)|root;p32(vm.ram+0x2008,0x7fff0002u);p32(vm.ram+0x200c,l2);p32(vm.ram+0x3004,page|1u);CHECK(amivm_pmmu51_set_access_level(&cpu,0u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);cpu.pmmu_atc[0].write_protected=true;CHECK(amivm_mmu_translate(&cpu,&vm,la,true,false,&pa)==AMIVM_MMU_FAULT_WRITE_PROTECT);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_WRITE_PROTECT);
+ cpu.pmmu_atc[0].write_protected=false;cpu.pmmu_atc[0].read_access_level=3u;CHECK(amivm_pmmu51_set_access_level(&cpu,2u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_READ_ACCESS);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_READ_ACCESS);CHECK(amivm_pmmu51_set_access_level(&cpu,3u));CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);
+ cpu.pmmu_atc[0].write_access_level=4u;CHECK(amivm_mmu_translate(&cpu,&vm,la,true,false,&pa)==AMIVM_MMU_FAULT_WRITE_ACCESS);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_WRITE_ACCESS);
+ cpu.pmmu_atc[0].write_access_level=0u;cpu.pmmu_atc[0].supervisor_only=true;CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_SUPERVISOR);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_SUPERVISOR);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.120 68851 ATC permission enforcement: PASS");return 0;
 }
