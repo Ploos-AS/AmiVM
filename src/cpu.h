@@ -189,6 +189,9 @@ int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    const struct amivm_cpu_backend *backend);
+int amivm_mmu_translate_fc(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                           uint32_t logical, bool write, uint8_t function_code,
+                           uint32_t *physical);
 int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                         uint32_t logical, bool write, bool supervisor,
                         uint32_t *physical);
