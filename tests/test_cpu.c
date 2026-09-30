@@ -114,6 +114,29 @@ int main(void)
     CHECK(cpu.sfc == 0u && cpu.dfc == 0u);
     CHECK((cpu.sr & 0x2700u) == 0x2700u);
 
+    {
+        const struct amivm_cpu_profile *selected =
+            amivm_cpu_profile_by_name("68020");
+        CHECK(selected != NULL);
+        amivm_cpu_set_profile(&cpu, selected);
+        cpu.pmmu_crp = UINT64_C(0x1122334455667788);
+        cpu.pmmu_srp = UINT64_C(0x8877665544332211);
+        cpu.pmmu_tc = 0x80000000u;
+        cpu.pmmu_psr = AMIVM_PMMU51_PSR_WRITE_ACCESS;
+        cpu.pmmu_access_level = 7u;
+        cpu.pmmu_last_shared_globally = true;
+        cpu.pmmu_atc[0].valid = true;
+        cpu.pmmu_atc[0].logical_page = 0x12345000u;
+        cpu.pmmu_atc_next = 7u;
+        CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+        CHECK(amivm_cpu_get_profile(&cpu) == selected);
+        CHECK(cpu.pmmu_crp == 0u && cpu.pmmu_srp == 0u);
+        CHECK(cpu.pmmu_tc == 0u && cpu.pmmu_psr == AMIVM_PMMU51_PSR_OK);
+        CHECK(cpu.pmmu_access_level == 0u);
+        CHECK(!cpu.pmmu_last_shared_globally);
+        CHECK(!cpu.pmmu_atc[0].valid && cpu.pmmu_atc_next == 0u);
+    }
+
     CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
     CHECK(cpu.d[0] == 5u);
     CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
