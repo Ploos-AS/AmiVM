@@ -218,8 +218,7 @@ static int pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
     for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
         struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
         if (e->valid && e->logical_page == page &&
-            (e->shared_globally ||
-             (e->supervisor == supervisor && e->access_level == level))) {
+            (e->shared_globally || e->supervisor == supervisor)) {
             if (e->supervisor_only && !supervisor) {
                 cpu->pmmu_psr = AMIVM_PMMU51_PSR_SUPERVISOR;
                 return AMIVM_MMU_FAULT_SUPERVISOR;
