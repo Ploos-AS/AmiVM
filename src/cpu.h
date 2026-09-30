@@ -112,6 +112,16 @@ struct amivm_pmmu51_atc_entry {
     bool valid;
 };
 
+struct amivm_ttr {
+    uint32_t base;
+    uint32_t mask;
+    uint8_t function_code;
+    uint8_t function_code_mask;
+    bool enabled;
+    bool write_protected;
+    bool supervisor_only;
+};
+
 struct amivm_cpu_state {
     const struct amivm_cpu_profile *profile;
     uint32_t d[8];
@@ -135,6 +145,7 @@ struct amivm_cpu_state {
     bool pmmu_last_shared_globally;
     struct amivm_pmmu51_atc_entry pmmu_atc[AMIVM_PMMU51_ATC_ENTRIES];
     uint8_t pmmu_atc_next;
+    struct amivm_ttr ttr[2];
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
@@ -156,6 +167,8 @@ const struct amivm_cpu_backend *amivm_cpu_reference_backend(void);
 void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
                            const struct amivm_cpu_profile *profile);
 const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
+void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
+                       const struct amivm_ttr *ttr);
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value);
