@@ -868,6 +868,16 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->pc = initial_pc;
     cpu->vbr = AMIVM_ROM_BASE;
     cpu->cacr = cpu->tc = cpu->urp = cpu->srp = cpu->mmusr = 0u;
+    /* Reset external 68851 state independently of the selected profile.
+     * A reset must never retain translations or protection context from a
+     * previous guest run. */
+    cpu->pmmu_crp = 0u;
+    cpu->pmmu_srp = 0u;
+    cpu->pmmu_tc = 0u;
+    cpu->pmmu_psr = AMIVM_PMMU51_PSR_OK;
+    cpu->pmmu_access_level = 0u;
+    cpu->pmmu_last_shared_globally = false;
+    amivm_pmmu51_atc_flush(cpu);
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
