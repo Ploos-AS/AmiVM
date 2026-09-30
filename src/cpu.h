@@ -173,6 +173,9 @@ bool amivm_pmmu51_last_shared_globally(const struct amivm_cpu_state *cpu);
 void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu);
 void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
                                uint8_t function_code, uint8_t mask);
+void amivm_pmmu51_atc_flush_fc_page(struct amivm_cpu_state *cpu,
+                                    uint8_t function_code, uint8_t mask,
+                                    uint32_t logical_address);
 int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
