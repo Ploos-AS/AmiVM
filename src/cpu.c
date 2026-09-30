@@ -911,10 +911,24 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         else if ((fc_field & 0x10u) != 0u)
             fc = (uint8_t)(fc_field & 0x0fu);
         else goto illegal;
-        if (mode != 2u) goto illegal;
-        amivm_pmmu51_atc_flush_fc_page(cpu, fc, mask, cpu->a[reg]);
-        cpu->pc = next_pc + 2u;
-        return 1;
+        {
+            uint32_t address;
+            uint32_t end_pc = next_pc + 2u;
+            if (mode == 2u) {
+                address = cpu->a[reg];
+            } else if (mode == 5u) {
+                uint16_t displacement;
+                if (fetch16(cpu, vm, end_pc, &displacement) != 0)
+                    return deliver_fault(cpu, vm, instruction_pc);
+                address = (uint32_t)((int64_t)cpu->a[reg] + (int16_t)displacement);
+                end_pc += 2u;
+            } else {
+                goto illegal;
+            }
+            amivm_pmmu51_atc_flush_fc_page(cpu, fc, mask, address);
+            cpu->pc = end_pc;
+            return 1;
+        }
     }
 
     if ((ext & 0xe1ffu) != 0x4000u || (mode != 0u && mode != 2u)) {
