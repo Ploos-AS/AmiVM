@@ -355,9 +355,24 @@ int main(void)
         CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
                                      true, 2u, &physical) ==
               AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+        /* FC matching is masked, and an unrelated FC must fall through to
+         * the normal MMU path rather than using this TTR. */
+        ttr.write_protected = false;
+        ttr.function_code_mask = 6u;
+        ttr.function_code = 2u;
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
+                                     false, 2u, &physical) == AMIVM_MMU_OK);
+        CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
+                                     false, 1u, &physical) == AMIVM_MMU_OK);
+        ttr.enabled = false;
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
+                                     false, 2u, &physical) == AMIVM_MMU_OK);
         amivm_vm_destroy(&ttr_vm);
     }
 
-    puts("AmiVM M2.132 native TTR qualification: PASS");
+    puts("AmiVM M2.133 native TTR FC-mask qualification: PASS");
     return 0;
 }
