@@ -946,12 +946,36 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                         fetch16(cpu, vm, end_pc + 4u, &words[2]) != 0)
                         return deliver_fault(cpu, vm, instruction_pc);
                     if (amivm_ea_parse_index_extension(words, available, &parsed) !=
-                            AMIVM_EA_PARSE_OK ||
-                        parsed.indirect_mode != AMIVM_EA_INDIRECT_NONE ||
-                        amivm_ea_resolve_full_index(cpu->a[reg], &parsed,
-                                                   cpu->d, cpu->a, &address) !=
-                            AMIVM_EA_PARSE_OK)
+                        AMIVM_EA_PARSE_OK)
                         goto illegal;
+                    if (parsed.indirect_mode == AMIVM_EA_INDIRECT_NONE) {
+                        if (amivm_ea_resolve_full_index(cpu->a[reg], &parsed,
+                                                       cpu->d, cpu->a, &address) !=
+                            AMIVM_EA_PARSE_OK)
+                            goto illegal;
+                    } else {
+                        uint32_t raw;
+                        int32_t index = 0;
+                        uint32_t indirect;
+                        int64_t base_value = parsed.base_suppress ? 0 : (int64_t)cpu->a[reg];
+                        if (!parsed.index_suppress) {
+                            raw = parsed.index_is_addr ? cpu->a[parsed.index_reg]
+                                                       : cpu->d[parsed.index_reg];
+                            index = parsed.index_long ? (int32_t)raw
+                                                      : (int16_t)(raw & 0xffffu);
+                        }
+                        base_value += parsed.base_displacement;
+                        if (parsed.indirect_mode == AMIVM_EA_INDIRECT_PREINDEXED)
+                            base_value += (int64_t)index * parsed.index_scale;
+                        if (!cpu_read32(cpu, vm, (uint32_t)base_value, true, &indirect))
+                            return deliver_fault(cpu, vm, instruction_pc);
+                        address = indirect;
+                        if (parsed.indirect_mode == AMIVM_EA_INDIRECT_POSTINDEXED)
+                            address = (uint32_t)((int64_t)address +
+                                      (int64_t)index * parsed.index_scale);
+                        address = (uint32_t)((int64_t)address +
+                                  parsed.outer_displacement);
+                    }
                     end_pc += (uint32_t)(parsed.words_consumed * 2u);
                 }
             } else {
