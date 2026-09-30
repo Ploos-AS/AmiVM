@@ -16,5 +16,6 @@ int main(void){
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.a[2]=0x1234;cpu.pmmu_atc[0].logical_page=0x1000;cpu.pmmu_atc[1].logical_page=0x2000;cpu.pmmu_atc[1].function_code=1;p16(vm.ram,0xf012);p16(vm.ram+2,0x39f1);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.a[2]=0x0800;cpu.pmmu_atc[0].logical_page=0x1000;cpu.pmmu_atc[1].logical_page=0x2000;cpu.pmmu_atc[1].function_code=1;p16(vm.ram,0xf02a);p16(vm.ram+2,0x39f1);p16(vm.ram+4,0x0834);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(cpu.pc==AMIVM_RAM_BASE+6u);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
  seed(&cpu);cpu.pc=AMIVM_RAM_BASE;p16(vm.ram,0xf000);p16(vm.ram+2,0x33f1);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid&&cpu.pmmu_atc[2].valid);
- amivm_vm_destroy(&vm);puts("AmiVM M2.112 MC68851 PFLUSH EA/mask qualification: PASS");return 0;
+ seed(&cpu);cpu.pc=AMIVM_RAM_BASE;cpu.a[2]=0x0800;cpu.d[3]=0x0400;cpu.pmmu_atc[0].logical_page=0x1000;cpu.pmmu_atc[1].logical_page=0x2000;cpu.pmmu_atc[1].function_code=1;p16(vm.ram,0xf032);p16(vm.ram+2,0x39f1);p16(vm.ram+4,0x3c10);CHECK(amivm_cpu_step(&cpu,&vm,be)==1);CHECK(cpu.pc==AMIVM_RAM_BASE+6u);CHECK(!cpu.pmmu_atc[0].valid&&cpu.pmmu_atc[1].valid);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.113 MC68851 PFLUSH brief indexed EA: PASS");return 0;
 }
