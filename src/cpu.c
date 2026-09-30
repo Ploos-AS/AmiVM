@@ -160,6 +160,19 @@ void amivm_pmmu51_atc_flush(struct amivm_cpu_state *cpu)
     cpu->pmmu_atc_next = 0u;
 }
 
+void amivm_pmmu51_atc_flush_fc(struct amivm_cpu_state *cpu,
+                               uint8_t function_code, uint8_t mask)
+{
+    uint8_t fc = (uint8_t)(function_code & 7u);
+    uint8_t m = (uint8_t)(mask & 7u);
+    if (cpu == NULL) return;
+    for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
+        struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
+        if (e->valid && ((e->function_code & m) == (fc & m)))
+            e->valid = false;
+    }
+}
+
 static bool pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
                               bool supervisor, uint32_t *physical)
 {
@@ -186,6 +199,9 @@ static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
     e->logical_page = logical & 0xfffff000u;
     e->physical_page = physical & 0xfffff000u;
     e->access_level = amivm_pmmu51_get_access_level(cpu);
+    /* Until instruction/data access context is plumbed separately, use the
+     * normal 68k data-space FC convention: user=1, supervisor=5. */
+    e->function_code = supervisor ? 5u : 1u;
     e->supervisor = supervisor;
     e->shared_globally = cpu->pmmu_last_shared_globally;
     e->valid = true;
