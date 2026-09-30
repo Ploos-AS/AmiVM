@@ -255,10 +255,16 @@ void amivm_dump_machine(const struct amivm_vm *vm, FILE *out)
 {
     size_t i;
 
-    fprintf(out, "machine=AmiVM-Hyper/040\n");
-    fprintf(out, "cpu=m68040\n");
-    fprintf(out, "mmu=required\n");
-    fprintf(out, "fpu=required\n");
+    fprintf(out, "machine=AmiVM\n");
+    fprintf(out, "cpu=%s\n", vm->cpu_profile.name);
+    fprintf(out, "isa_level=%u\n", vm->cpu_profile.isa_level);
+    fprintf(out, "mmu_model=%u\n", (unsigned)vm->cpu_profile.mmu_model);
+    fprintf(out, "mmu=%s\n", vm->cpu_profile.has_mmu ? "yes" : "no");
+    fprintf(out, "mmu_maturity=%u\n", (unsigned)vm->cpu_profile.mmu_maturity);
+    fprintf(out, "fpu_model=%u\n", (unsigned)vm->cpu_profile.fpu_model);
+    fprintf(out, "fpu=%s\n", vm->cpu_profile.has_fpu ? "yes" : "no");
+    fprintf(out, "master_stack=%s\n", vm->cpu_profile.has_master_stack ? "yes" : "no");
+    fprintf(out, "hyper=%s\n", vm->cpu_profile.hyper ? "yes" : "no");
     fprintf(out, "endianness=big\n");
     fprintf(out, "ram_base=0x%08x\n", AMIVM_RAM_BASE);
     fprintf(out, "ram_bytes=%zu\n", vm->ram_size);
