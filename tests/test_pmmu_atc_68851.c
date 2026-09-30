@@ -21,5 +21,12 @@ int main(void){
  cpu.pmmu_atc[0].write_access_level=4u;CHECK(amivm_mmu_translate(&cpu,&vm,la,true,false,&pa)==AMIVM_MMU_FAULT_WRITE_ACCESS);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_WRITE_ACCESS);
  cpu.pmmu_atc[0].write_access_level=0u;cpu.pmmu_atc[0].supervisor_only=true;CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_FAULT_SUPERVISOR);CHECK(cpu.pmmu_psr==AMIVM_PMMU51_PSR_SUPERVISOR);
  amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_atc[0].valid=true;cpu.pmmu_atc[0].logical_page=la&0xfffff000u;cpu.pmmu_atc[0].physical_page=page;cpu.pmmu_atc[0].function_code=5u;cpu.pmmu_atc[0].supervisor=true;cpu.pmmu_atc[0].shared_globally=true;p32(vm.ram+0x3004,alt|1u);CHECK(amivm_mmu_translate(&cpu,&vm,la,false,false,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);
- amivm_vm_destroy(&vm);puts("AmiVM M2.126 68851 ATC function-code identity: PASS");return 0;
+ amivm_pmmu51_atc_flush(&cpu);cpu.pmmu_crp=(UINT64_C(0x7fff0003)<<32)|root;cpu.pmmu_srp=(UINT64_C(0x7fff0003)<<32)|root;p32(vm.ram+0x3004,page|1u);
+ CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,1u,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);CHECK(cpu.pmmu_atc[0].function_code==1u);
+ p32(vm.ram+0x3004,alt|1u);CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,2u,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);CHECK(cpu.pmmu_atc[1].function_code==2u);
+ p32(vm.ram+0x3004,page|1u);CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,5u,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);CHECK(cpu.pmmu_atc[2].function_code==5u);
+ p32(vm.ram+0x3004,alt|1u);CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,6u,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);CHECK(cpu.pmmu_atc[3].function_code==6u);
+ CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,1u,&pa)==AMIVM_MMU_OK);CHECK(pa==page+0x234u);
+ CHECK(amivm_mmu_translate_fc(&cpu,&vm,la,false,2u,&pa)==AMIVM_MMU_OK);CHECK(pa==alt+0x234u);
+ amivm_vm_destroy(&vm);puts("AmiVM M2.128 68851 explicit FC qualification: PASS");return 0;
 }
