@@ -58,6 +58,14 @@ const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_sta
     return active_profile(cpu);
 }
 
+void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
+                       const struct amivm_ttr *ttr)
+{
+    if (cpu == NULL || ttr == NULL || index >= 2u)
+        return;
+    cpu->ttr[index] = *ttr;
+}
+
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value)
@@ -208,6 +216,26 @@ void amivm_pmmu51_atc_flushs_fc_page(struct amivm_cpu_state *cpu,
 {
     pmmu51_atc_flush_select(cpu, function_code, mask, true, true,
                             logical_address);
+}
+
+static int ttr_translate(const struct amivm_cpu_state *cpu,
+                         uint32_t logical, bool write, uint8_t function_code,
+                         uint32_t *physical)
+{
+    for (unsigned i = 0; i < 2u; ++i) {
+        const struct amivm_ttr *t = &cpu->ttr[i];
+        if (!t->enabled || (logical & t->mask) != (t->base & t->mask) ||
+            (function_code & t->function_code_mask) !=
+                (t->function_code & t->function_code_mask))
+            continue;
+        if (t->supervisor_only && (function_code & 4u) == 0u)
+            return AMIVM_MMU_FAULT_SUPERVISOR;
+        if (write && t->write_protected)
+            return AMIVM_MMU_FAULT_WRITE_PROTECT;
+        *physical = logical;
+        return AMIVM_MMU_OK;
+    }
+    return AMIVM_MMU_FAULT_TABLE_BUS;
 }
 
 static int pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
@@ -537,6 +565,11 @@ int amivm_mmu_translate_fc(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return AMIVM_MMU_FAULT_TABLE_BUS;
 
     profile = active_profile(cpu);
+    if (profile->mmu_model != AMIVM_MMU_68851) {
+        int ttr_rc = ttr_translate(cpu, logical, write, function_code, physical);
+        if (ttr_rc != AMIVM_MMU_FAULT_TABLE_BUS)
+            return ttr_rc;
+    }
     if (!profile->has_mmu || profile->mmu_model == AMIVM_MMU_NONE) {
         cpu->mmusr = 0u;
         *physical = logical;
@@ -895,6 +928,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->pmmu_access_level = 0u;
     cpu->pmmu_last_shared_globally = false;
     amivm_pmmu51_atc_flush(cpu);
+    memset(cpu->ttr, 0, sizeof(cpu->ttr));
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
