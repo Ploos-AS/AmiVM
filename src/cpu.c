@@ -211,11 +211,12 @@ void amivm_pmmu51_atc_flushs_fc_page(struct amivm_cpu_state *cpu,
 }
 
 static int pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
-                             bool write, bool supervisor, uint32_t *physical)
+                             bool write, bool supervisor, uint8_t function_code,
+                             uint32_t *physical)
 {
     uint32_t page = logical & 0xfffff000u;
     uint8_t level = amivm_pmmu51_get_access_level(cpu);
-    uint8_t function_code = supervisor ? 5u : 1u;
+    function_code &= 7u;
     for (unsigned i = 0; i < AMIVM_PMMU51_ATC_ENTRIES; ++i) {
         struct amivm_pmmu51_atc_entry *e = &cpu->pmmu_atc[i];
         if (e->valid && e->logical_page == page &&
@@ -247,7 +248,8 @@ static int pmmu51_atc_lookup(struct amivm_cpu_state *cpu, uint32_t logical,
 
 static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
                             uint32_t physical, bool supervisor,
-                            bool supervisor_only, bool write_protected,
+                            uint8_t function_code, bool supervisor_only,
+                            bool write_protected,
                             uint8_t read_level, uint8_t write_level)
 {
     struct amivm_pmmu51_atc_entry *e =
@@ -255,9 +257,7 @@ static void pmmu51_atc_fill(struct amivm_cpu_state *cpu, uint32_t logical,
     e->logical_page = logical & 0xfffff000u;
     e->physical_page = physical & 0xfffff000u;
     e->access_level = amivm_pmmu51_get_access_level(cpu);
-    /* Until instruction/data access context is plumbed separately, use the
-     * normal 68k data-space FC convention: user=1, supervisor=5. */
-    e->function_code = supervisor ? 5u : 1u;
+    e->function_code = (uint8_t)(function_code & 7u);
     e->supervisor = supervisor;
     e->supervisor_only = supervisor_only;
     e->write_protected = write_protected;
@@ -374,7 +374,7 @@ static int mmu_translate_table(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
 static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                                uint32_t logical, bool write, bool supervisor,
-                               uint32_t *physical)
+                               uint8_t function_code, uint32_t *physical)
 {
     uint32_t root, l1, l2, l1_addr, l2_addr;
     uint32_t i1 = logical >> 22u;
@@ -389,7 +389,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     cpu->pmmu_last_shared_globally = false;
     cpu->mmusr = 0u;
     {
-        int atc_rc = pmmu51_atc_lookup(cpu, logical, write, supervisor, physical);
+        int atc_rc = pmmu51_atc_lookup(cpu, logical, write, supervisor, function_code, physical);
         if (atc_rc != 1) return atc_rc;
     }
     {
@@ -411,7 +411,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             cpu->pmmu_last_shared_globally = effective_shared;
             *physical = (rp.table_address & PMMU51_ADDR_MASK) |
                         (logical & 0xfffu);
-            pmmu51_atc_fill(cpu, logical, *physical, supervisor,
+            pmmu51_atc_fill(cpu, logical, *physical, supervisor, function_code,
                               false, false, 0u, 0u);
             return AMIVM_MMU_OK;
         }
@@ -496,7 +496,7 @@ static int mmu_translate_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     cpu->pmmu_last_shared_globally = effective_shared;
     *physical = (l2 & PMMU51_ADDR_MASK) | (logical & 0xfffu);
-    pmmu51_atc_fill(cpu, logical, *physical, supervisor,
+    pmmu51_atc_fill(cpu, logical, *physical, supervisor, function_code,
                       effective_supervisor_only,
                       (l2 & PMMU51_DESC_WP) != 0u,
                       effective_read_level, effective_write_level);
@@ -526,9 +526,11 @@ static int mmu_translate_68060(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     return mmu_translate_table(cpu, vm, logical, write, supervisor, physical);
 }
 
-int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
-                        uint32_t logical, bool write, bool supervisor,
-                        uint32_t *physical)
+int amivm_mmu_translate_fc(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, bool write, uint8_t function_code,
+                           uint32_t *physical)
+{
+    bool supervisor = (function_code & 4u) != 0u;
 {
     const struct amivm_cpu_profile *profile;
     if (cpu == NULL || vm == NULL || physical == NULL)
@@ -555,7 +557,8 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 
     switch (profile->mmu_model) {
     case AMIVM_MMU_68851:
-        return mmu_translate_68851(cpu, vm, logical, write, supervisor, physical);
+        return mmu_translate_68851(cpu, vm, logical, write, supervisor,
+                                   function_code, physical);
     case AMIVM_MMU_68030:
         return mmu_translate_68030(cpu, vm, logical, write, supervisor, physical);
     case AMIVM_MMU_68040:
@@ -568,6 +571,13 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         *physical = logical;
         return AMIVM_MMU_OK;
     }
+}
+int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
+                        uint32_t logical, bool write, bool supervisor,
+                        uint32_t *physical)
+{
+    return amivm_mmu_translate_fc(cpu, vm, logical, write,
+                                  supervisor ? 5u : 1u, physical);
 }
 static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                       uint32_t addr, bool supervisor, uint8_t *value)
