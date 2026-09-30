@@ -924,7 +924,7 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                 address = (uint32_t)((int64_t)cpu->a[reg] + (int16_t)displacement);
                 end_pc += 2u;
             } else if (mode == 6u) {
-                uint16_t words[3];
+                uint16_t words[5];
                 struct amivm_ea_index_extension parsed;
                 size_t available = 1u;
                 if (fetch16(cpu, vm, end_pc, &words[0]) != 0)
@@ -937,14 +937,15 @@ static int execute_pmmu_68851(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     end_pc += 2u;
                 } else {
                     uint8_t bd_code = (uint8_t)((words[0] >> 4u) & 3u);
-                    if (bd_code == 2u) available = 2u;
-                    else if (bd_code == 3u) available = 3u;
-                    if (available > 1u &&
-                        fetch16(cpu, vm, end_pc + 2u, &words[1]) != 0)
-                        return deliver_fault(cpu, vm, instruction_pc);
-                    if (available > 2u &&
-                        fetch16(cpu, vm, end_pc + 4u, &words[2]) != 0)
-                        return deliver_fault(cpu, vm, instruction_pc);
+                    uint8_t iis = (uint8_t)(words[0] & 7u);
+                    size_t bd_words = bd_code == 2u ? 1u : (bd_code == 3u ? 2u : 0u);
+                    size_t od_words = (iis == 2u || iis == 6u) ? 1u :
+                                      ((iis == 3u || iis == 7u) ? 2u : 0u);
+                    available = 1u + bd_words + od_words;
+                    for (size_t wi = 1u; wi < available; ++wi)
+                        if (fetch16(cpu, vm, end_pc + (uint32_t)(wi * 2u),
+                                    &words[wi]) != 0)
+                            return deliver_fault(cpu, vm, instruction_pc);
                     if (amivm_ea_parse_index_extension(words, available, &parsed) !=
                         AMIVM_EA_PARSE_OK)
                         goto illegal;
