@@ -1,5 +1,6 @@
 #include "vm.h"
 #include "cpu_profile.h"
+#include "fs_uae.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "Usage: %s [--version] [--dump-machine] [--selftest] [--cpu PROFILE] [--mmu 68851] [--ram-mib N] [--rom PATH]\n",
+            "Usage: %s [--version] [--dump-machine] [--config FILE] [--config-report] [--strict-config] [--selftest] [--cpu PROFILE] [--mmu 68851] [--ram-mib N] [--rom PATH]\n",
             prog);
 }
 
@@ -20,12 +21,36 @@ int main(int argc, char **argv)
     struct amivm_vm vm;
     int i;
     bool dump_machine = false;
+    bool config_report = false;
+    bool strict_config = false;
+    const char *config_path = NULL;
+    struct amivm_fsuae_report fs_report;
     const struct amivm_cpu_profile *cpu_profile;
 
     amivm_config_init(&config);
     cpu_profile = config.cpu_profile;
+    memset(&fs_report, 0, sizeof fs_report);
 
     for (i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--config") == 0 || strncmp(argv[i], "--config=", 9u) == 0) {
+            if (argv[i][8] == '=')
+                config_path = argv[i] + 9u;
+            else if (++i < argc)
+                config_path = argv[i];
+            else {
+                fprintf(stderr, "Missing --config path\n");
+                return 2;
+            }
+            continue;
+        }
+        if (strcmp(argv[i], "--config-report") == 0) {
+            config_report = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--strict-config") == 0) {
+            strict_config = true;
+            continue;
+        }
         if (strcmp(argv[i], "--version") == 0) {
             printf("AmiVM %s\n", AMIVM_VERSION);
             return 0;
@@ -89,6 +114,16 @@ int main(int argc, char **argv)
         usage(argv[0]);
         return 2;
     }
+
+    if (config_path != NULL) {
+        if (amivm_fsuae_load_config(config_path, &config, &fs_report,
+                                    strict_config) != 0) {
+            fprintf(stderr, "Failed to import FS-UAE config: %s\n", config_path);
+            return 2;
+        }
+    }
+    if (config_report)
+        amivm_fsuae_report(&fs_report, stdout);
 
     if (amivm_vm_init(&vm, &config) != 0) {
         fprintf(stderr, "Failed to initialize AmiVM\n");
