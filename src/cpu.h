@@ -120,6 +120,8 @@ struct amivm_ttr {
     bool enabled;
     bool write_protected;
     bool supervisor_only;
+    bool cache_inhibit;
+    bool serialized;
 };
 
 struct amivm_cpu_state {
@@ -146,6 +148,8 @@ struct amivm_cpu_state {
     struct amivm_pmmu51_atc_entry pmmu_atc[AMIVM_PMMU51_ATC_ENTRIES];
     uint8_t pmmu_atc_next;
     struct amivm_ttr ttr[2];
+    bool last_translation_cache_inhibit;
+    bool last_translation_serialized;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
