@@ -400,6 +400,9 @@ int main(void)
                              amivm_cpu_reference_backend()) == 1);
         amivm_cpu_cache_stats(&ttr_cpu, true, &hits, &misses);
         CHECK(misses == 1u && hits >= 1u);
+        amivm_cpu_cache_invalidate_line(&ttr_cpu, AMIVM_RAM_BASE);
+        amivm_cpu_cache_stats(&ttr_cpu, true, &hits, &misses);
+        CHECK(misses == 1u && hits >= 1u);
     }
 
     puts("AmiVM M2.137 deterministic I/D cache skeleton qualification: PASS");
