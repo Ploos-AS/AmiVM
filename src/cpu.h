@@ -124,6 +124,20 @@ struct amivm_ttr {
     bool serialized;
 };
 
+#define AMIVM_CACHE_LINES 64u
+#define AMIVM_CACHE_LINE_SIZE 16u
+
+struct amivm_cache_line {
+    uint32_t tag;
+    bool valid;
+};
+
+struct amivm_cache {
+    struct amivm_cache_line lines[AMIVM_CACHE_LINES];
+    uint64_t hits;
+    uint64_t misses;
+};
+
 struct amivm_cpu_state {
     const struct amivm_cpu_profile *profile;
     uint32_t d[8];
@@ -152,6 +166,8 @@ struct amivm_cpu_state {
     bool last_translation_cache_inhibit;
     bool last_translation_serialized;
     bool last_memory_access_cacheable;
+    struct amivm_cache instruction_cache;
+    struct amivm_cache data_cache;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
@@ -185,6 +201,9 @@ struct amivm_translation_attributes
 amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu);
 bool amivm_cpu_last_memory_access_cacheable(
     const struct amivm_cpu_state *cpu);
+void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu);
+void amivm_cpu_cache_stats(const struct amivm_cpu_state *cpu, bool instruction,
+                           uint64_t *hits, uint64_t *misses);
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value);
