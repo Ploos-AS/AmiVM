@@ -81,7 +81,13 @@ static int set_option(const char *key, const char *value,
         return 0;
     } else if (strcmp(key, "kickstart_rom_file") == 0 ||
                strcmp(key, "rom") == 0) {
-        config->rom_path = strdup(value);
+        {
+            size_t n = strlen(value) + 1u;
+            char *copy = malloc(n);
+            if (!copy) { ++r->malformed; return 1; }
+            memcpy(copy, value, n);
+            config->rom_path = copy;
+        }
         ++r->supported;
         return 0;
     } else if (strcmp(key, "amiga_model") == 0 ||
