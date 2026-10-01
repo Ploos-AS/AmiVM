@@ -359,6 +359,13 @@ int main(void)
                 amivm_cpu_get_translation_attributes(&ttr_cpu);
             CHECK(a.valid && a.cache_inhibit && a.serialized);
         CHECK(!amivm_cpu_last_memory_access_cacheable(&ttr_cpu));
+        {
+            struct amivm_cache_access a =
+                amivm_cpu_get_last_cache_access(&ttr_cpu);
+            CHECK(a.type == AMIVM_CACHE_ACCESS_DATA);
+            CHECK(a.write);
+            CHECK(a.policy == AMIVM_CACHE_POLICY_INHIBIT);
+        }
         }
         ttr.write_protected = true;
         amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
