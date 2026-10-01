@@ -148,6 +148,7 @@ struct amivm_cpu_state {
     struct amivm_pmmu51_atc_entry pmmu_atc[AMIVM_PMMU51_ATC_ENTRIES];
     uint8_t pmmu_atc_next;
     struct amivm_ttr ttr[2];
+    bool last_translation_valid;
     bool last_translation_cache_inhibit;
     bool last_translation_serialized;
     uint8_t sfc;
