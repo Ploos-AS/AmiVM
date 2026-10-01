@@ -718,8 +718,11 @@ static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
         return false;
     }
-    cpu->last_memory_access_cacheable =
-        !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
+    {
+        struct amivm_translation_attributes a =
+            amivm_cpu_get_translation_attributes(cpu);
+        cpu->last_memory_access_cacheable = !a.cache_inhibit && !a.serialized;
+    }
     if (cpu->last_memory_access_cacheable)
         cache_touch(&cpu->data_cache, physical);
     if (!amivm_read8(vm, physical, value)) {
@@ -742,7 +745,8 @@ static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     if (cpu->last_memory_access_cacheable) {
         cpu->last_cache_access.type = AMIVM_CACHE_ACCESS_DATA;
         cpu->last_cache_access.write = false;
-        cpu->last_cache_access.policy = amivm_cpu_get_translation_attributes(cpu).serialized
+        cpu->last_cache_access.policy =
+            amivm_cpu_get_translation_attributes(cpu).serialized
             ? AMIVM_CACHE_POLICY_SERIALIZED : AMIVM_CACHE_POLICY_CACHEABLE;
         cache_touch(&cpu->data_cache, physical);
         cache_invalidate_line(&cpu->instruction_cache, physical);
