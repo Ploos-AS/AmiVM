@@ -20,6 +20,8 @@ Host presentation options such as video/audio/fullscreen settings are also ignor
 
 
 The importer maps unambiguous FS-UAE models to AmiVM CPU profiles where possible: A1200 → 68020, A3000 → 68030 and A4000 → 68040. Explicit `cpu`/`uae_cpu_model` always wins. Older 68000-class models such as A500/A600/A1000/A2000 are reported as unsupported rather than silently pretending that AmiVM's 68020 minimum is equivalent.
+
+The importer maps unambiguous FS-UAE models to AmiVM CPU profiles where possible: A1200 → 68020, A3000 → 68030 and A4000 → 68040. Explicit `cpu`/`uae_cpu_model` always wins. Older 68000-class models such as A500/A600/A1000/A2000 are reported as unsupported rather than silently pretending that AmiVM's 68020 minimum is equivalent.
 ## Project goal
 
 > Build the fastest practical 68k Amiga-compatible virtual machine while preserving enough Amiga compatibility to run useful Amiga operating systems and software.
