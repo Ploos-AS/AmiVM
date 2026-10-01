@@ -46,6 +46,17 @@ static bool is_host_option(const char *k)
            strcmp(k, "mouse_speed") == 0;
 }
 
+static int set_media_path(const char *value, const char **slot)
+{
+    size_t n = strlen(value) + 1u;
+    char *copy = malloc(n);
+    if (!copy)
+        return 1;
+    memcpy(copy, value, n);
+    *slot = copy;
+    return 0;
+}
+
 static int set_option(const char *key, const char *value,
                       struct amivm_config *config,
                       struct amivm_fsuae_report *r,
@@ -115,11 +126,28 @@ static int set_option(const char *key, const char *value,
         }
         ++r->supported;
         return 0;
-    } else if (strcmp(key, "accelerator") == 0 ||
-
-               strncmp(key, "floppy_image_", 13u) == 0 ||
-               strncmp(key, "hard_drive_", 11u) == 0 ||
-               strcmp(key, "bsdsocket_library") == 0 ||
+    } else if (strcmp(key, "accelerator") == 0) {
+        ++r->supported;
+        return 0;
+    } else if (strncmp(key, "floppy_image_", 13u) == 0) {
+        unsigned n = (unsigned)(key[13] - '0');
+        if (n >= AMIVM_MAX_FLOPPY_IMAGES ||
+            set_media_path(value, &config->floppy_images[n]) != 0) {
+            ++r->malformed;
+            return 1;
+        }
+        ++r->supported;
+        return 0;
+    } else if (strncmp(key, "hard_drive_", 11u) == 0) {
+        unsigned n = (unsigned)(key[11] - '0');
+        if (n >= AMIVM_MAX_HARD_DRIVES ||
+            set_media_path(value, &config->hard_drives[n]) != 0) {
+            ++r->malformed;
+            return 1;
+        }
+        ++r->supported;
+        return 0;
+    } else if (strcmp(key, "bsdsocket_library") == 0 ||
                strcmp(key, "deterministic") == 0 ||
                strcmp(key, "jit_compiler") == 0) {
         ++r->supported;
