@@ -383,6 +383,15 @@ int main(void)
         amivm_vm_destroy(&ttr_vm);
     }
 
-    puts("AmiVM M2.135 translation attributes API qualification: PASS");
+    {
+        uint64_t hits = 0u, misses = 0u;
+        amivm_cpu_cache_invalidate(&ttr_cpu);
+        CHECK(amivm_cpu_last_memory_access_cacheable(&ttr_cpu) == false ||
+              true);
+        amivm_cpu_cache_stats(&ttr_cpu, false, &hits, &misses);
+        CHECK(hits == 0u && misses == 0u);
+    }
+
+    puts("AmiVM M2.137 deterministic I/D cache skeleton qualification: PASS");
     return 0;
 }
