@@ -58,6 +58,48 @@ const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_sta
     return active_profile(cpu);
 }
 
+static void cache_reset(struct amivm_cache *cache)
+{
+    memset(cache, 0, sizeof *cache);
+}
+
+static void cache_touch(struct amivm_cache *cache, uint32_t physical)
+{
+    uint32_t line = (physical / AMIVM_CACHE_LINE_SIZE) %
+                    AMIVM_CACHE_LINES;
+    uint32_t tag = physical / (AMIVM_CACHE_LINE_SIZE * AMIVM_CACHE_LINES);
+    if (cache->lines[line].valid && cache->lines[line].tag == tag)
+        ++cache->hits;
+    else {
+        ++cache->misses;
+        cache->lines[line].valid = true;
+        cache->lines[line].tag = tag;
+    }
+}
+
+void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu)
+{
+    if (cpu == NULL)
+        return;
+    cache_reset(&cpu->instruction_cache);
+    cache_reset(&cpu->data_cache);
+}
+
+void amivm_cpu_cache_stats(const struct amivm_cpu_state *cpu, bool instruction,
+                           uint64_t *hits, uint64_t *misses)
+{
+    const struct amivm_cache *cache;
+    if (hits == NULL || misses == NULL)
+        return;
+    *hits = 0u;
+    *misses = 0u;
+    if (cpu == NULL)
+        return;
+    cache = instruction ? &cpu->instruction_cache : &cpu->data_cache;
+    *hits = cache->hits;
+    *misses = cache->misses;
+}
+
 void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
                        const struct amivm_ttr *ttr)
 {
@@ -643,6 +685,8 @@ static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
     cpu->last_memory_access_cacheable =
         !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
+    if (cpu->last_memory_access_cacheable)
+        cache_touch(&cpu->data_cache, physical);
     if (!amivm_read8(vm, physical, value)) {
         set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return false;
@@ -660,6 +704,8 @@ static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
     cpu->last_memory_access_cacheable =
         !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
+    if (cpu->last_memory_access_cacheable)
+        cache_touch(&cpu->data_cache, physical);
     if (!amivm_write8(vm, physical, value)) {
         set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return false;
@@ -958,6 +1004,8 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->last_translation_cache_inhibit = false;
     cpu->last_translation_serialized = false;
     cpu->last_memory_access_cacheable = false;
+    cache_reset(&cpu->instruction_cache);
+    cache_reset(&cpu->data_cache);
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
