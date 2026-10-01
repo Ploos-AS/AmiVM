@@ -101,6 +101,14 @@ void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu)
     cache_reset(&cpu->data_cache);
 }
 
+void amivm_cpu_cache_invalidate_line(struct amivm_cpu_state *cpu,
+                                     uint32_t physical)
+{
+    if (cpu == NULL)
+        return;
+    cache_invalidate_physical(cpu, physical);
+}
+
 void amivm_cpu_cache_stats(const struct amivm_cpu_state *cpu, bool instruction,
                            uint64_t *hits, uint64_t *misses)
 {
