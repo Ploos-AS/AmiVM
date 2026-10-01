@@ -183,6 +183,8 @@ struct amivm_translation_attributes {
 
 struct amivm_translation_attributes
 amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu);
+bool amivm_cpu_last_memory_access_cacheable(
+    const struct amivm_cpu_state *cpu);
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value);
