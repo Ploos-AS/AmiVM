@@ -358,6 +358,7 @@ int main(void)
             struct amivm_translation_attributes a =
                 amivm_cpu_get_translation_attributes(&ttr_cpu);
             CHECK(a.valid && a.cache_inhibit && a.serialized);
+        CHECK(!amivm_cpu_last_memory_access_cacheable(&ttr_cpu));
         }
         ttr.write_protected = true;
         amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
