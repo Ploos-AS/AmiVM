@@ -36,6 +36,8 @@ void amivm_config_init(struct amivm_config *config)
 {
     config->ram_size = (size_t)AMIVM_DEFAULT_RAM_MIB * 1024u * 1024u;
     config->rom_path = NULL;
+    memset(config->floppy_images, 0, sizeof config->floppy_images);
+    memset(config->hard_drives, 0, sizeof config->hard_drives);
     config->cpu_profile = amivm_cpu_profile_default();
     config->external_mmu = AMIVM_MMU_NONE;
 }
@@ -57,6 +59,25 @@ bool amivm_parse_size_mib(const char *text, size_t *bytes_out)
 
     *bytes_out = (size_t)value * 1024u * 1024u;
     return true;
+}
+
+static int load_adf(const char *path, uint8_t *dst, size_t cap, size_t *used)
+{
+    FILE *fp;
+    size_t n;
+    if (path == NULL || dst == NULL || used == NULL)
+        return -1;
+    fp = fopen(path, "rb");
+    if (fp == NULL)
+        return -1;
+    n = fread(dst, 1, cap, fp);
+    if (ferror(fp) || fgetc(fp) != EOF) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    *used = n;
+    return 0;
 }
 
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
