@@ -202,6 +202,8 @@ amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu);
 bool amivm_cpu_last_memory_access_cacheable(
     const struct amivm_cpu_state *cpu);
 void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu);
+void amivm_cpu_cache_invalidate_line(struct amivm_cpu_state *cpu,
+                                     uint32_t physical);
 void amivm_cpu_cache_stats(const struct amivm_cpu_state *cpu, bool instruction,
                            uint64_t *hits, uint64_t *misses);
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
