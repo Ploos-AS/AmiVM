@@ -4,6 +4,20 @@ AmiVM is a high-performance 68k Amiga-compatible virtual machine.
 
 Its goal is not to reproduce every historical Amiga chipset cycle. Instead, AmiVM takes the best lessons from projects such as ARAnyM, UAE-family emulators and modern virtual-machine design to build the fastest practical Amiga-class 68k system for operating systems and productivity workloads.
 
+## FS-UAE configuration compatibility
+
+AmiVM can import an FS-UAE `.conf` as a machine compatibility description:
+
+`amivm --config my-machine.conf --dump-machine`
+
+`amivm --config my-machine.conf --config-report`
+
+The importer deliberately separates guest-machine semantics from host/emulation-speed policy. CPU/MMU, memory and selected Amiga configuration keys are recognized where AmiVM has a corresponding contract. FS-UAE speed controls such as `uae_cpu_speed`, `uae_cpu_multiplier`, `uae_cpu_frequency`, `uae_cpu_throttle` and warp controls are intentionally ignored. AmiVM's speed policy is unlimited practical performance: a config saying `uae_cpu_speed=real` does not make AmiVM emulate a real 68020/040 clock rate.
+
+Host presentation options such as video/audio/fullscreen settings are also ignored by the machine importer. Use `--config-report` to see recognized, speed-ignored, host-ignored and unsupported options. `--strict-config` turns unsupported or malformed options into an error, which is useful for CI.
+
+> **FS-UAE config defines the Amiga machine; AmiVM defines the execution speed.**
+
 ## Project goal
 
 > Build the fastest practical 68k Amiga-compatible virtual machine while preserving enough Amiga compatibility to run useful Amiga operating systems and software.
