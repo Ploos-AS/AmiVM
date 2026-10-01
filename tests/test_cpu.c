@@ -354,6 +354,11 @@ int main(void)
         CHECK(physical == AMIVM_RAM_BASE + 0x123u);
         CHECK(ttr_cpu.last_translation_cache_inhibit);
         CHECK(ttr_cpu.last_translation_serialized);
+        {
+            struct amivm_translation_attributes a =
+                amivm_cpu_get_translation_attributes(&ttr_cpu);
+            CHECK(a.valid && a.cache_inhibit && a.serialized);
+        }
         ttr.write_protected = true;
         amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
         CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
@@ -377,6 +382,6 @@ int main(void)
         amivm_vm_destroy(&ttr_vm);
     }
 
-    puts("AmiVM M2.133 native TTR FC-mask qualification: PASS");
+    puts("AmiVM M2.135 translation attributes API qualification: PASS");
     return 0;
 }
