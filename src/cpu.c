@@ -1032,6 +1032,8 @@ static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
             return -4;
         }
+        if (cpu->last_memory_access_cacheable)
+            cache_touch(&cpu->instruction_cache, physical);
         if (!amivm_read16(vm, physical, value)) {
             set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
             return -4;
