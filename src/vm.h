@@ -26,6 +26,8 @@ struct amivm_config {
     const char *rom_path;
     const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
     const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
+    const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
+    const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
     const struct amivm_cpu_profile *cpu_profile;
     enum amivm_mmu_model external_mmu;
 };
