@@ -48,7 +48,8 @@ static bool is_host_option(const char *k)
 
 static int set_option(const char *key, const char *value,
                       struct amivm_config *config,
-                      struct amivm_fsuae_report *r)
+                      struct amivm_fsuae_report *r,
+                      bool *cpu_explicit)
 {
     const char *cpu_name = NULL;
     size_t mib;
@@ -90,8 +91,32 @@ static int set_option(const char *key, const char *value,
         }
         ++r->supported;
         return 0;
-    } else if (strcmp(key, "amiga_model") == 0 ||
-               strcmp(key, "accelerator") == 0 ||
+    } else if (strcmp(key, "amiga_model") == 0) {
+        const char *model_cpu = NULL;
+        if (strcmp(value, "A1200") == 0 || strcmp(value, "a1200") == 0)
+            model_cpu = "68020";
+        else if (strcmp(value, "A3000") == 0 || strcmp(value, "a3000") == 0)
+            model_cpu = "68030";
+        else if (strcmp(value, "A4000") == 0 || strcmp(value, "a4000") == 0)
+            model_cpu = "68040";
+        else if (strcmp(value, "A500") == 0 || strcmp(value, "a500") == 0 ||
+                 strcmp(value, "A500plus") == 0 || strcmp(value, "a500plus") == 0 ||
+                 strcmp(value, "A600") == 0 || strcmp(value, "a600") == 0 ||
+                 strcmp(value, "A1000") == 0 || strcmp(value, "a1000") == 0 ||
+                 strcmp(value, "A2000") == 0 || strcmp(value, "a2000") == 0) {
+            ++r->unsupported;
+            return 1;
+        }
+        if (model_cpu != NULL && !*cpu_explicit) {
+            const struct amivm_cpu_profile *p =
+                amivm_cpu_profile_by_name(model_cpu);
+            if (p == NULL) { ++r->unsupported; return 1; }
+            config->cpu_profile = p;
+        }
+        ++r->supported;
+        return 0;
+    } else if (strcmp(key, "accelerator") == 0 ||
+
                strncmp(key, "floppy_image_", 13u) == 0 ||
                strncmp(key, "hard_drive_", 11u) == 0 ||
                strcmp(key, "bsdsocket_library") == 0 ||
@@ -107,6 +132,8 @@ static int set_option(const char *key, const char *value,
         const struct amivm_cpu_profile *p = amivm_cpu_profile_by_name(cpu_name);
         if (p == NULL) { ++r->unsupported; return 1; }
         config->cpu_profile = p;
+        if (cpu_explicit != NULL)
+            *cpu_explicit = true;
         ++r->supported;
     }
     return 0;
@@ -117,6 +144,7 @@ int amivm_fsuae_load_config(const char *path, struct amivm_config *config,
 {
     FILE *f;
     char line[1024];
+    bool cpu_explicit = false;
     if (!path || !config || !report) return -1;
     memset(report, 0, sizeof *report);
     f = fopen(path, "r");
@@ -131,7 +159,7 @@ int amivm_fsuae_load_config(const char *path, struct amivm_config *config,
         if (!eq) { ++report->malformed; continue; }
         *eq++ = '\0';
         s = trim(s); eq = trim(eq); unquote(eq);
-        rc = set_option(s, eq, config, report);
+        rc = set_option(s, eq, config, report, &cpu_explicit);
         if (strict && rc != 0) { fclose(f); return -2; }
     }
     fclose(f);
