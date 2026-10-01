@@ -77,6 +77,22 @@ static void cache_touch(struct amivm_cache *cache, uint32_t physical)
     }
 }
 
+static void cache_invalidate_line(struct amivm_cache *cache, uint32_t physical)
+{
+    uint32_t line = (physical / AMIVM_CACHE_LINE_SIZE) %
+                    AMIVM_CACHE_LINES;
+    uint32_t tag = physical / (AMIVM_CACHE_LINE_SIZE * AMIVM_CACHE_LINES);
+    if (cache->lines[line].valid && cache->lines[line].tag == tag)
+        cache->lines[line].valid = false;
+}
+
+static void cache_invalidate_physical(struct amivm_cpu_state *cpu,
+                                      uint32_t physical)
+{
+    cache_invalidate_line(&cpu->instruction_cache, physical);
+    cache_invalidate_line(&cpu->data_cache, physical);
+}
+
 void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu)
 {
     if (cpu == NULL)
@@ -704,8 +720,10 @@ static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     }
     cpu->last_memory_access_cacheable =
         !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
-    if (cpu->last_memory_access_cacheable)
+    if (cpu->last_memory_access_cacheable) {
         cache_touch(&cpu->data_cache, physical);
+        cache_invalidate_line(&cpu->instruction_cache, physical);
+    }
     if (!amivm_write8(vm, physical, value)) {
         set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return false;
