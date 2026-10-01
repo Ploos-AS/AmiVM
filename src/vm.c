@@ -61,22 +61,26 @@ bool amivm_parse_size_mib(const char *text, size_t *bytes_out)
     return true;
 }
 
-static int load_adf(const char *path, uint8_t *dst, size_t cap, size_t *used)
+static int probe_media(const char *path, enum amivm_media_type type,
+                         struct amivm_media *media)
 {
     FILE *fp;
-    size_t n;
-    if (path == NULL || dst == NULL || used == NULL)
-        return -1;
+    long end;
+    if (!path || !media) return -1;
     fp = fopen(path, "rb");
-    if (fp == NULL)
-        return -1;
-    n = fread(dst, 1, cap, fp);
-    if (ferror(fp) || fgetc(fp) != EOF) {
-        fclose(fp);
-        return -1;
-    }
+    if (!fp) return -1;
+    if (fseek(fp, 0, SEEK_END) != 0) { fclose(fp); return -1; }
+    end = ftell(fp);
     fclose(fp);
-    *used = n;
+    if (end < 0) return -1;
+    if (type == AMIVM_MEDIA_ADF &&
+        (end == 0 || (unsigned long)end > AMIVM_MAX_ADF_SIZE))
+        return -1;
+    media->path = malloc(strlen(path) + 1u);
+    if (!media->path) return -1;
+    strcpy(media->path, path);
+    media->type = type;
+    media->size = (size_t)end;
     return 0;
 }
 
@@ -109,6 +113,14 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->memory_write_generation = 1u;
+    for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
+        if (config->floppy_images[i] &&
+            probe_media(config->floppy_images[i], AMIVM_MEDIA_ADF,
+                        &vm->floppy[i]) != 0) { amivm_vm_destroy(vm); return -1; }
+    for (size_t i = 0; i < AMIVM_MAX_HARD_DRIVES; ++i)
+        if (config->hard_drives[i] &&
+            probe_media(config->hard_drives[i], AMIVM_MEDIA_PATH,
+                        &vm->hard_drive[i]) != 0) { amivm_vm_destroy(vm); return -1; }
     if (config->rom_path != NULL && amivm_vm_load_rom(vm, config->rom_path) != 0) {
         amivm_vm_destroy(vm);
         return -1;
@@ -121,6 +133,10 @@ void amivm_vm_destroy(struct amivm_vm *vm)
     if (vm == NULL) {
         return;
     }
+    for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
+        free(vm->floppy[i].path);
+    for (size_t i = 0; i < AMIVM_MAX_HARD_DRIVES; ++i)
+        free(vm->hard_drive[i].path);
     free(vm->ram_page_generation);
     free(vm->ram);
     memset(vm, 0, sizeof(*vm));
