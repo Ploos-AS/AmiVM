@@ -366,6 +366,26 @@ int main(void)
             CHECK(a.write);
             CHECK(a.policy == AMIVM_CACHE_POLICY_INHIBIT);
         }
+        ttr.enabled = true;
+        ttr.cache_inhibit = false;
+        ttr.serialized = true;
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        ttr_cpu.tc = 0x80000000u;
+        {
+            uint8_t v = 0u;
+            CHECK(amivm_write8(&ttr_vm, AMIVM_RAM_BASE, 0x5au));
+            CHECK(amivm_cpu_last_memory_access_cacheable(&ttr_cpu) == false);
+            {
+                struct amivm_cache_access a =
+                    amivm_cpu_get_last_cache_access(&ttr_cpu);
+                CHECK(a.policy == AMIVM_CACHE_POLICY_SERIALIZED);
+            }
+            amivm_cpu_cache_stats(&ttr_cpu, false, &hits, &misses);
+            CHECK(hits == 0u && misses == 0u);
+            CHECK(amivm_read8(&ttr_vm, AMIVM_RAM_BASE, &v));
+            CHECK(v == 0x5au);
+        }
+        }
         }
         ttr.write_protected = true;
         amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
