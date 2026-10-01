@@ -21,6 +21,8 @@ int main(void)
     fputs("uae_cpu_multiplier=2\n", f);
     fputs("fullscreen=1\n", f);
     fputs("jit_compiler=1\n", f);
+    fputs("floppy_image_0=disk.adf\n", f);
+    fputs("hard_drive_0=DH0\n", f);
     fputs("bsdsocket_library=1\n", f);
     fputs("mystery_option=1\n", f);
     fclose(f);
@@ -33,6 +35,8 @@ int main(void)
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
     CHECK(report.unsupported == 1u);
+    CHECK(strcmp(config.floppy_images[0], "disk.adf") == 0);
+    CHECK(strcmp(config.hard_drives[0], "DH0") == 0);
 
     f = fopen(path, "w");
     CHECK(f != NULL);
