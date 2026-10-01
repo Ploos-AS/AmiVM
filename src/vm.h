@@ -20,6 +20,7 @@
 
 #define AMIVM_MAX_FLOPPY_IMAGES 4u
 #define AMIVM_MAX_HARD_DRIVES 8u
+#define AMIVM_MAX_ADF_SIZE (1760u * 1024u)
 
 struct amivm_config {
     size_t ram_size;
@@ -30,6 +31,18 @@ struct amivm_config {
     const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
     const struct amivm_cpu_profile *cpu_profile;
     enum amivm_mmu_model external_mmu;
+};
+
+enum amivm_media_type {
+    AMIVM_MEDIA_NONE = 0,
+    AMIVM_MEDIA_ADF = 1,
+    AMIVM_MEDIA_PATH = 2
+};
+
+struct amivm_media {
+    enum amivm_media_type type;
+    char *path;
+    size_t size;
 };
 
 struct amivm_device_desc {
@@ -50,6 +63,8 @@ struct amivm_vm {
     uint64_t timer_ticks;
     uint64_t memory_write_generation;
     struct amivm_cpu_profile cpu_profile;
+    struct amivm_media floppy[AMIVM_MAX_FLOPPY_IMAGES];
+    struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
 };
 
 void amivm_config_init(struct amivm_config *config);
