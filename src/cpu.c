@@ -232,6 +232,10 @@ static int ttr_translate(const struct amivm_cpu_state *cpu,
             return AMIVM_MMU_FAULT_SUPERVISOR;
         if (write && t->write_protected)
             return AMIVM_MMU_FAULT_WRITE_PROTECT;
+        ((struct amivm_cpu_state *)cpu)->last_translation_cache_inhibit =
+            t->cache_inhibit;
+        ((struct amivm_cpu_state *)cpu)->last_translation_serialized =
+            t->serialized;
         *physical = logical;
         return AMIVM_MMU_OK;
     }
@@ -929,6 +933,8 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->pmmu_last_shared_globally = false;
     amivm_pmmu51_atc_flush(cpu);
     memset(cpu->ttr, 0, sizeof(cpu->ttr));
+    cpu->last_translation_cache_inhibit = false;
+    cpu->last_translation_serialized = false;
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
