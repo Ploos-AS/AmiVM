@@ -635,6 +635,8 @@ static bool cpu_read8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
         return false;
     }
+    cpu->last_memory_access_cacheable =
+        !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
     if (!amivm_read8(vm, physical, value)) {
         set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return false;
@@ -650,6 +652,8 @@ static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
         return false;
     }
+    cpu->last_memory_access_cacheable =
+        !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
     if (!amivm_write8(vm, physical, value)) {
         set_fault(cpu, AMIVM_CPU_FAULT_BUS, addr, 0u);
         return false;
@@ -947,6 +951,7 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->last_translation_valid = false;
     cpu->last_translation_cache_inhibit = false;
     cpu->last_translation_serialized = false;
+    cpu->last_memory_access_cacheable = false;
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
