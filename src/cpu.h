@@ -173,6 +173,14 @@ void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
 const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
 void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
                        const struct amivm_ttr *ttr);
+struct amivm_translation_attributes {
+    bool valid;
+    bool cache_inhibit;
+    bool serialized;
+};
+
+struct amivm_translation_attributes
+amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu);
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value);
