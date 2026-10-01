@@ -18,9 +18,14 @@
 #define AMIVM_MMIO_PAGE_SIZE 0x1000u
 #define AMIVM_RAM_PAGE_SIZE 0x1000u
 
+#define AMIVM_MAX_FLOPPY_IMAGES 4u
+#define AMIVM_MAX_HARD_DRIVES 8u
+
 struct amivm_config {
     size_t ram_size;
     const char *rom_path;
+    const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
+    const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
     const struct amivm_cpu_profile *cpu_profile;
     enum amivm_mmu_model external_mmu;
 };
