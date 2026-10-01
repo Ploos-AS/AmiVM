@@ -386,10 +386,20 @@ int main(void)
     {
         uint64_t hits = 0u, misses = 0u;
         amivm_cpu_cache_invalidate(&ttr_cpu);
-        CHECK(amivm_cpu_last_memory_access_cacheable(&ttr_cpu) == false ||
-              true);
         amivm_cpu_cache_stats(&ttr_cpu, false, &hits, &misses);
         CHECK(hits == 0u && misses == 0u);
+        ttr.enabled = false;
+        amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
+        ttr_cpu.tc = 0u;
+        ttr_cpu.pc = AMIVM_RAM_BASE;
+        CHECK(amivm_write8(&ttr_vm, AMIVM_RAM_BASE, 0x4eu));
+        CHECK(amivm_write8(&ttr_vm, AMIVM_RAM_BASE + 1u, 0x71u));
+        CHECK(amivm_cpu_step(&ttr_cpu, &ttr_vm,
+                             amivm_cpu_reference_backend()) == 1);
+        CHECK(amivm_cpu_step(&ttr_cpu, &ttr_vm,
+                             amivm_cpu_reference_backend()) == 1);
+        amivm_cpu_cache_stats(&ttr_cpu, true, &hits, &misses);
+        CHECK(misses == 1u && hits >= 1u);
     }
 
     puts("AmiVM M2.137 deterministic I/D cache skeleton qualification: PASS");
