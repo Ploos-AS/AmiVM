@@ -337,7 +337,9 @@ int main(void)
             .function_code_mask = 7u,
             .enabled = true,
             .write_protected = false,
-            .supervisor_only = false
+            .supervisor_only = false,
+            .cache_inhibit = true,
+            .serialized = true
         };
         uint32_t physical = 0u;
         amivm_config_init(&ttr_config);
@@ -350,6 +352,8 @@ int main(void)
         CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
                                      false, 2u, &physical) == AMIVM_MMU_OK);
         CHECK(physical == AMIVM_RAM_BASE + 0x123u);
+        CHECK(ttr_cpu.last_translation_cache_inhibit);
+        CHECK(ttr_cpu.last_translation_serialized);
         ttr.write_protected = true;
         amivm_cpu_set_ttr(&ttr_cpu, 0u, &ttr);
         CHECK(amivm_mmu_translate_fc(&ttr_cpu, &ttr_vm, AMIVM_RAM_BASE + 0x123u,
