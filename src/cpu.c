@@ -150,6 +150,17 @@ bool amivm_cpu_last_memory_access_cacheable(
     return cpu != NULL && cpu->last_memory_access_cacheable;
 }
 
+struct amivm_cache_access
+amivm_cpu_get_last_cache_access(const struct amivm_cpu_state *cpu)
+{
+    struct amivm_cache_access a = {
+        AMIVM_CACHE_ACCESS_DATA, false, AMIVM_CACHE_POLICY_INHIBIT
+    };
+    if (cpu != NULL)
+        a = cpu->last_cache_access;
+    return a;
+}
+
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value)
@@ -729,6 +740,10 @@ static bool cpu_write8(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     cpu->last_memory_access_cacheable =
         !amivm_cpu_get_translation_attributes(cpu).cache_inhibit;
     if (cpu->last_memory_access_cacheable) {
+        cpu->last_cache_access.type = AMIVM_CACHE_ACCESS_DATA;
+        cpu->last_cache_access.write = false;
+        cpu->last_cache_access.policy = amivm_cpu_get_translation_attributes(cpu).serialized
+            ? AMIVM_CACHE_POLICY_SERIALIZED : AMIVM_CACHE_POLICY_CACHEABLE;
         cache_touch(&cpu->data_cache, physical);
         cache_invalidate_line(&cpu->instruction_cache, physical);
     }
@@ -1030,6 +1045,9 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->last_translation_cache_inhibit = false;
     cpu->last_translation_serialized = false;
     cpu->last_memory_access_cacheable = false;
+    cpu->last_cache_access.type = AMIVM_CACHE_ACCESS_DATA;
+    cpu->last_cache_access.write = false;
+    cpu->last_cache_access.policy = AMIVM_CACHE_POLICY_INHIBIT;
     cache_reset(&cpu->instruction_cache);
     cache_reset(&cpu->data_cache);
     cpu->sfc = cpu->dfc = 0u;
@@ -1058,6 +1076,10 @@ static int fetch16(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             set_fault(cpu, AMIVM_CPU_FAULT_MMU, addr, 0u);
             return -4;
         }
+        cpu->last_cache_access.type = AMIVM_CACHE_ACCESS_INSTRUCTION;
+        cpu->last_cache_access.write = false;
+        cpu->last_cache_access.policy = amivm_cpu_get_translation_attributes(cpu).serialized
+            ? AMIVM_CACHE_POLICY_SERIALIZED : AMIVM_CACHE_POLICY_CACHEABLE;
         if (cpu->last_memory_access_cacheable)
             cache_touch(&cpu->instruction_cache, physical);
         if (!amivm_read16(vm, physical, value)) {
