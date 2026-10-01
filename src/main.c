@@ -41,6 +41,11 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Missing --config path\n");
                 return 2;
             }
+            if (amivm_fsuae_load_config(config_path, &config, &fs_report,
+                                        strict_config) != 0) {
+                fprintf(stderr, "Failed to import FS-UAE config: %s\n", config_path);
+                return 2;
+            }
             continue;
         }
         if (strcmp(argv[i], "--config-report") == 0) {
@@ -115,13 +120,6 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    if (config_path != NULL) {
-        if (amivm_fsuae_load_config(config_path, &config, &fs_report,
-                                    strict_config) != 0) {
-            fprintf(stderr, "Failed to import FS-UAE config: %s\n", config_path);
-            return 2;
-        }
-    }
     if (config_report)
         amivm_fsuae_report(&fs_report, stdout);
 
