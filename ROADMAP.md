@@ -51,7 +51,7 @@ Completed or substantially implemented work must still be treated separately fro
 - FPU baseline.
 - Interpreter/reference mode for debugging where practical.
 - Begin x86-64 and AArch64 JIT/dynarec qualification. **IN PROGRESS** — both tier-1 hosts are now exercised; AArch64 cache-coherency work is included.
-- FS-UAE `.conf` import (`--config`) with explicit speed-policy separation, `--config-report` and `--strict-config`. **IN PROGRESS** — importer and qualification test added.
+- FS-UAE `.conf` import (`--config`) with explicit speed-policy separation, `--config-report` and `--strict-config`. **IN PROGRESS** — importer, model mapping and qualification test added.
 
 ### M2 exit criteria
 
