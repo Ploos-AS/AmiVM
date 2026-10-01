@@ -66,6 +66,19 @@ void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
     cpu->ttr[index] = *ttr;
 }
 
+struct amivm_translation_attributes
+amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu)
+{
+    struct amivm_translation_attributes a = { false, false, false };
+    if (cpu == NULL)
+        return a;
+    a.valid = cpu->last_translation_cache_inhibit ||
+              cpu->last_translation_serialized;
+    a.cache_inhibit = cpu->last_translation_cache_inhibit;
+    a.serialized = cpu->last_translation_serialized;
+    return a;
+}
+
 bool amivm_pmmu51_read_register(const struct amivm_cpu_state *cpu,
                                 enum amivm_pmmu51_register reg,
                                 uint32_t *value)
