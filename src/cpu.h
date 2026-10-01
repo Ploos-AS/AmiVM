@@ -191,6 +191,23 @@ void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
 const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
 void amivm_cpu_set_ttr(struct amivm_cpu_state *cpu, unsigned index,
                        const struct amivm_ttr *ttr);
+enum amivm_cache_access_type {
+    AMIVM_CACHE_ACCESS_INSTRUCTION = 0,
+    AMIVM_CACHE_ACCESS_DATA = 1
+};
+
+enum amivm_cache_policy {
+    AMIVM_CACHE_POLICY_CACHEABLE = 0,
+    AMIVM_CACHE_POLICY_INHIBIT = 1,
+    AMIVM_CACHE_POLICY_SERIALIZED = 2
+};
+
+struct amivm_cache_access {
+    enum amivm_cache_access_type type;
+    bool write;
+    enum amivm_cache_policy policy;
+};
+
 struct amivm_translation_attributes {
     bool valid;
     bool cache_inhibit;
@@ -201,6 +218,8 @@ struct amivm_translation_attributes
 amivm_cpu_get_translation_attributes(const struct amivm_cpu_state *cpu);
 bool amivm_cpu_last_memory_access_cacheable(
     const struct amivm_cpu_state *cpu);
+struct amivm_cache_access
+amivm_cpu_get_last_cache_access(const struct amivm_cpu_state *cpu);
 void amivm_cpu_cache_invalidate(struct amivm_cpu_state *cpu);
 void amivm_cpu_cache_invalidate_line(struct amivm_cpu_state *cpu,
                                      uint32_t physical);
