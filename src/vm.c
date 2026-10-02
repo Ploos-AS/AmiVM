@@ -475,9 +475,9 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     }
 
     if (layout->has_format_vector) {
-        if (!amivm_write8(vm, sp + 6u,
+        if (!amivm_write8(vm, sp + layout->format_offset,
                           (uint8_t)(vm->exception_format_vector_word >> 8)) ||
-            !amivm_write8(vm, sp + 7u,
+            !amivm_write8(vm, sp + layout->format_offset + 1u,
                           (uint8_t)vm->exception_format_vector_word)) {
             vm->exception_stack_fault = true;
             return -1;
