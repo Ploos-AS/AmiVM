@@ -564,6 +564,23 @@ static int amivm_m68k_write_exception_internal_state(struct amivm_vm *vm,
     return 0;
 }
 
+static int amivm_m68k_read_exception_internal_state(struct amivm_vm *vm,
+                                                               const struct amivm_m68k_frame_layout *layout,
+                                                               uint32_t sp)
+{
+    uint8_t i;
+    bool ok;
+    if (!vm || !layout || layout->internal_state_words == 0u) return 0;
+    for (i = 0u; i < layout->internal_state_words && i < 34u; ++i) {
+        vm->exception_internal_state[i] =
+            amivm_m68k_read_u32(vm,
+                                sp + layout->internal_state_offset + (uint32_t)i * 4u,
+                                &ok);
+        if (!ok) return -1;
+    }
+    return 0;
+}
+
 static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
 {
     uint8_t format;
@@ -707,6 +724,10 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
         vm->m68k.pc = frame_pc;
         vm->m68k.sr = (uint16_t)(((uint16_t)sr_hi << 8) | sr_lo);
         vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
+        layout = amivm_m68k_frame_layout(vm->exception_frame_type);
+        if (!layout || amivm_m68k_read_exception_internal_state(vm, layout,
+                                                                 vm->m68k.a[7]) != 0)
+            return -1;
         vm->exception_frame_active = false;
     } else {
         return -1;
