@@ -112,6 +112,13 @@ int main(void)
                 vm.m68k.a[7] = vm.exception_frame_sp;
                 vm.exception_frame_active = true;
                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                vm.exception_frame_format = 0u;
+                vm.exception_frame_size = 0u;
+                vm.exception_frame_word_count = 0u;
+                CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                CHECK(vm.exception_frame_format == 2u);
+                CHECK(vm.exception_frame_word_count == 8u);
+                CHECK(vm.exception_frame_size == 16u);
                 CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 2u);
                 CHECK(!vm.exception_frame_active);
                 vm.m68k.exception = AMIVM_M68K_EXC_NONE;
