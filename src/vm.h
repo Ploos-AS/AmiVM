@@ -165,6 +165,7 @@ struct amivm_m68k_frame_layout {
     uint8_t internal_state_words;
     bool implemented;
     bool semantically_decoded;
+    bool has_030_short_state;
 };
 
 enum amivm_m68k_frame_descriptor {
