@@ -317,6 +317,8 @@ int main(void)
                     CHECK(long_layout != NULL);
                     CHECK(long_layout->internal_state_offset == 8u);
                     CHECK(long_layout->internal_state_words == 34u);
+                    CHECK(vm.exception_internal_state[0] == vm.m68k.pc);
+                    CHECK(vm.exception_internal_state[33] == vm.m68k.pc + 132u);
                 }
                 vm.exception_bus_fault_in_progress = false;
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 3u, 0u) == 0);
