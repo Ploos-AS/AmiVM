@@ -339,7 +339,7 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
 {
     const struct amivm_m68k_frame_layout *layout;
     if (!vm) return -1;
-    layout = amivm_m68k_frame_layout(vm->exception_frame_format);
+    layout = amivm_m68k_frame_layout(vm->exception_frame_type);
     if (!layout || vm->exception_frame_size == 0u ||
         vm->exception_frame_word_count == 0u ||
         vm->exception_frame_size !=
@@ -619,8 +619,8 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
     if (layout->has_format_vector) {
         uint8_t f0 = 0u, f1 = 0u;
         uint16_t fv;
-        if (!amivm_read8(vm, sp + 6u, &f0) ||
-            !amivm_read8(vm, sp + 7u, &f1))
+        if (!amivm_read8(vm, sp + layout->format_offset, &f0) ||
+            !amivm_read8(vm, sp + layout->format_offset + 1u, &f1))
             return -1;
         fv = (uint16_t)(((uint16_t)f0 << 8) | f1);
         if (amivm_m68k_decode_frame_format(vm, fv) != 0)
