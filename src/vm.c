@@ -310,7 +310,7 @@ static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
     case AMIVM_FRAME_FAMILY_68060:
         return AMIVM_FRAME_68060_ACCESS;
     default:
-        return (uint8_t)vm->exception_frame_class;
+        return AMIVM_FRAME_INVALID;
     }
 }
 
