@@ -158,6 +158,23 @@ struct amivm_device_desc {
     unsigned required_machine_flags;
 };
 
+struct amivm_aga_state {
+    uint8_t bplcon0;
+    uint8_t diwstrt;
+    uint8_t diwstop;
+    uint8_t dmacon;
+};
+
+struct amivm_ide_state {
+    uint8_t status;
+    uint8_t command;
+    uint32_t lba;
+};
+
+struct amivm_zorro_state {
+    uint8_t configured;
+};
+
 struct amivm_device_state {
     const struct amivm_device_desc *desc;
     bool instantiated;
@@ -183,6 +200,9 @@ struct amivm_vm {
     struct amivm_trackdisk trackdisk;
     struct amivm_timer timer;
     struct amivm_device_state devices[16];
+    struct amivm_aga_state aga;
+    struct amivm_ide_state ide;
+    struct amivm_zorro_state zorro;
     size_t device_count;
 };
 
