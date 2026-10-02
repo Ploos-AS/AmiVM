@@ -309,6 +309,8 @@ struct amivm_vm {
     uint32_t exception_frame_sp;
     uint32_t exception_vector_base;
     uint32_t exception_handler_pc;
+    uint8_t exception_entry_vector;
+    bool exception_entry_active;
     uint8_t exception_frame_size;
     uint8_t exception_depth;
     bool exception_stack_fault;
@@ -339,6 +341,7 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr);
 void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
+int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector);
 int amivm_m68k_set_exception_vector_base(struct amivm_vm *vm, uint32_t base);
 int amivm_m68k_enter_exception_handler(struct amivm_vm *vm, uint8_t vector);
 int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm);
