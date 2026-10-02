@@ -381,6 +381,26 @@ int main(void)
                     CHECK(vm.m68k.a[7] == frame_sp + 12u);
                     CHECK(!vm.exception_frame_active);
                 }
+                {
+                    const uint8_t frame_types[] = { 0u, 1u, 2u };
+                    const uint8_t frame_sizes[] = { 8u, 12u, 16u };
+                    size_t i;
+                    for (i = 0u; i < sizeof frame_types / sizeof frame_types[0]; ++i) {
+                        uint32_t frame_sp;
+                        CHECK(amivm_m68k_set_exception_frame_type(&vm, frame_types[i]) == 0);
+                        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                        CHECK(vm.exception_frame_size == frame_sizes[i]);
+                        CHECK(vm.exception_frame_word_count ==
+                              (uint8_t)(frame_sizes[i] / 2u));
+                        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                        frame_sp = vm.exception_frame_sp;
+                        vm.exception_frame_active = true;
+                        vm.m68k.a[7] = frame_sp;
+                        CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                        CHECK(vm.m68k.a[7] == frame_sp + frame_sizes[i]);
+                        CHECK(!vm.exception_frame_active);
+                    }
+                }
                 CHECK(amivm_m68k_set_exception_vector_base(&vm, AMIVM_RAM_BASE + 0x3000u) == 0);
                 CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3000u + 27u * 4u, 0x00u));
                 CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3000u + 27u * 4u + 1u, 0x12u));
