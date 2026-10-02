@@ -327,6 +327,18 @@ int main(void)
                 CHECK(vm.exception_frame_format == 0x04u);
                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68060_ACCESS);
                 CHECK(vm.exception_frame_size == 16u);
+                CHECK(vm.exception_frame_format == 0x04u);
+                CHECK(vm.exception_fslw == vm.exception_fault_status);
+                {
+                    bool ok = false;
+                    uint32_t access_address =
+                        amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &ok);
+                    CHECK(ok);
+                    CHECK(access_address == vm.exception_fault_address);
+                    CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &ok) ==
+                          vm.exception_fslw);
+                    CHECK(ok);
+                }
                 CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                 CHECK(vm.m68k.a[7] != 0u);
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
