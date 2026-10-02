@@ -280,6 +280,13 @@ int main(void)
                 CHECK(amivm_m68k_enter_exception_handler(&vm, 27u) == 0);
                 CHECK(vm.m68k.pc == 0x00123456u);
                 CHECK(vm.exception_handler_pc == 0x00123456u);
+                vm.m68k.pc = 0x00001000u;
+                vm.m68k.sr = 0x0000u;
+                vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2800u;
+                CHECK(amivm_m68k_enter_exception(&vm, 27u) == 0);
+                CHECK(vm.m68k.pc == 0x00123456u);
+                CHECK((vm.m68k.sr & 0x2000u) != 0u);
+                CHECK(!vm.exception_entry_active);
                 vm.m68k.pc = 0x00abcdefu;
                 vm.m68k.sr = 0x0000u;
                 CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
