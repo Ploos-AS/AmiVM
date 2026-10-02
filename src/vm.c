@@ -529,6 +529,12 @@ static void amivm_m68k_capture_exception_internal_state(struct amivm_vm *vm,
 {
     uint8_t i;
     if (!vm || !layout || layout->internal_state_words == 0u) return;
+    /*
+     * Opaque frames intentionally retain caller-provided internal state.
+     * The generic synthetic capture is only appropriate for frames whose
+     * internal state is semantically decoded.
+     */
+    if (!layout->semantically_decoded) return;
     for (i = 0u; i < layout->internal_state_words && i < 34u; ++i)
         vm->exception_internal_state[i] =
             (uint32_t)(vm->m68k.pc + (uint32_t)i * 4u);
