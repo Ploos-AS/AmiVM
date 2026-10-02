@@ -373,6 +373,14 @@ int main(void)
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 1u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_size == 12u);
+                {
+                    uint32_t frame_sp = vm.exception_frame_sp;
+                    vm.exception_frame_active = true;
+                    vm.m68k.a[7] = frame_sp;
+                    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                    CHECK(vm.m68k.a[7] == frame_sp + 12u);
+                    CHECK(!vm.exception_frame_active);
+                }
                 CHECK(amivm_m68k_set_exception_vector_base(&vm, AMIVM_RAM_BASE + 0x3000u) == 0);
                 CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3000u + 27u * 4u, 0x00u));
                 CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3000u + 27u * 4u + 1u, 0x12u));
