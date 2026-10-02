@@ -169,10 +169,10 @@ enum amivm_m68k_frame_descriptor {
     AMIVM_FRAME_68000_SHORT = 0,
     AMIVM_FRAME_68020_BUS = 1, /* Motorola format $2 */
     /*
-     * Internal 68040 MMU frame descriptor.  This is deliberately not
-     * mapped from a Motorola format code: format $2 belongs to 68020.
+     * Reserved internal descriptor slot.  Motorola format $2 belongs
+     * exclusively to the 68020 bus/address-error frame.
      */
-    AMIVM_FRAME_68040_MMU = 2,
+    AMIVM_FRAME_RESERVED_2 = 2,
     AMIVM_FRAME_68030_COPROC_MID = 3,
     AMIVM_FRAME_68030_SHORT_BUS = 4,
     AMIVM_FRAME_68030_LONG_BUS = 5,
