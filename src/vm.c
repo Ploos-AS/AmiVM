@@ -225,6 +225,8 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     vm->m68k.a[7] = sp + 16u;
     vm->exception_frame_sp = 0u;
     vm->exception_frame_size = 0u;
+    if (vm->exception_depth != 0u)
+        vm->exception_depth--;
     vm->pending_exception = AMIVM_M68K_EXC_NONE;
     vm->m68k.exception = AMIVM_M68K_EXC_NONE;
     return 0;
@@ -246,6 +248,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
     vm->exception_frame_size = 16u;
+    if (vm->exception_depth < 255u)
+        vm->exception_depth++;
     return 0;
 }
 
