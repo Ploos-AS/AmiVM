@@ -1493,6 +1493,28 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         return 1;
     }
 
+    if ((opcode & 0xf1ffu) == 0x23c0u) {
+        unsigned reg = (unsigned)((opcode >> 9u) & 7u);
+        uint32_t address, value;
+        if (fetch32(cpu, vm, next_pc, &address) != 0 ||
+            !cpu_write32(cpu, vm, address, is_supervisor(cpu), cpu->d[reg]))
+            return deliver_fault(cpu, vm, instruction_pc);
+        cpu->pc = next_pc + 4u;
+        return 1;
+    }
+
+    if ((opcode & 0xf1ffu) == 0x2039u) {
+        unsigned reg = (unsigned)((opcode >> 9u) & 7u);
+        uint32_t address, value;
+        if (fetch32(cpu, vm, next_pc, &address) != 0 ||
+            !cpu_read32(cpu, vm, address, is_supervisor(cpu), &value))
+            return deliver_fault(cpu, vm, instruction_pc);
+        cpu->d[reg] = value;
+        set_nz32(cpu, value);
+        cpu->pc = next_pc + 4u;
+        return 1;
+    }
+
     if ((opcode & 0xfff8u) == 0x4280u) {
         unsigned reg = (unsigned)(opcode & 7u);
         cpu->d[reg] = 0u;
