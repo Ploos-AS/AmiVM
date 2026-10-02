@@ -8,14 +8,24 @@
 #define AMIVM_DEVF_IDE  0x02u
 #define AMIVM_DEVF_ZORRO 0x04u
 
+static bool device_aga_read8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t *);
+static bool device_aga_write8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t);
+static bool device_ide_read8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t *);
+static bool device_ide_write8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t);
+static bool device_zorro_read8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t *);
+static bool device_zorro_write8(struct amivm_vm *, const struct amivm_device_state *, uint32_t, uint8_t);
+
 static const struct amivm_device_desc amivm_devices[] = {
-    {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u, 0u},
-    {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u, 0u},
-    {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u, 0u},
-    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 6u, 0u},
-    {"aga", AMIVM_MMIO_BASE + 0x5000u, AMIVM_MMIO_PAGE_SIZE, 7u, AMIVM_DEVF_AGA},
-    {"ide", AMIVM_MMIO_BASE + 0x6000u, AMIVM_MMIO_PAGE_SIZE, 8u, AMIVM_DEVF_IDE},
-    {"zorro", AMIVM_MMIO_BASE + 0x7000u, AMIVM_MMIO_PAGE_SIZE, 9u, AMIVM_DEVF_ZORRO},
+    {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u, 0u, NULL, NULL},
+    {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u, 0u, NULL, NULL},
+    {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u, 0u, NULL, NULL},
+    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 6u, 0u, NULL, NULL},
+    {"aga", AMIVM_MMIO_BASE + 0x5000u, AMIVM_MMIO_PAGE_SIZE, 7u, AMIVM_DEVF_AGA,
+     device_aga_read8, device_aga_write8},
+    {"ide", AMIVM_MMIO_BASE + 0x6000u, AMIVM_MMIO_PAGE_SIZE, 8u, AMIVM_DEVF_IDE,
+     device_ide_read8, device_ide_write8},
+    {"zorro", AMIVM_MMIO_BASE + 0x7000u, AMIVM_MMIO_PAGE_SIZE, 9u, AMIVM_DEVF_ZORRO,
+     device_zorro_read8, device_zorro_write8},
 };
 
 static bool in_range(uint32_t addr, uint32_t base, size_t size)
