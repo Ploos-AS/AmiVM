@@ -161,6 +161,24 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+static void aga_advance_beam(struct amivm_vm *vm, unsigned cycles)
+{
+    unsigned i;
+    if (!vm) return;
+    for (i = 0; i < cycles; ++i) {
+        ++vm->aga.beam_h;
+        if (vm->aga.beam_h >= 227u) {
+            vm->aga.beam_h = 0u;
+            ++vm->aga.beam_v;
+            if (vm->aga.beam_v >= 312u)
+                vm->aga.beam_v = 0u;
+        }
+        vm->aga.display_active =
+            vm->aga.beam_h >= 20u && vm->aga.beam_h < 200u &&
+            vm->aga.beam_v >= 20u && vm->aga.beam_v < 292u;
+    }
+}
+
 static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
 {
     size_t page;
