@@ -216,6 +216,20 @@ int amivm_m68k_service_irq(struct amivm_vm *vm)
     return vm->pending_exception_vector;
 }
 
+int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor)
+{
+    if (!vm) return -1;
+    vm->m68k.supervisor = supervisor;
+    if (supervisor) vm->m68k.sr |= 0x2000u;
+    else vm->m68k.sr &= (uint16_t)~0x2000u;
+    return 0;
+}
+
+bool amivm_m68k_is_supervisor(const struct amivm_vm *vm)
+{
+    return vm && vm->m68k.supervisor;
+}
+
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception)
 {
@@ -233,6 +247,7 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
     memset(&vm->m68k, 0, sizeof vm->m68k);
     vm->m68k.pc = pc;
     vm->m68k.sr = sr;
+    vm->m68k.supervisor = (sr & 0x2000u) != 0u;
 }
 
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
