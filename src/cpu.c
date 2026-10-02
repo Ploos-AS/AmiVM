@@ -946,7 +946,7 @@ static unsigned highest_pending_irq(uint32_t pending)
 
 static int service_interrupt(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
-    unsigned level = highest_pending_irq(vm->irq.pending);
+    unsigned level = highest_pending_irq(vm->irq.pending & vm->irq.enabled);
     unsigned mask = (unsigned)((cpu->sr & SR_IPL) >> 8u);
     int rc;
     if (level == 0u || level <= mask) return 0;
