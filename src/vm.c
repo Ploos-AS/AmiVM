@@ -388,13 +388,29 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
         return -1;
     }
     if (vm->irq_in_service) {
-        vm->m68k.pc = vm->irq_saved_pc;
-        vm->m68k.sr = vm->irq_saved_sr;
+        bool ok;
+        uint32_t frame_pc = amivm_m68k_read_u32(vm, vm->m68k.a[7], &ok);
+        uint8_t sr_hi = 0u, sr_lo = 0u;
+        if (!ok || !amivm_read8(vm, vm->m68k.a[7] + 4u, &sr_hi) ||
+            !amivm_read8(vm, vm->m68k.a[7] + 5u, &sr_lo)) {
+            vm->m68k.stopped = true;
+            return -1;
+        }
+        vm->m68k.pc = frame_pc;
+        vm->m68k.sr = (uint16_t)(((uint16_t)sr_hi << 8) | sr_lo);
         vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
         vm->irq_in_service = false;
     } else if (vm->exception_frame_active) {
-        vm->m68k.pc = vm->exception_saved_pc;
-        vm->m68k.sr = vm->exception_saved_sr;
+        bool ok;
+        uint32_t frame_pc = amivm_m68k_read_u32(vm, vm->m68k.a[7], &ok);
+        uint8_t sr_hi = 0u, sr_lo = 0u;
+        if (!ok || !amivm_read8(vm, vm->m68k.a[7] + 4u, &sr_hi) ||
+            !amivm_read8(vm, vm->m68k.a[7] + 5u, &sr_lo)) {
+            vm->m68k.stopped = true;
+            return -1;
+        }
+        vm->m68k.pc = frame_pc;
+        vm->m68k.sr = (uint16_t)(((uint16_t)sr_hi << 8) | sr_lo);
         vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
         vm->exception_frame_active = false;
     } else {
