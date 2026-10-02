@@ -426,6 +426,7 @@ int main(void)
                  vm.exception_format_vector_word ^= 1u;
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 CHECK(amivm_m68k_frame_layout(vm.exception_frame_type)->preserves_internal_state);
                  vm.exception_frame_size++;
                  CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
                  vm.exception_frame_size--;
