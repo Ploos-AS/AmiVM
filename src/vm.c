@@ -272,6 +272,22 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     return (int)exception;
 }
 
+int amivm_mmu_configure_two_level(struct amivm_vm *vm,
+                                      uint32_t root_base,
+                                      uint8_t root_bits,
+                                      uint8_t leaf_bits)
+{
+    if (!vm || root_bits == 0u || leaf_bits == 0u ||
+        root_bits + leaf_bits > 20u)
+        return -1;
+    vm->mmu.root_table_base = root_base;
+    vm->mmu.root_index_bits = root_bits;
+    vm->mmu.leaf_index_bits = leaf_bits;
+    vm->mmu.page_shift = 12u;
+    vm->mmu.page_table_entries = 0u;
+    return 0;
+}
+
 int amivm_mmu_configure_page_table(struct amivm_vm *vm,
                                          uint32_t base, uint32_t mask,
                                          uint8_t page_shift, uint32_t entries)
@@ -321,6 +337,35 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     /* M2.203: minimal page-table translation seam. A real 68040
        table walker will replace this test mapping without changing
        the memory-bus contract. */
+    if (vm->mmu.root_index_bits != 0u && vm->mmu.leaf_index_bits != 0u) {
+        uint32_t page_mask = 0xfffu;
+        uint32_t leaf_mask = (1u << vm->mmu.leaf_index_bits) - 1u;
+        uint32_t root_mask = (1u << vm->mmu.root_index_bits) - 1u;
+        uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + 12u)) & root_mask;
+        uint32_t leaf_index = (logical >> 12u) & leaf_mask;
+        uint32_t root_pte_addr = vm->mmu.root_table_base + root_index * 4u;
+        uint32_t leaf_base, pte, pte_addr;
+        bool ok;
+        leaf_base = amivm_m68k_read_u32(vm, root_pte_addr, &ok);
+        if (!ok || (leaf_base & 1u) == 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
+            return -1;
+        }
+        pte_addr = (leaf_base & ~page_mask) + leaf_index * 4u;
+        pte = amivm_m68k_read_u32(vm, pte_addr, &ok);
+        if (!ok || (pte & 1u) == 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
+            return -1;
+        }
+        if (write && (pte & 2u) != 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+            return -1;
+        }
+        *physical = (pte & ~page_mask) | (logical & page_mask);
+        vm->mmu.last_physical = *physical;
+        return 0;
+    }
+
     if (vm->mmu.page_table_entries != 0u) {
         uint32_t page_mask = (1u << vm->mmu.page_shift) - 1u;
         uint32_t page = (logical & ~page_mask) & vm->mmu.page_table_mask;
