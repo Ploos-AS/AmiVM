@@ -632,7 +632,12 @@ static int amivm_m68k_read_exception_internal_state(struct amivm_vm *vm,
 {
     uint8_t i;
     bool ok;
-    if (!vm || !layout || layout->internal_state_words == 0u) return 0;
+    if (!vm || !layout || !layout->preserves_internal_state ||
+        layout->internal_state_words == 0u)
+        return 0;
+    if (layout->internal_state_offset + layout->internal_state_words * 4u >
+        layout->words * 2u)
+        return -1;
     for (i = 0u; i < layout->internal_state_words && i < 34u; ++i) {
         vm->exception_internal_state[i] =
             amivm_m68k_read_u32(vm,
