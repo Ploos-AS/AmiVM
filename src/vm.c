@@ -77,6 +77,11 @@ static bool device_aga_read8(struct amivm_vm *vm, const struct amivm_device_stat
     case 5u: *value = (uint8_t)vm->aga.diwstop; return true;
     case 6u: *value = (uint8_t)(vm->aga.dmaconr >> 8); return true;
     case 7u: *value = (uint8_t)vm->aga.dmaconr; return true;
+    case 8u: *value = (uint8_t)(vm->aga.beam_h >> 8); return true;
+    case 9u: *value = (uint8_t)vm->aga.beam_h; return true;
+    case 10u: *value = (uint8_t)(vm->aga.beam_v >> 8); return true;
+    case 11u: *value = (uint8_t)vm->aga.beam_v; return true;
+    case 12u: *value = vm->aga.display_active ? 1u : 0u; return true;
     default: return false;
     }
 }
@@ -360,6 +365,9 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->fast_ram_size = resolved.fast_ram_size;
     vm->device_count = resolved.device_count;
     memset(&vm->aga, 0, sizeof vm->aga);
+    vm->aga.beam_h = 0u;
+    vm->aga.beam_v = 0u;
+    vm->aga.display_active = false;
     memset(&vm->ide, 0, sizeof vm->ide);
     memset(&vm->zorro, 0, sizeof vm->zorro);
     for (size_t i = 0; i < resolved.device_count; ++i) {
