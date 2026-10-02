@@ -474,6 +474,11 @@ int main(void)
                                         (uint8_t)(saved ^ 0x01u)));
                      CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
                      CHECK(amivm_write8(&vm, vm.exception_frame_sp + 10u, saved));
+                     vm.exception_internal_state[0] = 0x11223344u;
+                     vm.exception_internal_state[1] = 0x55667788u;
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                     CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &(bool){true}) == 0x11223344u);
+                     CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &(bool){true}) == 0x55667788u);
                      CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                      {
                          uint8_t saved = 0u;
