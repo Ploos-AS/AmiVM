@@ -63,6 +63,7 @@ struct amivm_config {
     size_t chip_ram_size;
     size_t fast_ram_size;
     bool accelerator_present;
+    const struct amivm_cpu_profile *accelerator_profile;
     const char *rom_path;
     const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
     const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
