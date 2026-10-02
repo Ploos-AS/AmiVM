@@ -373,6 +373,8 @@ int main(void)
                      CHECK(l9->format_offset == 6u);
                      CHECK(l9->internal_state_offset == 8u);
                      CHECK(l9->internal_state_words == 2u);
+                     CHECK(!l9->semantically_decoded);
+                     CHECK(l9->implemented);
                      CHECK((unsigned)l9->internal_state_offset +
                            (unsigned)l9->internal_state_words * 4u <=
                            (unsigned)l9->words * 2u);
@@ -531,7 +533,9 @@ int main(void)
                          const struct amivm_m68k_frame_layout *ql =
                              amivm_m68k_frame_layout(qualification_frames[qi]);
                          CHECK(ql != NULL);
+                         CHECK(ql->implemented);
                          CHECK(ql->words > 0u);
+
                          CHECK((unsigned)ql->words * 2u >= 8u);
                          if (qualification_frames[qi] == AMIVM_FRAME_68030_SHORT_BUS) {
                              CHECK(ql->words == 16u);
