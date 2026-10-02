@@ -454,6 +454,17 @@ int main(void)
                          &vm, amivm_m68k_frame_layout(vm.exception_frame_type),
                          vm.m68k.a[7]) == 0);
                      CHECK(vm.exception_frame_sp == vm.m68k.a[7]);
+                     {
+                         uint32_t pc_before = vm.m68k.pc;
+                         uint16_t sr_before = vm.m68k.sr;
+                         uint32_t fault_before = vm.mmu_fault_address;
+                         vm.m68k.a[7] = vm.exception_frame_sp + 1u;
+                         CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                         CHECK(vm.m68k.pc == pc_before);
+                         CHECK(vm.m68k.sr == sr_before);
+                         CHECK(vm.mmu_fault_address == fault_before);
+                         vm.m68k.a[7] = vm.exception_frame_sp;
+                     }
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                      CHECK(vm.m68k.pc == saved_pc);
                      CHECK(vm.m68k.sr == saved_sr);
