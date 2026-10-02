@@ -176,6 +176,10 @@ enum amivm_m68k_mmu_fault {
 
 struct amivm_mmu_state {
     bool enabled;
+    bool test_page_valid;
+    uint32_t test_logical_page;
+    uint32_t test_physical_page;
+    bool test_write_protect;
     uint32_t tc;
     uint32_t srp;
     uint32_t crp;
