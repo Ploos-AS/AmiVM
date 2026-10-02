@@ -161,6 +161,16 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+int amivm_m68k_raise_exception(struct amivm_vm *vm,
+                                      enum amivm_m68k_exception exception)
+{
+    if (!vm || exception == AMIVM_M68K_EXC_NONE) return -1;
+    vm->m68k.sr |= 0x2000u;
+    vm->m68k.pc = vm->m68k.pc;
+    vm->last_instruction_cycles = 0u;
+    return (int)exception;
+}
+
 void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
 {
     if (!vm) return;
