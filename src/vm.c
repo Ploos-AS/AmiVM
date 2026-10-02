@@ -161,6 +161,24 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
+                                const struct amivm_cpu_backend *backend)
+{
+    if (!vm || !backend || !backend->step) return -1;
+    vm->cpu_backend = *backend;
+    return 0;
+}
+
+int amivm_vm_step(struct amivm_vm *vm)
+{
+    uint32_t cycles;
+    if (!vm || !vm->cpu_backend.step) return -1;
+    cycles = vm->cpu_backend.step(vm, vm->cpu_backend.state);
+    if (cycles == 0u) return -1;
+    amivm_vm_account_instruction(vm, cycles);
+    return 0;
+}
+
 void amivm_vm_account_instruction(struct amivm_vm *vm, unsigned cycles)
 {
     if (!vm) return;
