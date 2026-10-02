@@ -709,6 +709,10 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
     if (layout->has_format_vector) {
         uint8_t f0 = 0u, f1 = 0u;
         uint16_t fv;
+        if ((layout->format_offset & 1u) != 0u ||
+            (uint32_t)layout->format_offset + 2u >
+                (uint32_t)layout->words * 2u)
+            return -1;
         if (!amivm_read8(vm, sp + layout->format_offset, &f0) ||
             !amivm_read8(vm, sp + layout->format_offset + 1u, &f1))
             return -1;
