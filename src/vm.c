@@ -426,11 +426,17 @@ int amivm_m68k_enter_trap(struct amivm_vm *vm, uint8_t vector)
 int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector)
 {
     uint32_t old_sp, old_pc, old_sr;
+    uint8_t old_vector, old_frame_type, old_frame_format;
+    uint16_t old_vector_offset;
     if (!vm || vm->exception_entry_active) return -1;
     if (vector >= 256u) return -1;
     old_sp = vm->m68k.a[7];
     old_pc = vm->m68k.pc;
     old_sr = vm->m68k.sr;
+    old_vector = vm->exception_entry_vector;
+    old_frame_type = vm->exception_frame_type;
+    old_frame_format = vm->exception_frame_format;
+    old_vector_offset = vm->exception_frame_vector_offset;
     vm->exception_entry_active = true;
     vm->exception_entry_vector = vector;
     vm->exception_frame_type = amivm_m68k_exception_frame_descriptor(vm);
@@ -442,6 +448,10 @@ int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector)
         vm->m68k.a[7] = old_sp;
         vm->m68k.pc = old_pc;
         vm->m68k.sr = (uint16_t)old_sr;
+        vm->exception_entry_vector = old_vector;
+        vm->exception_frame_type = old_frame_type;
+        vm->exception_frame_format = old_frame_format;
+        vm->exception_frame_vector_offset = old_vector_offset;
         vm->exception_entry_active = false;
         vm->m68k.stopped = true;
         return -1;
