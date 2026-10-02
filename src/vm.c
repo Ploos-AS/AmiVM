@@ -659,6 +659,23 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
         if (descriptor < 0) return -1;
         layout = amivm_m68k_frame_layout((uint8_t)descriptor);
         if (!layout || !layout->implemented) return -1;
+        switch (vm->cpu_profile.exception_frame_family) {
+        case AMIVM_FRAME_FAMILY_68020:
+            if (format != 0x2u) return -1;
+            break;
+        case AMIVM_FRAME_FAMILY_68030:
+            if (format != 0x9u && format != 0xAu && format != 0xBu) return -1;
+            break;
+        case AMIVM_FRAME_FAMILY_68040:
+            if (format != 0x7u) return -1;
+            break;
+        case AMIVM_FRAME_FAMILY_68060:
+            if (format != 0x4u) return -1;
+            break;
+        default:
+            if (format != 0x0u) return -1;
+            break;
+        }
         vm->exception_frame_format = format;
         vm->exception_frame_type = (uint8_t)descriptor;
         vm->exception_frame_word_count = layout->words;
