@@ -309,6 +309,7 @@ struct amivm_vm {
     uint32_t exception_frame_sp;
     uint8_t exception_frame_size;
     uint8_t exception_depth;
+    bool exception_stack_fault;
     uint8_t irq_level;
     bool irq_pending;
     bool irq_in_service;
