@@ -320,6 +320,15 @@ int main(void)
                     CHECK(vm.exception_internal_state[0] == vm.m68k.pc);
                     CHECK(vm.exception_internal_state[33] == vm.m68k.pc + 132u);
                 }
+                CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                {
+                    uint32_t long_sp = vm.exception_frame_sp;
+                    vm.exception_frame_active = true;
+                    vm.m68k.a[7] = long_sp;
+                    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                    CHECK(vm.m68k.a[7] == long_sp + 92u);
+                    CHECK(!vm.exception_frame_active);
+                }
                 vm.exception_bus_fault_in_progress = false;
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 3u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 1u);
