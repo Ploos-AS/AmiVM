@@ -305,8 +305,20 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         return 0;
     }
 
-    /* M2.202: no page-table walker yet; fail closed instead of
-       silently treating an untranslated logical address as physical. */
+    /* M2.203: minimal page-table translation seam. A real 68040
+       table walker will replace this test mapping without changing
+       the memory-bus contract. */
+    if (vm->mmu.test_page_valid &&
+        (logical & 0xfffff000u) == (vm->mmu.test_logical_page & 0xfffff000u)) {
+        if (write && vm->mmu.test_write_protect) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+            return -1;
+        }
+        *physical = (vm->mmu.test_physical_page & 0xfffff000u) |
+                    (logical & 0xfffu);
+        vm->mmu.last_physical = *physical;
+        return 0;
+    }
     vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
     return -1;
 }
