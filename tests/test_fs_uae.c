@@ -453,6 +453,7 @@ int main(void)
                      CHECK(amivm_m68k_validate_exception_internal_state(
                          &vm, amivm_m68k_frame_layout(vm.exception_frame_type),
                          vm.m68k.a[7]) == 0);
+                     CHECK(vm.exception_frame_sp == vm.m68k.a[7]);
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                      CHECK(vm.m68k.pc == saved_pc);
                      CHECK(vm.m68k.sr == saved_sr);
