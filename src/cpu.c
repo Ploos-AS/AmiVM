@@ -1361,22 +1361,54 @@ illegal:
     return deliver_fault(cpu, vm, instruction_pc);
 }
 
-static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
-                                         uint16_t opcode)
+enum reference_cycle_class {
+    REF_CYC_GENERIC,
+    REF_CYC_BRANCH,
+    REF_CYC_MOVEQ,
+    REF_CYC_SYSTEM,
+    REF_CYC_QUICK,
+    REF_CYC_MOVE,
+    REF_CYC_ARITH,
+    REF_CYC_MEMORY
+};
+
+static unsigned reference_cycle_base(enum reference_cycle_class cls)
 {
-    unsigned base;
-    switch (opcode >> 12u) {
-    case 0x6u: base = 10u; break; /* branches */
-    case 0x7u: base = 4u;  break; /* MOVEQ */
-    case 0x4u: base = 8u;  break; /* system/control */
-    case 0x5u: base = 8u;  break; /* quick/addq/subq */
-    case 0x2u:
-    case 0x3u: base = 8u;  break; /* MOVE */
-    default: base = 4u; break;
+    switch (cls) {
+    case REF_CYC_BRANCH: return 10u;
+    case REF_CYC_MOVEQ: return 4u;
+    case REF_CYC_SYSTEM: return 8u;
+    case REF_CYC_QUICK: return 8u;
+    case REF_CYC_MOVE: return 8u;
+    case REF_CYC_ARITH: return 6u;
+    case REF_CYC_MEMORY: return 8u;
+    default: return 4u;
     }
-    if (profile == NULL)
-        return base;
-    switch (profile->id) {
+}
+
+static enum reference_cycle_class reference_cycle_classify(uint16_t opcode)
+{
+    switch (opcode >> 12u) {
+    case 0x6u: return REF_CYC_BRANCH;
+    case 0x7u: return REF_CYC_MOVEQ;
+    case 0x4u: return REF_CYC_SYSTEM;
+    case 0x5u: return REF_CYC_QUICK;
+    case 0x2u:
+    case 0x3u: return REF_CYC_MOVE;
+    case 0x1u:
+    case 0x9u:
+    case 0xbu:
+    case 0xcu:
+    case 0xdu: return REF_CYC_ARITH;
+    default: return REF_CYC_GENERIC;
+    }
+}
+
+static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
+                                     uint16_t opcode)
+{
+    unsigned base = reference_cycle_base(reference_cycle_classify(opcode));
+    switch (profile ? profile->id : AMIVM_CPU_68040) {
     case AMIVM_CPU_68020: return base * 2u;
     case AMIVM_CPU_68030: return base * 3u / 2u;
     case AMIVM_CPU_68040: return base;
