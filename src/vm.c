@@ -272,6 +272,25 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     return (int)exception;
 }
 
+int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
+                              uint32_t logical, bool write)
+{
+    uint32_t tt;
+    uint32_t mask;
+    if (!mmu) return 0;
+    tt = mmu->tt0;
+    if ((tt & 1u) == 0u) {
+        tt = mmu->tt1;
+        if ((tt & 1u) == 0u) return 0;
+    }
+    /* 68040-style baseline: upper 8 address bits select a transparent region.
+       Lower 24 bits remain unchanged. */
+    mask = 0xff000000u;
+    if ((logical & mask) != (tt & mask)) return 0;
+    if (write && (tt & 0x00000200u) == 0u) return 0;
+    return 1;
+}
+
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical)
 {
@@ -280,7 +299,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     vm->mmu.last_write = write;
     vm->mmu.last_fault = AMIVM_MMU_FAULT_NONE;
 
-    if (!vm->mmu.enabled) {
+    if (!vm->mmu.enabled || amivm_mmu_tt_match(&vm->mmu, logical, write)) {
         *physical = logical;
         vm->mmu.last_physical = logical;
         return 0;
