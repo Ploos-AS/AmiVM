@@ -429,6 +429,15 @@ int main(void)
                              CHECK(ql->fault_status_offset == 12u);
                              CHECK(ql->fault_status_bytes == 4u);
                          }
+                         CHECK((unsigned)ql->fault_address_offset < (unsigned)ql->words * 2u || !ql->has_fault_address);
+                         if (ql->has_fault_status)
+                             CHECK((unsigned)ql->fault_status_offset +
+                                   (unsigned)ql->fault_status_bytes <=
+                                   (unsigned)ql->words * 2u);
+                         if (ql->internal_state_words)
+                             CHECK((unsigned)ql->internal_state_offset +
+                                   (unsigned)ql->internal_state_words * 4u <=
+                                   (unsigned)ql->words * 2u);
                      }
                  }
                  CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
