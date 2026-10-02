@@ -54,10 +54,13 @@ int main(void)
     put16(vm.ram + 32u, 0x7001u);
     /* MOVE.B D0,$00f03007 / READ_SECTOR */
     put16(vm.ram + 34u, 0x13c0u); put32(vm.ram + 36u, AMIVM_TRACKDISK_BASE + 7u);
+    /* enable TrackDisk IRQ before issuing command */
+    put16(vm.ram + 40u, 0x7001u);
+    put16(vm.ram + 42u, 0x13c0u); put32(vm.ram + 44u, AMIVM_TRACKDISK_BASE + 10u);
 
     cpu.pc = pc;
     cpu.sr = 0x2700u;
-    for (unsigned i = 0; i < 9u; ++i)
+    for (unsigned i = 0; i < 11u; ++i)
         CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
 
     CHECK(vm.trackdisk.dma_address == AMIVM_RAM_BASE + 0x2000u);
