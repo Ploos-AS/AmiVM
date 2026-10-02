@@ -299,19 +299,19 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
 static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
 {
     if (!vm) return AMIVM_FRAME_68000_SHORT;
-    if (vm->cpu_profile.id == AMIVM_CPU_68020)
+    switch (vm->cpu_profile.exception_frame_family) {
+    case AMIVM_FRAME_FAMILY_68020:
         return AMIVM_FRAME_68020_BUS;
-    if (vm->cpu_profile.id == AMIVM_CPU_68030) {
+    case AMIVM_FRAME_FAMILY_68030:
         return vm->exception_bus_fault_in_progress ?
             AMIVM_FRAME_68030_LONG_BUS : AMIVM_FRAME_68030_SHORT_BUS;
-    }
-    if (vm->cpu_profile.id == AMIVM_CPU_68040 ||
-        vm->cpu_profile.id == AMIVM_CPU_HYPER040)
+    case AMIVM_FRAME_FAMILY_68040:
         return AMIVM_FRAME_68040_ACCESS;
-    if (vm->cpu_profile.id == AMIVM_CPU_68060 ||
-        vm->cpu_profile.id == AMIVM_CPU_HYPER060)
+    case AMIVM_FRAME_FAMILY_68060:
         return AMIVM_FRAME_68060_ACCESS;
-    return (uint8_t)vm->exception_frame_class;
+    default:
+        return (uint8_t)vm->exception_frame_class;
+    }
 }
 
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
