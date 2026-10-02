@@ -259,6 +259,8 @@ struct amivm_vm {
     uint32_t last_instruction_cycles;
     struct amivm_cpu_backend cpu_backend;
     struct amivm_m68k_registers m68k;
+    enum amivm_m68k_exception pending_exception;
+    uint8_t pending_exception_vector;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
