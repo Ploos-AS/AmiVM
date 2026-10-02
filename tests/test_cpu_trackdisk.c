@@ -106,8 +106,26 @@ int main(void)
     CHECK(vm.ram[0x2001u] == 0x4fu);
     CHECK(vm.ram[0x2002u] == 0x53u);
 
+    amivm_irq_enable(&vm, 6u, true);
+    vm.timer.period = 10u;
+    vm.timer.enabled = true;
+    vm.timer.irq_enable = true;
+    vm.timer.periodic = true;
+    amivm_timer_tick(&vm, 9u);
+    CHECK(!amivm_irq_is_pending(&vm, 6u));
+    amivm_timer_tick(&vm, 1u);
+    CHECK(amivm_irq_is_pending(&vm, 6u));
+    CHECK(vm.timer.enabled);
+    CHECK(vm.timer.counter == 0u);
+    amivm_clear_irq(&vm, 6u);
+    vm.timer.periodic = false;
+    vm.timer.counter = 0u;
+    amivm_timer_tick(&vm, 10u);
+    CHECK(amivm_irq_is_pending(&vm, 6u));
+    CHECK(!vm.timer.enabled);
+
     amivm_vm_destroy(&vm);
     remove("m2_150.adf");
-    puts("AmiVM M2.150 CPU-to-MMIO-to-DMA-to-ADF-to-IRQ qualification: PASS");
+    puts("AmiVM M2.155 TrackDisk plus timer generic IRQ qualification qualification: PASS");
     return 0;
 }
