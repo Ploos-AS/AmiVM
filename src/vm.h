@@ -316,6 +316,8 @@ struct amivm_vm {
     uint8_t exception_frame_format;
     uint16_t exception_frame_word_count;
     uint8_t cpu_model;
+    uint8_t cpu_submodel;
+    uint8_t exception_frame_class;
     uint16_t exception_frame_vector_offset;
     uint32_t exception_frame_magic;
     uint8_t exception_depth;
@@ -348,6 +350,7 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_enter_trap(struct amivm_vm *vm, uint8_t vector);
+int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel);
 int amivm_m68k_set_cpu_model(struct amivm_vm *vm, uint8_t model);
 int amivm_m68k_validate_exception_frame(struct amivm_vm *vm);
 int amivm_m68k_set_exception_frame_type(struct amivm_vm *vm, uint8_t type);
