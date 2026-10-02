@@ -364,7 +364,32 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
 
 int amivm_m68k_set_exception_frame_type(struct amivm_vm *vm, uint8_t type)
 {
-    if (!vm || type > 2u) return -1;
+    const struct amivm_m68k_frame_layout *layout;
+
+    if (!vm || type == AMIVM_FRAME_INVALID) return -1;
+    layout = amivm_m68k_frame_layout(type);
+    if (!layout || !layout->implemented) return -1;
+
+    switch (vm->cpu_profile.exception_frame_family) {
+    case AMIVM_FRAME_FAMILY_68020:
+        if (type != AMIVM_FRAME_68020_BUS) return -1;
+        break;
+    case AMIVM_FRAME_FAMILY_68030:
+        if (type != AMIVM_FRAME_68030_COPROC_MID &&
+            type != AMIVM_FRAME_68030_SHORT_BUS &&
+            type != AMIVM_FRAME_68030_LONG_BUS) return -1;
+        break;
+    case AMIVM_FRAME_FAMILY_68040:
+        if (type != AMIVM_FRAME_68040_ACCESS) return -1;
+        break;
+    case AMIVM_FRAME_FAMILY_68060:
+        if (type != AMIVM_FRAME_68060_ACCESS) return -1;
+        break;
+    default:
+        if (type != AMIVM_FRAME_68000_SHORT) return -1;
+        break;
+    }
+
     vm->exception_frame_type = type;
     return 0;
 }
