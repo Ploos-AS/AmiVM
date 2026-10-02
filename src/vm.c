@@ -260,6 +260,10 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception)
 {
     if (!vm || exception == AMIVM_M68K_EXC_NONE) return -1;
+    if (exception == AMIVM_M68K_EXC_MMU_FAULT) {
+        vm->mmu_exception_pc = vm->m68k.pc;
+        vm->mmu_exception_sr = vm->m68k.sr;
+    }
     vm->m68k.sr |= 0x2000u;
     vm->pending_exception = exception;
     vm->pending_exception_vector = (uint8_t)exception;
@@ -950,8 +954,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         return false;
     }
     if (amivm_mmu_translate(vm, addr, false, &physical) != 0) {
-        vm->m68k.exception = AMIVM_M68K_EXC_BUS_ERROR;
-        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
+        vm->m68k.exception = AMIVM_M68K_EXC_MMU_FAULT;
+        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_MMU_FAULT);
         return false;
     }
     addr = physical;
@@ -1039,8 +1043,8 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         return false;
     }
     if (amivm_mmu_translate(vm, addr, true, &physical) != 0) {
-        vm->m68k.exception = AMIVM_M68K_EXC_BUS_ERROR;
-        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
+        vm->m68k.exception = AMIVM_M68K_EXC_MMU_FAULT;
+        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_MMU_FAULT);
         return false;
     }
     addr = physical;
