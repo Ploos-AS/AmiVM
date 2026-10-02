@@ -14,6 +14,9 @@ AmiVM therefore follows this rule:
 
 Cycle accounting exists only to provide deterministic, software-visible timing semantics where required by devices or guest behavior. It must never be interpreted as a host-side speed limiter. FS-UAE speed/throttle settings are likewise ignored by the execution engine.
 
+Memory/device timing is likewise semantic rather than a host-speed limiter. Cacheability, serialization, MMIO and device-visible latency may contribute to deterministic guest timing when required, while the host executes the VM at full practical speed.
+
+
 ## FS-UAE configuration compatibility
 
 AmiVM can import an FS-UAE `.conf` as a machine compatibility description:
