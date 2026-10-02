@@ -152,6 +152,12 @@ struct amivm_trackdisk {
 
 typedef uint32_t (*amivm_cpu_step_fn)(struct amivm_vm *vm, void *cpu_state);
 
+enum amivm_m68k_frame_descriptor {
+    AMIVM_FRAME_68000_SHORT = 0,
+    AMIVM_FRAME_68020_BUS = 1,
+    AMIVM_FRAME_68040_MMU = 2
+};
+
 enum amivm_m68k_exception {
     AMIVM_M68K_EXC_NONE = 0,
     AMIVM_M68K_EXC_BUS_ERROR = 2,
