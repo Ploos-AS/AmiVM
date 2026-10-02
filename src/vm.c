@@ -238,6 +238,17 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
+{
+    if (!vm || model > 5u) return -1;
+    vm->cpu_model = model;
+    vm->cpu_submodel = submodel;
+    if (model <= 1u) vm->exception_frame_class = 0u;
+    else if (model <= 3u) vm->exception_frame_class = 1u;
+    else vm->exception_frame_class = 2u;
+    return 0;
+}
+
 int amivm_m68k_set_cpu_model(struct amivm_vm *vm, uint8_t model)
 {
     if (!vm || model > 4u) return -1;
@@ -341,7 +352,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
     vm->exception_frame_size = 16u;
-    vm->exception_frame_format = (vm->cpu_model >= 3u) ? 2u : 0u;
+    vm->exception_frame_format = vm->exception_frame_class;
     vm->exception_frame_word_count = (vm->exception_frame_format == 2u) ? 8u : 4u;
     vm->exception_frame_size = (uint8_t)(vm->exception_frame_word_count * 2u);
     vm->exception_frame_magic = 0x45584632u;
