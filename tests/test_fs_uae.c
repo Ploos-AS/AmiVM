@@ -265,6 +265,8 @@ int main(void)
                 CHECK(vm.m68k.exception == AMIVM_M68K_EXC_MMU_FAULT);
                 CHECK(vm.mmu_exception_pc == vm.m68k.pc);
                 CHECK(vm.mmu_exception_sr == vm.m68k.sr);
+                CHECK(vm.exception_fault_address == vm.mmu_fault_address);
+                CHECK(vm.exception_fault_status == vm.mmu_fault_status);
             }
             vm.mmu.enabled = false;
         }
