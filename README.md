@@ -4,6 +4,16 @@ AmiVM is a high-performance 68k Amiga-compatible virtual machine.
 
 Its goal is not to reproduce every historical Amiga chipset cycle. Instead, AmiVM takes the best lessons from projects such as ARAnyM, UAE-family emulators and modern virtual-machine design to build the fastest practical Amiga-class 68k system for operating systems and productivity workloads.
 
+## CPU profiles and execution speed
+
+AmiVM CPU profiles are **compatibility contracts**, not performance throttles. Selecting 68020, 68030, 68040 or 68060 determines the CPU facilities visible to guest software: ISA level, MMU/FPU availability and related architectural behavior. It does not ask AmiVM to reproduce the historical clock rate of that processor.
+
+AmiVM therefore follows this rule:
+
+> **CPU profile defines compatibility; AmiVM runs at full practical host speed.**
+
+Cycle accounting exists only to provide deterministic, software-visible timing semantics where required by devices or guest behavior. It must never be interpreted as a host-side speed limiter. FS-UAE speed/throttle settings are likewise ignored by the execution engine.
+
 ## FS-UAE configuration compatibility
 
 AmiVM can import an FS-UAE `.conf` as a machine compatibility description:
