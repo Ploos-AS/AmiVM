@@ -281,6 +281,16 @@ int main(void)
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_format == 0u);
                 CHECK(amivm_m68k_set_cpu_model(&vm, 4u) == 0);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, 0u, 0u) == 0);
+                CHECK(vm.exception_frame_class == 0u);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, 2u, 0u) == 0);
+                CHECK(vm.exception_frame_class == 1u);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, 3u, 0u) == 0);
+                CHECK(vm.exception_frame_class == 1u);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
+                CHECK(vm.exception_frame_class == 2u);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, 5u, 0u) == 0);
+                CHECK(vm.exception_frame_class == 2u);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_format == 2u);
                 CHECK(vm.exception_frame_vector_offset ==
