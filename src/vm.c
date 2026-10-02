@@ -238,6 +238,29 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector)
+{
+    uint32_t old_sp, old_pc, old_sr;
+    if (!vm || vm->exception_entry_active) return -1;
+    old_sp = vm->m68k.a[7];
+    old_pc = vm->m68k.pc;
+    old_sr = vm->m68k.sr;
+    vm->exception_entry_active = true;
+    vm->exception_entry_vector = vector;
+    if (amivm_m68k_stack_mmu_exception(vm) != 0 ||
+        amivm_m68k_enter_exception_handler(vm, vector) != 0) {
+        vm->m68k.a[7] = old_sp;
+        vm->m68k.pc = old_pc;
+        vm->m68k.sr = (uint16_t)old_sr;
+        vm->exception_entry_active = false;
+        vm->m68k.stopped = true;
+        return -1;
+    }
+    vm->m68k.sr |= 0x2000u;
+    vm->exception_entry_active = false;
+    return 0;
+}
+
 int amivm_m68k_set_exception_vector_base(struct amivm_vm *vm, uint32_t base)
 {
     if (!vm || (base & 3u) != 0u) return -1;
