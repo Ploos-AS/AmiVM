@@ -280,7 +280,6 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
     switch (format) {
     case 0x0u: return AMIVM_FRAME_68000_SHORT;
     case 0x2u: return AMIVM_FRAME_68020_BUS;
-    case 0x2u: return AMIVM_FRAME_68040_MMU;
     case 0x9u: return AMIVM_FRAME_68030_COPROC_MID;
     case 0xAu: return AMIVM_FRAME_68030_SHORT_BUS;
     case 0xBu: return AMIVM_FRAME_68030_LONG_BUS;
