@@ -36,6 +36,7 @@ static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
 
 void amivm_config_init(struct amivm_config *config)
 {
+    config->machine = AMIVM_MACHINE_GENERIC;
     config->ram_size = (size_t)AMIVM_DEFAULT_RAM_MIB * 1024u * 1024u;
     config->rom_path = NULL;
     memset(config->floppy_images, 0, sizeof config->floppy_images);
