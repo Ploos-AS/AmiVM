@@ -625,7 +625,7 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
         fv = (uint16_t)(((uint16_t)f0 << 8) | f1);
         if (amivm_m68k_decode_frame_format(vm, fv) != 0)
             return -1;
-        layout = amivm_m68k_frame_layout(vm->exception_frame_format);
+        layout = amivm_m68k_frame_layout(vm->exception_frame_type);
         if (!layout || vm->exception_frame_size !=
             (uint8_t)(layout->words * 2u))
             return -1;
