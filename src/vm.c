@@ -473,6 +473,8 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
 
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
 {
+    const struct amivm_m68k_frame_layout *layout;
+    uint8_t frame_size;
     if (!vm) return -1;
     if (vm->exception_frame_active &&
         (amivm_m68k_validate_exception_frame(vm) != 0 ||
@@ -480,6 +482,13 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
         vm->m68k.stopped = true;
         return -1;
     }
+    if (vm->exception_frame_active) {
+        layout = amivm_m68k_frame_layout(vm->exception_frame_format);
+        if (!layout || vm->exception_frame_size !=
+            (uint8_t)(layout->words * 2u))
+            return -1;
+    }
+    frame_size = vm->exception_frame_size;
     if (vm->irq_in_service) {
         bool ok;
         uint32_t frame_pc = amivm_m68k_read_u32(vm, vm->m68k.a[7], &ok);
@@ -509,7 +518,8 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
     } else {
         return -1;
     }
-    vm->m68k.a[7] += vm->exception_frame_size;
+    if (frame_size == 0u) return -1;
+    vm->m68k.a[7] += frame_size;
     vm->exception_frame_active = false;
     vm->exception_frame_sp = 0u;
     vm->exception_frame_size = 0u;
