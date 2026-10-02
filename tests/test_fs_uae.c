@@ -275,6 +275,16 @@ int main(void)
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 0u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_size == 8u);
+                CHECK(vm.exception_frame_format == 0u);
+                CHECK(vm.exception_frame_word_count == 4u);
+                CHECK(amivm_m68k_set_exception_frame_type(&vm, 1u) == 0);
+                CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                CHECK(vm.exception_frame_format == 1u);
+                CHECK(vm.exception_frame_word_count == 6u);
+                CHECK(amivm_m68k_set_exception_frame_type(&vm, 2u) == 0);
+                CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                CHECK(vm.exception_frame_format == 2u);
+                CHECK(vm.exception_frame_word_count == 8u);
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 1u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_size == 12u);
