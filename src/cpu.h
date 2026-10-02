@@ -178,6 +178,7 @@ struct amivm_cpu_state {
     uint32_t fault_address;
     uint16_t fault_opcode;
     uint8_t last_exception_vector;
+    uint32_t last_step_cycles;
 };
 
 struct amivm_cpu_backend {
