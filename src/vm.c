@@ -219,32 +219,37 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     uint8_t hi, lo;
     if (!vm) return -1;
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
-    if (!layout || !layout->has_fault_address || !layout->has_fault_status ||
+    if (!layout ||
         vm->exception_frame_size != (uint8_t)(layout->words * 2u))
         return -1;
     sp = vm->m68k.a[7];
     if (!amivm_m68k_read_u32(vm, sp, &pc) ||
         !amivm_read8(vm, sp + 4u, &hi) ||
-        !amivm_read8(vm, sp + 5u, &lo) ||
-        !amivm_m68k_read_u32(vm, sp + layout->fault_address_offset, &address))
+        !amivm_read8(vm, sp + 5u, &lo))
         return -1;
-    if (layout->fault_status_bytes == 2u) {
-        uint8_t shi, slo;
-        if (!amivm_read8(vm, sp + layout->fault_status_offset, &shi) ||
-            !amivm_read8(vm, sp + layout->fault_status_offset + 1u, &slo))
-            return -1;
-        status = ((uint32_t)shi << 8) | slo;
-    } else {
-        bool status_ok = false;
-        status = amivm_m68k_read_u32(vm, sp + layout->fault_status_offset, &status_ok);
-        if (!status_ok) return -1;
-    }
     vm->m68k.pc = pc;
     vm->m68k.sr = (uint16_t)(((uint16_t)hi << 8) | lo);
-    vm->mmu_fault_address = address;
-    vm->mmu_fault_status = status;
-    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
-        vm->exception_fslw = status;
+    if (layout->has_fault_address) {
+        if (!amivm_m68k_read_u32(vm, sp + layout->fault_address_offset, &address))
+            return -1;
+        vm->mmu_fault_address = address;
+    }
+    if (layout->has_fault_status) {
+        if (layout->fault_status_bytes == 2u) {
+            uint8_t shi, slo;
+            if (!amivm_read8(vm, sp + layout->fault_status_offset, &shi) ||
+                !amivm_read8(vm, sp + layout->fault_status_offset + 1u, &slo))
+                return -1;
+            status = ((uint32_t)shi << 8) | slo;
+        } else {
+            bool status_ok = false;
+            status = amivm_m68k_read_u32(vm, sp + layout->fault_status_offset, &status_ok);
+            if (!status_ok) return -1;
+        }
+        vm->mmu_fault_status = status;
+        if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
+            vm->exception_fslw = status;
+    }
     vm->m68k.a[7] = sp + (uint32_t)(layout->words * 2u);
     vm->exception_frame_sp = 0u;
     vm->exception_frame_size = 0u;
