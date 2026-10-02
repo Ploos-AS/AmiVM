@@ -167,6 +167,26 @@ enum amivm_m68k_exception {
     AMIVM_M68K_EXC_SPURIOUS_INTERRUPT = 24
 };
 
+enum amivm_m68k_mmu_fault {
+    AMIVM_MMU_FAULT_NONE = 0,
+    AMIVM_MMU_FAULT_INVALID = 1,
+    AMIVM_MMU_FAULT_WRITE_PROTECT = 2,
+    AMIVM_MMU_FAULT_SUPERVISOR = 3
+};
+
+struct amivm_mmu_state {
+    bool enabled;
+    uint32_t tc;
+    uint32_t srp;
+    uint32_t crp;
+    uint32_t tt0;
+    uint32_t tt1;
+    uint32_t last_logical;
+    uint32_t last_physical;
+    bool last_write;
+    enum amivm_m68k_mmu_fault last_fault;
+};
+
 struct amivm_m68k_registers {
     uint32_t d[8];
     uint32_t a[8];
@@ -263,6 +283,7 @@ struct amivm_vm {
     uint32_t last_instruction_cycles;
     struct amivm_cpu_backend cpu_backend;
     struct amivm_m68k_registers m68k;
+    struct amivm_mmu_state mmu;
     enum amivm_m68k_exception pending_exception;
     uint8_t pending_exception_vector;
     uint8_t irq_level;
@@ -297,6 +318,8 @@ int amivm_m68k_enter_exception(struct amivm_vm *vm,
 int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor);
 bool amivm_m68k_is_supervisor(const struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
+int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
+                        bool write, uint32_t *physical);
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok);
 bool amivm_m68k_write_u32(struct amivm_vm *vm, uint32_t addr, uint32_t value);
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
