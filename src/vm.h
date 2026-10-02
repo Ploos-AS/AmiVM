@@ -154,7 +154,6 @@ typedef uint32_t (*amivm_cpu_step_fn)(struct amivm_vm *vm, void *cpu_state);
 
 enum amivm_m68k_exception {
     AMIVM_M68K_EXC_NONE = 0,
-    AMIVM_M68K_EXC_RESET = 2,
     AMIVM_M68K_EXC_BUS_ERROR = 2,
     AMIVM_M68K_EXC_ADDRESS_ERROR = 3,
     AMIVM_M68K_EXC_ILLEGAL = 4,
