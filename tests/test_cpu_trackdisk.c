@@ -70,6 +70,15 @@ int main(void)
     CHECK(vm.trackdisk.command == AMIVM_TRACKDISK_READ_SECTOR);
     CHECK(vm.trackdisk.status == 0x01u);
     CHECK((vm.irq.pending & (1u << 3)) != 0u);
+    {
+        uint8_t v = 0u;
+        CHECK(amivm_read8(&vm, AMIVM_IRQ_BASE + 0u, &v) && (v & 0x08u));
+        CHECK(amivm_read8(&vm, AMIVM_IRQ_BASE + 1u, &v) && (v & 0x08u));
+        CHECK(amivm_read8(&vm, AMIVM_IRQ_BASE + 2u, &v) && (v & 0x08u));
+        CHECK(amivm_write8(&vm, AMIVM_IRQ_BASE + 2u, 0x08u));
+        CHECK((vm.irq.pending & (1u << 3)) == 0u);
+    }
+    amivm_raise_irq(&vm, 3u);
     CHECK(vm.ram[0x2000u] == 0x44u);
 
     /* Autovector level 3 = vector 27; handler contains RTE. */
