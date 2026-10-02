@@ -69,10 +69,14 @@ static bool device_aga_read8(struct amivm_vm *vm, const struct amivm_device_stat
     (void)state;
     if (!vm || !value) return false;
     switch (offset) {
-    case 0u: *value = vm->aga.bplcon0; return true;
-    case 1u: *value = vm->aga.diwstrt; return true;
-    case 2u: *value = vm->aga.diwstop; return true;
-    case 3u: *value = vm->aga.dmacon; return true;
+    case 0u: *value = (uint8_t)(vm->aga.bplcon0 >> 8); return true;
+    case 1u: *value = (uint8_t)vm->aga.bplcon0; return true;
+    case 2u: *value = (uint8_t)(vm->aga.diwstrt >> 8); return true;
+    case 3u: *value = (uint8_t)vm->aga.diwstrt; return true;
+    case 4u: *value = (uint8_t)(vm->aga.diwstop >> 8); return true;
+    case 5u: *value = (uint8_t)vm->aga.diwstop; return true;
+    case 6u: *value = (uint8_t)(vm->aga.dmaconr >> 8); return true;
+    case 7u: *value = (uint8_t)vm->aga.dmaconr; return true;
     default: return false;
     }
 }
@@ -83,10 +87,20 @@ static bool device_aga_write8(struct amivm_vm *vm, const struct amivm_device_sta
     (void)state;
     if (!vm) return false;
     switch (offset) {
-    case 0u: vm->aga.bplcon0 = value; return true;
-    case 1u: vm->aga.diwstrt = value; return true;
-    case 2u: vm->aga.diwstop = value; return true;
-    case 3u: vm->aga.dmacon = value; return true;
+    case 0u: vm->aga.bplcon0 = (uint16_t)value << 8; return true;
+    case 1u: vm->aga.bplcon0 = (vm->aga.bplcon0 & 0xff00u) | value; return true;
+    case 2u: vm->aga.diwstrt = (uint16_t)value << 8; return true;
+    case 3u: vm->aga.diwstrt = (vm->aga.diwstrt & 0xff00u) | value; return true;
+    case 4u: vm->aga.diwstop = (uint16_t)value << 8; return true;
+    case 5u: vm->aga.diwstop = (vm->aga.diwstop & 0xff00u) | value; return true;
+    case 6u:
+        vm->aga.dmacon = value;
+        vm->aga.dmaconr = (uint16_t)value;
+        return true;
+    case 7u:
+        vm->aga.dmacon = (vm->aga.dmacon & 0xff00u) | value;
+        vm->aga.dmaconr = vm->aga.dmacon;
+        return true;
     default: return false;
     }
 }
