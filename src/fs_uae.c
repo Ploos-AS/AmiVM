@@ -104,17 +104,13 @@ static int set_option(const char *key, const char *value,
         return 0;
     } else if (strcmp(key, "amiga_model") == 0) {
         const char *model_cpu = NULL;
-        if (strcmp(value, "A1200") == 0 || strcmp(value, "a1200") == 0)
-            model_cpu = "68020";
-        else if (strcmp(value, "A3000") == 0 || strcmp(value, "a3000") == 0)
-            model_cpu = "68030";
-        else if (strcmp(value, "A4000") == 0 || strcmp(value, "a4000") == 0)
-            model_cpu = "68040";
-        else if (strcmp(value, "A500") == 0 || strcmp(value, "a500") == 0 ||
-                 strcmp(value, "A500plus") == 0 || strcmp(value, "a500plus") == 0 ||
-                 strcmp(value, "A600") == 0 || strcmp(value, "a600") == 0 ||
-                 strcmp(value, "A1000") == 0 || strcmp(value, "a1000") == 0 ||
-                 strcmp(value, "A2000") == 0 || strcmp(value, "a2000") == 0) {
+        if (strcmp(value, "A1200") == 0 || strcmp(value, "a1200") == 0) {
+            config->machine = AMIVM_MACHINE_A1200; model_cpu = "68020";
+        } else if (strcmp(value, "A3000") == 0 || strcmp(value, "a3000") == 0) {
+            config->machine = AMIVM_MACHINE_A3000; model_cpu = "68030";
+        } else if (strcmp(value, "A4000") == 0 || strcmp(value, "a4000") == 0) {
+            config->machine = AMIVM_MACHINE_A4000; model_cpu = "68040";
+        } else {
             ++r->unsupported;
             return 1;
         }
