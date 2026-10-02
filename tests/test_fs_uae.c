@@ -752,6 +752,8 @@ int main(void)
                     CHECK(l && l->words == 4u && !l->has_fault_address);
                     l = amivm_m68k_frame_layout(AMIVM_FRAME_68020_BUS);
                     CHECK(l && l->words == 6u && l->has_format_vector);
+                    l = amivm_m68k_frame_layout(AMIVM_FRAME_68030_COPROC_MID);
+                    CHECK(l && l->has_opaque_coproc_state && !l->semantically_decoded);
                     l = amivm_m68k_frame_layout(AMIVM_FRAME_68040_MMU);
                     CHECK(l && l->words == 8u && l->has_fault_address && l->has_fault_status);
                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
