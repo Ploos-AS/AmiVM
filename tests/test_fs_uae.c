@@ -361,6 +361,8 @@ int main(void)
                      CHECK(l9->words == 10u);
                      CHECK(l9->has_format_vector);
                      CHECK(l9->format_offset == 6u);
+                     CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68020_BUS)->format_offset == 6u);
+                     CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68040_ACCESS)->format_offset == 6u);
                      CHECK(!l9->has_fault_address);
                      CHECK(!l9->has_fault_status);
                  }
