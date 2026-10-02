@@ -353,6 +353,7 @@ int main(void)
                      CHECK(vm.exception_frame_format == 0x0Au);
                      CHECK(vm.exception_frame_size == 32u);
                      CHECK(vm.exception_frame_format <= 0x0Bu);
+                 CHECK(amivm_m68k_frame_layout(vm.exception_frame_type)->implemented);
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                      {
                          uint8_t saved = 0u;
