@@ -339,8 +339,17 @@ int main(void)
                           vm.exception_fslw);
                     CHECK(ok);
                 }
-                CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
-                CHECK(vm.m68k.a[7] != 0u);
+                {
+                    uint32_t access_sp = vm.exception_frame_sp;
+                    uint32_t expected_sp = access_sp + 16u;
+                    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                    CHECK(vm.m68k.a[7] == expected_sp);
+                    CHECK(vm.exception_frame_size == 0u);
+                    CHECK(vm.exception_frame_type == AMIVM_FRAME_68000_SHORT);
+                    CHECK(vm.exception_frame_format == 0u);
+                    CHECK(vm.exception_frame_word_count == 0u);
+                    CHECK(vm.exception_fslw == vm.exception_fault_status);
+                }
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
                 CHECK(AMIVM_FRAME_68000_SHORT == 0);
