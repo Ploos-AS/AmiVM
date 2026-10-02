@@ -85,6 +85,13 @@ int main(void)
                 amivm_m68k_reset(&vm, 0x00f80000u, 0x2700u);
                 CHECK(vm.m68k.pc == 0x00f80000u);
                 CHECK(vm.m68k.sr == 0x2700u);
+                CHECK(amivm_m68k_is_supervisor(&vm));
+                CHECK(amivm_m68k_set_supervisor(&vm, false) == 0);
+                CHECK(!amivm_m68k_is_supervisor(&vm));
+                CHECK((vm.m68k.sr & 0x2000u) == 0u);
+                CHECK(amivm_m68k_set_supervisor(&vm, true) == 0);
+                CHECK(amivm_m68k_is_supervisor(&vm));
+                CHECK((vm.m68k.sr & 0x2000u) != 0u);
                 CHECK(amivm_m68k_raise_exception(&vm, AMIVM_M68K_EXC_ILLEGAL) == 4);
                 CHECK(vm.pending_exception == AMIVM_M68K_EXC_ILLEGAL);
                 CHECK(vm.pending_exception_vector == 4u);
