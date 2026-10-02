@@ -32,6 +32,13 @@ enum amivm_fpu_model {
     AMIVM_FPU_68060,
 };
 
+enum amivm_exception_frame_family {
+    AMIVM_FRAME_FAMILY_68020 = 0,
+    AMIVM_FRAME_FAMILY_68030,
+    AMIVM_FRAME_FAMILY_68040,
+    AMIVM_FRAME_FAMILY_68060,
+};
+
 struct amivm_cpu_profile {
     enum amivm_cpu_profile_id id;
     const char *name;
@@ -44,6 +51,7 @@ struct amivm_cpu_profile {
     bool has_master_stack;
     bool hyper;
     unsigned default_exception_frame_class;
+    enum amivm_exception_frame_family exception_frame_family;
 };
 
 const struct amivm_cpu_profile *amivm_cpu_profile_default(void);
