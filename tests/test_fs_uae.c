@@ -293,6 +293,16 @@ int main(void)
                 vm.m68k.a[7] = vm.exception_frame_sp;
                 CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
                 CHECK(!vm.m68k.stopped);
+                vm.m68k.a[7] = vm.exception_frame_sp;
+                CHECK(amivm_m68k_write_u32(&vm, vm.m68k.a[7], 0x00abcdefu));
+                CHECK(amivm_write8(&vm, vm.m68k.a[7] + 4u, 0x20u));
+                CHECK(amivm_write8(&vm, vm.m68k.a[7] + 5u, 0x00u));
+                vm.exception_frame_active = true;
+                vm.m68k.pc = 0x00111111u;
+                vm.m68k.sr = 0x2700u;
+                CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                CHECK(vm.m68k.pc == 0x00abcdefu);
+                CHECK(vm.m68k.sr == 0x2000u);
                 vm.exception_frame_magic = 0x45584632u;
                 vm.m68k.stopped = false;
                 vm.exception_frame_active = false;
