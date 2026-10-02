@@ -249,6 +249,7 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     vm->exception_frame_sp = 0u;
     vm->exception_frame_size = 0u;
     vm->exception_frame_type = AMIVM_FRAME_68000_SHORT;
+    vm->exception_bus_fault_in_progress = false;
     vm->exception_frame_format = 0u;
     vm->exception_frame_word_count = 0u;
     if (vm->exception_depth != 0u)
