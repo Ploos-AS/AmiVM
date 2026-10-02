@@ -57,9 +57,25 @@ struct amivm_machine_profile {
     bool accelerator_capable;
 };
 
+enum amivm_chipset_generation {
+    AMIVM_CHIPSET_NONE = 0,
+    AMIVM_CHIPSET_OCS,
+    AMIVM_CHIPSET_ECS,
+    AMIVM_CHIPSET_AGA
+};
+
+struct amivm_hardware_profile {
+    enum amivm_machine_model machine;
+    enum amivm_chipset_generation chipset;
+    bool has_aga;
+    bool has_ide;
+    bool has_zorro;
+};
+
 struct amivm_resolved_config {
     enum amivm_machine_model machine;
     const struct amivm_machine_profile *machine_profile;
+    struct amivm_hardware_profile hardware;
     const struct amivm_cpu_profile *cpu_profile;
     const struct amivm_cpu_profile *accelerator_profile;
     size_t chip_ram_size;
