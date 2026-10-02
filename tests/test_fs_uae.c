@@ -383,7 +383,31 @@ int main(void)
                     CHECK(vm.exception_frame_word_count == 0u);
                     CHECK(vm.exception_fslw == vm.exception_fault_status);
                 }
-                CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68020)->mmu_model == AMIVM_MMU_68851);
+                CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68040, 0u) == 0);
+                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68040_ACCESS);
+                 CHECK(vm.exception_frame_format == 0x07u);
+                 CHECK(vm.exception_frame_size == 60u);
+                 {
+                     bool ok = false;
+                     uint8_t shi = 0u, slo = 0u;
+                     uint32_t access_address =
+                         amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 20u, &ok);
+                     CHECK(ok);
+                     CHECK(access_address == vm.exception_fault_address);
+                     CHECK(amivm_read8(&vm, vm.exception_frame_sp + 10u, &shi));
+                     CHECK(amivm_read8(&vm, vm.exception_frame_sp + 11u, &slo));
+                     CHECK((((uint32_t)shi << 8) | slo) ==
+                           (vm.exception_fault_status & 0xffffu));
+                 }
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 {
+                     uint32_t access_sp = vm.exception_frame_sp;
+                     CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                     CHECK(vm.m68k.a[7] == access_sp + 60u);
+                     CHECK(vm.exception_frame_size == 0u);
+                 }
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68020)->mmu_model == AMIVM_MMU_68851);
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68030)->mmu_model == AMIVM_MMU_68030);
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68040)->mmu_model == AMIVM_MMU_68040);
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68060)->mmu_model == AMIVM_MMU_68060);
