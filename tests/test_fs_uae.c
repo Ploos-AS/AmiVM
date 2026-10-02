@@ -196,6 +196,10 @@ int main(void)
             CHECK(physical == AMIVM_RAM_BASE + 0x100u);
             CHECK(vm.mmu.last_logical == AMIVM_RAM_BASE + 0x100u);
             CHECK(vm.mmu.last_physical == physical);
+            vm.mmu.tt0 = AMIVM_RAM_BASE | 1u | 0x00000200u;
+            CHECK(amivm_mmu_tt_match(&vm.mmu, AMIVM_RAM_BASE + 0x1234u, false) == 1);
+            CHECK(amivm_mmu_tt_match(&vm.mmu, AMIVM_RAM_BASE + 0x1234u, true) == 1);
+            CHECK(amivm_mmu_tt_match(&vm.mmu, AMIVM_ROM_BASE, false) == 0);
             CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x100u, 0x5au));
             CHECK(amivm_read8(&vm, AMIVM_RAM_BASE + 0x100u, &value));
             CHECK(value == 0x5au);
