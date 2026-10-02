@@ -378,6 +378,7 @@ int main(void)
                      CHECK(l9->internal_state_words == 2u);
                      CHECK(!l9->semantically_decoded);
                      CHECK(l9->implemented);
+                     CHECK(l9->semantically_decoded == false);
                      CHECK((unsigned)l9->internal_state_offset +
                            (unsigned)l9->internal_state_words * 4u <=
                            (unsigned)l9->words * 2u);
