@@ -15,6 +15,7 @@
 #define AMIVM_VMSERIAL_BASE (AMIVM_MMIO_BASE + 0x0000u)
 #define AMIVM_TIMER_BASE    (AMIVM_MMIO_BASE + 0x1000u)
 #define AMIVM_IRQ_BASE      (AMIVM_MMIO_BASE + 0x2000u)
+#define AMIVM_TRACKDISK_BASE (AMIVM_MMIO_BASE + 0x3000u)
 #define AMIVM_MMIO_PAGE_SIZE 0x1000u
 #define AMIVM_RAM_PAGE_SIZE 0x1000u
 
@@ -52,6 +53,26 @@ struct amivm_media {
     bool disk_changed;
 };
 
+enum amivm_trackdisk_command {
+    AMIVM_TRACKDISK_NOP = 0,
+    AMIVM_TRACKDISK_READ_SECTOR = 1,
+    AMIVM_TRACKDISK_WRITE_SECTOR = 2,
+    AMIVM_TRACKDISK_SEEK = 3
+};
+
+struct amivm_trackdisk {
+    uint32_t dma_address;
+    unsigned track;
+    unsigned head;
+    unsigned sector;
+    enum amivm_trackdisk_command command;
+    uint8_t status;
+    uint8_t error;
+    bool busy;
+    bool irq_enable;
+    bool write_protected;
+};
+
 struct amivm_device_desc {
     const char *name;
     uint32_t base;
@@ -72,6 +93,7 @@ struct amivm_vm {
     struct amivm_cpu_profile cpu_profile;
     struct amivm_media floppy[AMIVM_MAX_FLOPPY_IMAGES];
     struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
+    struct amivm_trackdisk trackdisk;
 };
 
 void amivm_config_init(struct amivm_config *config);
@@ -97,6 +119,9 @@ bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
                                uint64_t *generation);
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line);
 void amivm_clear_irq(struct amivm_vm *vm, unsigned line);
+int amivm_trackdisk_command(struct amivm_vm *vm,
+                               enum amivm_trackdisk_command command);
+void amivm_trackdisk_reset(struct amivm_vm *vm);
 void amivm_tick(struct amivm_vm *vm, uint64_t ticks);
 void amivm_dump_machine(const struct amivm_vm *vm, FILE *out);
 int amivm_selftest(void);
