@@ -161,7 +161,7 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
-static void aga_advance_beam(struct amivm_vm *vm, unsigned cycles)
+void amivm_aga_advance_beam(struct amivm_vm *vm, unsigned cycles)
 {
     unsigned i;
     if (!vm) return;
