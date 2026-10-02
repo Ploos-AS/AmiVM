@@ -81,6 +81,14 @@ static int probe_media(const char *path, enum amivm_media_type type,
     strcpy(media->path, path);
     media->type = type;
     media->size = (size_t)end;
+    media->tracks = 80u;
+    media->heads = 2u;
+    media->sectors_per_track = 11u;
+    media->sector_size = 512u;
+    media->current_track = 0u;
+    media->current_head = 0u;
+    media->write_protected = true;
+    media->disk_changed = true;
     if (type == AMIVM_MEDIA_ADF) {
         FILE *data_fp = fopen(path, "rb");
         if (!data_fp) { free(media->path); media->path = NULL; return -1; }
@@ -292,6 +300,50 @@ int amivm_media_read(const struct amivm_media *media, size_t offset,
         return 0;
     }
     return -1;
+}
+
+int amivm_media_seek(struct amivm_media *media, unsigned track, unsigned head)
+{
+    if (!media || media->type != AMIVM_MEDIA_ADF ||
+        track >= media->tracks || head >= media->heads)
+        return -1;
+    media->current_track = track;
+    media->current_head = head;
+    media->disk_changed = false;
+    return 0;
+}
+
+static int media_sector_offset(const struct amivm_media *media,
+                               unsigned sector, size_t *offset)
+{
+    if (!media || !offset || media->type != AMIVM_MEDIA_ADF ||
+        sector >= media->sectors_per_track)
+        return -1;
+    *offset = (((size_t)media->current_track * media->heads +
+                media->current_head) * media->sectors_per_track + sector) *
+              media->sector_size;
+    return *offset + media->sector_size <= media->size ? 0 : -1;
+}
+
+int amivm_media_read_sector(struct amivm_media *media, unsigned sector,
+                            void *buffer, size_t size)
+{
+    size_t offset;
+    if (!buffer || size != 512u ||
+        media_sector_offset(media, sector, &offset) != 0)
+        return -1;
+    return amivm_media_read(media, offset, buffer, size);
+}
+
+int amivm_media_write_sector(struct amivm_media *media, unsigned sector,
+                             const void *buffer, size_t size)
+{
+    size_t offset;
+    if (!buffer || size != 512u || !media || media->write_protected ||
+        !media->data || media_sector_offset(media, sector, &offset) != 0)
+        return -1;
+    memcpy(media->data + offset, buffer, size);
+    return 0;
 }
 
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line)
