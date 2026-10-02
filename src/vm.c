@@ -544,11 +544,23 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
             return -1;
     }
 
-    if (layout->has_fault_address && layout->has_fault_status) {
-        fault_addr = amivm_m68k_read_u32(vm, sp + 8u, &ok);
+    if (layout->has_fault_address) {
+        fault_addr = amivm_m68k_read_u32(vm, sp + layout->fault_address_offset, &ok);
         if (!ok) return -1;
-        fault_status = amivm_m68k_read_u32(vm, sp + 12u, &ok);
-        if (!ok) return -1;
+        if (layout->has_fault_status) {
+            if (layout->fault_status_bytes == 2u) {
+                uint8_t shi = 0u, slo = 0u;
+                if (!amivm_read8(vm, sp + layout->fault_status_offset, &shi) ||
+                    !amivm_read8(vm, sp + layout->fault_status_offset + 1u, &slo))
+                    return -1;
+                fault_status = ((uint32_t)shi << 8) | slo;
+            } else {
+                fault_status = amivm_m68k_read_u32(vm, sp + layout->fault_status_offset, &ok);
+                if (!ok) return -1;
+            }
+        } else {
+            fault_status = vm->exception_fault_status;
+        }
         if (fault_addr != vm->exception_fault_address ||
             fault_status != vm->exception_fault_status)
             return -1;
