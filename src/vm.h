@@ -346,6 +346,7 @@ struct amivm_vm {
     uint16_t exception_format_vector_word;
     uint32_t exception_fault_stage;
     bool exception_bus_fault_in_progress;
+    uint32_t exception_internal_state[34];
     uint32_t exception_frame_magic;
     uint8_t exception_depth;
     bool exception_stack_fault;
