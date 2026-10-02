@@ -230,6 +230,22 @@ bool amivm_m68k_is_supervisor(const struct amivm_vm *vm)
     return vm && vm->m68k.supervisor;
 }
 
+int amivm_m68k_enter_exception(struct amivm_vm *vm,
+                                enum amivm_m68k_exception exception,
+                                uint32_t return_pc)
+{
+    if (!vm || exception == AMIVM_M68K_EXC_NONE) return -1;
+    vm->exception_saved_pc = return_pc;
+    vm->exception_saved_sr = vm->m68k.sr;
+    vm->exception_frame_active = true;
+    vm->pending_exception = exception;
+    vm->pending_exception_vector = (uint8_t)exception;
+    vm->m68k.supervisor = true;
+    vm->m68k.sr |= 0x2000u;
+    vm->m68k.exception = (uint8_t)exception;
+    return (int)exception;
+}
+
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception)
 {
@@ -237,6 +253,11 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     vm->m68k.sr |= 0x2000u;
     vm->pending_exception = exception;
     vm->pending_exception_vector = (uint8_t)exception;
+    vm->exception_saved_pc = vm->m68k.pc;
+    vm->exception_saved_sr = vm->m68k.sr;
+    vm->exception_frame_active = true;
+    vm->m68k.supervisor = true;
+    vm->m68k.sr |= 0x2000u;
     vm->last_instruction_cycles = 0u;
     return (int)exception;
 }
