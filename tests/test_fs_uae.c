@@ -282,6 +282,16 @@ int main(void)
                 vm.exception_frame_magic = 0u;
                 CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
                 vm.exception_frame_magic = 0x45584632u;
+                vm.exception_frame_active = true;
+                vm.m68k.stopped = false;
+                vm.irq_in_service = false;
+                vm.exception_frame_magic = 0u;
+                CHECK(amivm_m68k_return_from_interrupt(&vm) != 0);
+                CHECK(vm.m68k.stopped);
+                vm.exception_frame_magic = 0x45584632u;
+                vm.m68k.stopped = false;
+                vm.exception_frame_active = false;
+                vm.exception_frame_magic = 0x45584632u;
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 1u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_format == 1u);
