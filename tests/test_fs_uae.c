@@ -187,6 +187,18 @@ int main(void)
                 vm.m68k.pc = 0x00abcdefu;
                 CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
                 CHECK(vm.m68k.pc == 0x00123456u);
+        {
+            uint32_t physical = 0u;
+            bool ok = true;
+            vm.mmu.enabled = true;
+            CHECK(amivm_mmu_translate(&vm, AMIVM_RAM_BASE + 0x100u, false, &physical) == 0);
+            CHECK(physical == AMIVM_RAM_BASE + 0x100u);
+            CHECK(vm.mmu.last_logical == AMIVM_RAM_BASE + 0x100u);
+            CHECK(vm.mmu.last_physical == physical);
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x100u, 0x5au));
+            CHECK(amivm_read8(&vm, AMIVM_RAM_BASE + 0x100u, (uint8_t *)&ok));
+            vm.mmu.enabled = false;
+        }
                 CHECK(vm.m68k.sr == 0x2000u);
                 CHECK(!vm.irq_in_service);
                 vm.m68k.stopped = false;
