@@ -84,7 +84,8 @@ int main(void)
         CHECK(amivm_write8(&vm, handler + 1u, 0x73u));
         cpu.sr = 0x2000u;
         cpu.pc = AMIVM_RAM_BASE + 0x1000u;
-        vm.irq.pending |= (1u << 3);
+        amivm_irq_enable(&vm, 3u, true);
+        amivm_raise_irq(&vm, 3u);
         CHECK(amivm_cpu_step(&cpu, &vm, backend) == 2);
         CHECK(cpu.pc == handler);
         CHECK(cpu.last_exception_vector == 27u);
