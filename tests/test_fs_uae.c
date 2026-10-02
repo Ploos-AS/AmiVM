@@ -67,6 +67,22 @@ int main(void)
             CHECK(vm.last_instruction_cycles == 20u);
             CHECK(vm.cpu_cycles == 20u);
             CHECK(vm.chipset_cycles == 20u);
+            {
+                static uint32_t fake_cpu_step(struct amivm_vm *v, void *state)
+                {
+                    (void)v; (void)state; return 12u;
+                }
+                struct amivm_cpu_backend backend = {
+                    "test-cpu", fake_cpu_step, NULL
+                };
+                vm.cpu_cycles = 0u;
+                vm.chipset_cycles = 0u;
+                CHECK(amivm_vm_attach_cpu_backend(&vm, &backend) == 0);
+                CHECK(amivm_vm_step(&vm) == 0);
+                CHECK(vm.last_instruction_cycles == 12u);
+                CHECK(vm.cpu_cycles == 12u);
+                CHECK(vm.chipset_cycles == 12u);
+            }
             CHECK(vm.aga.beam_h == 20u);
             CHECK(vm.aga.display_active);
         }
