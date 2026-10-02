@@ -248,10 +248,30 @@ const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor
     static const struct amivm_m68k_frame_layout layouts[] = {
         { 4u, false, false, false },
         { 6u, true,  false, false },
-        { 8u, true,  true,  true  }
+        { 8u, true,  true,  true  },
+        { 10u, true, false, false },
+        { 16u, true, true,  true  },
+        { 46u, true, true,  true  },
+        { 8u, true, true,  true  },
+        { 30u, true, true,  true  }
     };
-    if (descriptor > AMIVM_FRAME_68040_MMU) return NULL;
+    if (descriptor > AMIVM_FRAME_68040_ACCESS) return NULL;
     return &layouts[descriptor];
+}
+
+static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
+{
+    switch (format) {
+    case 0x0u: return AMIVM_FRAME_68000_SHORT;
+    case 0x1u: return AMIVM_FRAME_68020_BUS;
+    case 0x2u: return AMIVM_FRAME_68040_MMU;
+    case 0x9u: return AMIVM_FRAME_68030_COPROC_MID;
+    case 0xAu: return AMIVM_FRAME_68030_SHORT_BUS;
+    case 0xBu: return AMIVM_FRAME_68030_LONG_BUS;
+    case 0x4u: return AMIVM_FRAME_68060_ACCESS;
+    case 0x7u: return AMIVM_FRAME_68040_ACCESS;
+    default: return -1;
+    }
 }
 
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
@@ -436,10 +456,13 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
     if (!vm) return -1;
     format = (uint8_t)(fv >> 12);
     {
-        const struct amivm_m68k_frame_layout *layout =
-            amivm_m68k_frame_layout(format);
+        const int descriptor = amivm_m68k_frame_descriptor_for_format(format);
+        const struct amivm_m68k_frame_layout *layout;
+        if (descriptor < 0) return -1;
+        layout = amivm_m68k_frame_layout((uint8_t)descriptor);
         if (!layout) return -1;
         vm->exception_frame_format = format;
+        vm->exception_frame_type = (uint8_t)descriptor;
         vm->exception_frame_word_count = layout->words;
         vm->exception_frame_size = (uint8_t)(layout->words * 2u);
     }
