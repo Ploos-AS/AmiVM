@@ -272,6 +272,19 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     return (int)exception;
 }
 
+int amivm_mmu_configure_page_table(struct amivm_vm *vm,
+                                         uint32_t base, uint32_t mask,
+                                         uint8_t page_shift, uint32_t entries)
+{
+    if (!vm || page_shift < 8u || page_shift > 20u || entries == 0u)
+        return -1;
+    vm->mmu.page_table_base = base;
+    vm->mmu.page_table_mask = mask;
+    vm->mmu.page_shift = page_shift;
+    vm->mmu.page_table_entries = entries;
+    return 0;
+}
+
 int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
                               uint32_t logical, bool write)
 {
@@ -308,6 +321,28 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     /* M2.203: minimal page-table translation seam. A real 68040
        table walker will replace this test mapping without changing
        the memory-bus contract. */
+    if (vm->mmu.page_table_entries != 0u) {
+        uint32_t page_mask = (1u << vm->mmu.page_shift) - 1u;
+        uint32_t page = (logical & ~page_mask) & vm->mmu.page_table_mask;
+        uint32_t index = (logical >> vm->mmu.page_shift) % vm->mmu.page_table_entries;
+        uint32_t pte_addr = vm->mmu.page_table_base + index * 4u;
+        uint32_t pte;
+        bool ok;
+        pte = amivm_m68k_read_u32(vm, pte_addr, &ok);
+        if (!ok || (pte & 1u) == 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
+            return -1;
+        }
+        if (write && (pte & 2u) != 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+            return -1;
+        }
+        *physical = (pte & ~page_mask) | (logical & page_mask);
+        vm->mmu.last_physical = *physical;
+        (void)page;
+        return 0;
+    }
+
     if (vm->mmu.test_page_valid &&
         (logical & 0xfffff000u) == (vm->mmu.test_logical_page & 0xfffff000u)) {
         if (write && vm->mmu.test_write_protect) {
