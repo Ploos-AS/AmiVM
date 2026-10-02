@@ -303,6 +303,9 @@ int main(void)
                 CHECK(vm.exception_frame_class == 1u);
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
+                CHECK(AMIVM_FRAME_68000_SHORT == 0);
+                CHECK(AMIVM_FRAME_68020_BUS == 1);
+                CHECK(AMIVM_FRAME_68040_MMU == 2);
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 5u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
