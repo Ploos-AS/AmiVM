@@ -383,7 +383,14 @@ int main(void)
                     CHECK(vm.exception_frame_word_count == 0u);
                     CHECK(vm.exception_fslw == vm.exception_fault_status);
                 }
-                CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
+                CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68020)->mmu_model == AMIVM_MMU_68851);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68030)->mmu_model == AMIVM_MMU_68030);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68040)->mmu_model == AMIVM_MMU_68040);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68060)->mmu_model == AMIVM_MMU_68060);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68030)->fpu_model == AMIVM_FPU_NONE);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68040)->fpu_model == AMIVM_FPU_68040);
+                 CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68060)->fpu_model == AMIVM_FPU_68060);
+                 CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
                 CHECK(AMIVM_FRAME_68000_SHORT == 0);
                 CHECK(AMIVM_FRAME_68020_BUS == 1);
