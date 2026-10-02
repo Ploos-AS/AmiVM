@@ -463,6 +463,7 @@ int main(void)
                          CHECK(vm.m68k.pc == pc_before);
                          CHECK(vm.m68k.sr == sr_before);
                          CHECK(vm.mmu_fault_address == fault_before);
+                         CHECK(vm.exception_frame_sp != 0u);
                          vm.m68k.a[7] = vm.exception_frame_sp;
                      }
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
