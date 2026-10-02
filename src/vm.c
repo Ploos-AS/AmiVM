@@ -175,10 +175,20 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
 
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
 {
-    if (!vm || !vm->irq_in_service) return -1;
-    vm->m68k.pc = vm->irq_saved_pc;
-    vm->m68k.sr = vm->irq_saved_sr;
-    vm->irq_in_service = false;
+    if (!vm) return -1;
+    if (vm->irq_in_service) {
+        vm->m68k.pc = vm->irq_saved_pc;
+        vm->m68k.sr = vm->irq_saved_sr;
+        vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
+        vm->irq_in_service = false;
+    } else if (vm->exception_frame_active) {
+        vm->m68k.pc = vm->exception_saved_pc;
+        vm->m68k.sr = vm->exception_saved_sr;
+        vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
+        vm->exception_frame_active = false;
+    } else {
+        return -1;
+    }
     vm->pending_exception = AMIVM_M68K_EXC_NONE;
     vm->pending_exception_vector = 0u;
     return 0;
