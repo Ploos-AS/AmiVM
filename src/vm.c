@@ -82,6 +82,7 @@ static bool device_aga_read8(struct amivm_vm *vm, const struct amivm_device_stat
     case 10u: *value = (uint8_t)(vm->aga.beam_v >> 8); return true;
     case 11u: *value = (uint8_t)vm->aga.beam_v; return true;
     case 12u: *value = vm->aga.display_active ? 1u : 0u; return true;
+    case 13u: *value = vm->aga.vblank_irq_enable ? 1u : 0u; return true;
     default: return false;
     }
 }
@@ -105,6 +106,9 @@ static bool device_aga_write8(struct amivm_vm *vm, const struct amivm_device_sta
     case 7u:
         vm->aga.dmacon = (vm->aga.dmacon & 0xff00u) | value;
         vm->aga.dmaconr = vm->aga.dmacon;
+        return true;
+    case 13u:
+        vm->aga.vblank_irq_enable = value != 0u;
         return true;
     default: return false;
     }
@@ -246,8 +250,12 @@ void amivm_aga_advance_beam(struct amivm_vm *vm, unsigned cycles)
         if (vm->aga.beam_h >= 227u) {
             vm->aga.beam_h = 0u;
             ++vm->aga.beam_v;
-            if (vm->aga.beam_v >= 312u)
+            if (vm->aga.beam_v >= 312u) {
                 vm->aga.beam_v = 0u;
+        }
+        if (vm->aga.beam_v == 20u && vm->aga.beam_h == 0u &&
+            vm->aga.vblank_irq_enable)
+            amivm_m68k_request_irq(vm, 3u);
         }
         vm->aga.display_active =
             vm->aga.beam_h >= 20u && vm->aga.beam_h < 200u &&
