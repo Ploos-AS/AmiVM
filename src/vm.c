@@ -427,11 +427,16 @@ int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector)
 {
     uint32_t old_sp, old_pc, old_sr;
     if (!vm || vm->exception_entry_active) return -1;
+    if (vector >= 256u) return -1;
     old_sp = vm->m68k.a[7];
     old_pc = vm->m68k.pc;
     old_sr = vm->m68k.sr;
     vm->exception_entry_active = true;
     vm->exception_entry_vector = vector;
+    vm->exception_frame_type = amivm_m68k_exception_frame_descriptor(vm);
+    vm->exception_frame_format =
+        amivm_m68k_frame_layout_format(vm->exception_frame_type);
+    vm->exception_frame_vector_offset = (uint16_t)(vector & 0x0fffu);
     if (amivm_m68k_stack_mmu_exception(vm) != 0 ||
         amivm_m68k_enter_exception_handler(vm, vector) != 0) {
         vm->m68k.a[7] = old_sp;
