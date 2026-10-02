@@ -530,6 +530,7 @@ int main(void)
                     CHECK(vm.exception_frame_size == 0u);
                     CHECK(vm.exception_frame_type == AMIVM_FRAME_68000_SHORT);
                     CHECK(vm.exception_frame_format == 0u);
+                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68000_SHORT);
                     CHECK(vm.exception_frame_word_count == 0u);
                     CHECK(vm.exception_fslw == vm.exception_fault_status);
                 }
