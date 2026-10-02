@@ -123,7 +123,26 @@ int main(void)
     amivm_config_init(&config);
     CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
     CHECK(strcmp(config.cpu_profile->name, "68020") == 0);
+    CHECK(config.machine == AMIVM_MACHINE_A1200);
     CHECK(report.supported == 1u);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
+    fputs("amiga_model=A3000\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
+    CHECK(config.machine == AMIVM_MACHINE_A3000);
+    CHECK(strcmp(config.cpu_profile->name, "68030") == 0);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
+    fputs("amiga_model=A4000\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
+    CHECK(config.machine == AMIVM_MACHINE_A4000);
+    CHECK(strcmp(config.cpu_profile->name, "68040") == 0);
 
     f = fopen(path, "w");
     CHECK(f != NULL);
