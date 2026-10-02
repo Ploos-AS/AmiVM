@@ -305,11 +305,10 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         return 0;
     }
 
-    /* M2.199 contract-only baseline: translation is identity until
-       page-table walking is implemented. */
-    *physical = logical;
-    vm->mmu.last_physical = logical;
-    return 0;
+    /* M2.202: no page-table walker yet; fail closed instead of
+       silently treating an untranslated logical address as physical. */
+    vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
+    return -1;
 }
 
 void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
