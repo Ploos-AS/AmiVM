@@ -517,28 +517,15 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
     }
     {
         const struct amivm_device_desc *d = amivm_device_for_address(vm, addr);
-        if (d && strcmp(d->name, "aga") == 0) {
-            uint32_t o = addr - d->base;
-            switch (o) {
-            case 0u: *value = vm->aga.bplcon0; return true;
-            case 1u: *value = vm->aga.diwstrt; return true;
-            case 2u: *value = vm->aga.diwstop; return true;
-            case 3u: *value = vm->aga.dmacon; return true;
-            default: return false;
-            }
+        if (d && d->read8) {
+            struct amivm_device_state *state = NULL;
+            size_t i;
+            for (i = 0; i < vm->device_count; ++i)
+                if (vm->devices[i].desc == d) { state = &vm->devices[i]; break; }
+            if (state)
+                return d->read8(vm, state, addr - d->base, value);
         }
-        if (d && strcmp(d->name, "ide") == 0) {
-            uint32_t o = addr - d->base;
-            switch (o) {
-            case 0u: *value = vm->ide.status; return true;
-            case 1u: *value = vm->ide.command; return true;
-            default: return false;
-            }
-        }
-        if (d && strcmp(d->name, "zorro") == 0) {
-            *value = vm->zorro.configured;
-            return true;
-        }
+    }
     }
     if (amivm_device_for_address(vm, addr) &&
         in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
@@ -606,27 +593,15 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     }
     {
         const struct amivm_device_desc *d = amivm_device_for_address(vm, addr);
-        if (d && strcmp(d->name, "aga") == 0) {
-            uint32_t o = addr - d->base;
-            switch (o) {
-            case 0u: vm->aga.bplcon0 = value; return true;
-            case 1u: vm->aga.diwstrt = value; return true;
-            case 2u: vm->aga.diwstop = value; return true;
-            case 3u: vm->aga.dmacon = value; return true;
-            default: return false;
-            }
+        if (d && d->write8) {
+            struct amivm_device_state *state = NULL;
+            size_t i;
+            for (i = 0; i < vm->device_count; ++i)
+                if (vm->devices[i].desc == d) { state = &vm->devices[i]; break; }
+            if (state)
+                return d->write8(vm, state, addr - d->base, value);
         }
-        if (d && strcmp(d->name, "ide") == 0) {
-            uint32_t o = addr - d->base;
-            switch (o) {
-            case 0u: vm->ide.command = value; return true;
-            default: return false;
-            }
-        }
-        if (d && strcmp(d->name, "zorro") == 0) {
-            vm->zorro.configured = value;
-            return true;
-        }
+    }
     }
     if (amivm_device_for_address(vm, addr) &&
         in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
