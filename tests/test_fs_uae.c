@@ -59,6 +59,14 @@ int main(void)
         { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[4].desc->base + 7u, &v)); CHECK(v == 0x01u); }
         CHECK(amivm_write8(&vm, vm.devices[5].desc->base + 1u, 0x34u));
         { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[5].desc->base + 1u, &v)); CHECK(v == 0x34u); }
+        {
+            uint8_t v = 0u;
+            CHECK(amivm_read8(&vm, vm.devices[4].desc->base + 8u, &v));
+            CHECK(v == 0u);
+            aga_advance_beam(&vm, 20u);
+            CHECK(vm.aga.beam_h == 20u);
+            CHECK(vm.aga.display_active);
+        }
         amivm_vm_destroy(&vm);
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
         CHECK(resolved.machine == AMIVM_MACHINE_A1200);
