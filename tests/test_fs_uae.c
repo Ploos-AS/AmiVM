@@ -390,6 +390,24 @@ int main(void)
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68030)->fpu_model == AMIVM_FPU_NONE);
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68040)->fpu_model == AMIVM_FPU_68040);
                  CHECK(amivm_cpu_profile_by_id(AMIVM_CPU_68060)->fpu_model == AMIVM_FPU_68060);
+                 {
+                     static const uint8_t qualification_frames[] = {
+                         AMIVM_FRAME_68000_SHORT,
+                         AMIVM_FRAME_68020_BUS,
+                         AMIVM_FRAME_68030_SHORT_BUS,
+                         AMIVM_FRAME_68030_LONG_BUS,
+                         AMIVM_FRAME_68040_ACCESS,
+                         AMIVM_FRAME_68060_ACCESS
+                     };
+                     size_t qi;
+                     for (qi = 0u; qi < sizeof(qualification_frames); ++qi) {
+                         const struct amivm_m68k_frame_layout *ql =
+                             amivm_m68k_frame_layout(qualification_frames[qi]);
+                         CHECK(ql != NULL);
+                         CHECK(ql->words > 0u);
+                         CHECK((unsigned)ql->words * 2u >= 8u);
+                     }
+                 }
                  CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
                 CHECK(AMIVM_FRAME_68000_SHORT == 0);
