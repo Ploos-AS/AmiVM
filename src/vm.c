@@ -518,8 +518,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     amivm_m68k_capture_exception_internal_state(vm, layout);
     if (vm->exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS)
         amivm_m68k_capture_030_short_state(vm);
-    vm->exception_fault_stage =
-        (vm->exception_frame_type == 2u) ? 1u : 0u;
+    vm->exception_fault_stage = layout->has_fault_address ? 1u : 0u;
     if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS) {
         vm->exception_060_access_address = vm->exception_fault_address;
         vm->exception_fslw = vm->exception_fault_status;
