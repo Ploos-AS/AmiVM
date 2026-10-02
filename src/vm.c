@@ -389,11 +389,16 @@ int amivm_m68k_execute_one(struct amivm_vm *vm)
     /* TRAP #n */
     if ((op & 0xfff0u) == 0x4e40u) {
         unsigned n = op & 0x0fu;
-        vm->m68k.pc += 2u;
+        uint32_t return_pc = vm->m68k.pc + 2u;
         vm->pending_exception = (enum amivm_m68k_exception)(32u + n);
         vm->pending_exception_vector = (uint8_t)(32u + n);
+        vm->m68k.pc = return_pc;
+        vm->exception_saved_pc = return_pc;
+        vm->exception_saved_sr = vm->m68k.sr;
+        vm->exception_frame_active = true;
         vm->m68k.supervisor = true;
         vm->m68k.sr |= 0x2000u;
+        vm->m68k.exception = AMIVM_M68K_EXC_NONE;
         amivm_vm_account_instruction(vm, 4u);
         return 0;
     }
