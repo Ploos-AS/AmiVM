@@ -488,6 +488,9 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     const struct amivm_m68k_frame_layout *layout;
     uint32_t sp;
     uint8_t frame_size;
+    uint8_t old_frame[92];
+    uint8_t old_byte;
+    uint8_t i;
 
     if (!vm) return -1;
 
@@ -500,15 +503,22 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->exception_stack_fault = false;
     if (sp < frame_size) {
         vm->exception_stack_fault = true;
-        return -1;
+            goto stack_fail;
     }
     sp -= frame_size;
+    for (i = 0u; i < frame_size; ++i) {
+        if (!amivm_read8(vm, sp + i, &old_byte)) {
+            vm->exception_stack_fault = true;
+            goto stack_fail;
+        }
+        old_frame[i] = old_byte;
+    }
 
     if (!amivm_m68k_write_u32(vm, sp, vm->mmu_exception_pc) ||
         !amivm_write8(vm, sp + 4u, (uint8_t)(vm->mmu_exception_sr >> 8)) ||
         !amivm_write8(vm, sp + 5u, (uint8_t)vm->mmu_exception_sr)) {
         vm->exception_stack_fault = true;
-        return -1;
+            goto stack_fail;
     }
 
     vm->m68k.a[7] = sp;
@@ -545,7 +555,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 
     if (amivm_m68k_write_exception_internal_state(vm, layout, sp) != 0) {
         vm->exception_stack_fault = true;
-        return -1;
+            goto stack_fail;
     }
 
     if (layout->has_format_vector) {
@@ -554,7 +564,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
             !amivm_write8(vm, sp + layout->format_offset + 1u,
                           (uint8_t)vm->exception_format_vector_word)) {
             vm->exception_stack_fault = true;
-            return -1;
+            goto stack_fail;
         }
     }
 
@@ -566,7 +576,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         if (!amivm_m68k_write_u32(vm, sp + layout->fault_address_offset,
                                   vm->exception_fault_address)) {
             vm->exception_stack_fault = true;
-            return -1;
+            goto stack_fail;
         }
     }
     if (layout->has_fault_status) {
@@ -576,12 +586,12 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
                 !amivm_write8(vm, sp + layout->fault_status_offset + 1u,
                               (uint8_t)vm->exception_fault_status)) {
                 vm->exception_stack_fault = true;
-                return -1;
+            goto stack_fail;
             }
         } else if (!amivm_m68k_write_u32(vm, sp + layout->fault_status_offset,
                                          vm->exception_fault_status)) {
             vm->exception_stack_fault = true;
-            return -1;
+            goto stack_fail;
         }
     }
 
@@ -597,6 +607,12 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     if (vm->exception_depth < 255u)
         vm->exception_depth++;
     return 0;
+
+stack_fail:
+    for (i = 0u; i < frame_size; ++i)
+        (void)amivm_write8(vm, sp + i, old_frame[i]);
+    vm->exception_stack_fault = true;
+    return -1;
 }
 
 static void amivm_m68k_capture_exception_internal_state(struct amivm_vm *vm,
