@@ -161,6 +161,13 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+void amivm_vm_account_instruction(struct amivm_vm *vm, unsigned cycles)
+{
+    if (!vm) return;
+    vm->last_instruction_cycles = cycles;
+    amivm_vm_advance_cycles(vm, cycles);
+}
+
 void amivm_vm_advance_cycles(struct amivm_vm *vm, unsigned cycles)
 {
     unsigned chipset_cycles;
