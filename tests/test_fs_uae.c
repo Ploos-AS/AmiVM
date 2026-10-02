@@ -304,6 +304,8 @@ int main(void)
                     CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 0x9100u);
                     CHECK(vm.pending_exception_vector == 56u);
                     CHECK(vm.exception_frame_size == 16u);
+                    CHECK((vm.m68k.sr & 0x2000u) != 0u);
+                    CHECK(vm.exception_frame_sp == vm.m68k.a[7]);
                 }
                 vm.mmu.enabled = false;
             }
