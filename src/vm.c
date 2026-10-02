@@ -1023,6 +1023,10 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
             (void)amivm_m68k_stack_mmu_exception(vm);
             (void)amivm_m68k_exception_enter(vm, 56u);
         }
+        if (vm->exception_vector_base != 0u) {
+            (void)amivm_m68k_stack_mmu_exception(vm);
+            (void)amivm_m68k_exception_enter(vm, 56u);
+        }
         return false;
     }
     addr = physical;
