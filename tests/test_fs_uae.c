@@ -314,6 +314,10 @@ int main(void)
                     CHECK(l && l->words == 6u && l->has_format_vector);
                     l = amivm_m68k_frame_layout(AMIVM_FRAME_68040_MMU);
                     CHECK(l && l->words == 8u && l->has_fault_address && l->has_fault_status);
+                    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                    vm.exception_frame_word_count = 4u;
+                    CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                    vm.exception_frame_word_count = 8u;
                 }
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 5u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 2u);
