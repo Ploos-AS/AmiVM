@@ -152,6 +152,13 @@ struct amivm_trackdisk {
 
 typedef uint32_t (*amivm_cpu_step_fn)(struct amivm_vm *vm, void *cpu_state);
 
+struct amivm_m68k_frame_layout {
+    uint8_t words;
+    bool has_format_vector;
+    bool has_fault_address;
+    bool has_fault_status;
+};
+
 enum amivm_m68k_frame_descriptor {
     AMIVM_FRAME_68000_SHORT = 0,
     AMIVM_FRAME_68020_BUS = 1,
@@ -358,6 +365,7 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_enter_trap(struct amivm_vm *vm, uint8_t vector);
+const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor);
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel);
 int amivm_m68k_set_cpu_model(struct amivm_vm *vm, uint8_t model);
 int amivm_m68k_validate_exception_frame(struct amivm_vm *vm);
