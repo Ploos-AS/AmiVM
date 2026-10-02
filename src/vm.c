@@ -484,7 +484,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     case AMIVM_FRAME_68030_LONG_BUS: vm->exception_frame_format = 0xBu; break;
     case AMIVM_FRAME_68040_ACCESS: vm->exception_frame_format = 0x7u; break;
     case AMIVM_FRAME_68060_ACCESS: vm->exception_frame_format = 0x4u; break;
-    default: vm->exception_frame_format = vm->exception_frame_class; break;
+    case AMIVM_FRAME_68000_SHORT: vm->exception_frame_format = 0x0u; break;
+    default: return -1;
     }
     vm->exception_frame_word_count = layout->words;
     vm->exception_frame_size = frame_size;
