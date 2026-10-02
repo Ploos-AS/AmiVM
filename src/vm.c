@@ -423,17 +423,6 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         default: return false;
         }
     }
-    if (in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
-        uint32_t o = addr - AMIVM_TIMER_BASE;
-        switch (o) {
-        case 0u: vm->timer.counter = value; return true;
-        case 1u: vm->timer.period = value; return true;
-        case 2u: vm->timer.enabled = value != 0u; return true;
-        case 3u: vm->timer.irq_enable = value != 0u; amivm_irq_enable(vm, 6u, vm->timer.irq_enable); return true;
-        case 4u: vm->timer.periodic = value != 0u; return true;
-        default: return false;
-        }
-    }
     if (amivm_device_for_address(vm, addr) &&
         in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
@@ -485,7 +474,21 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         default: return false;
         }
     }
-    if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_TIMER_BASE;
+        switch (o) {
+        case 0u: vm->timer.counter = value; return true;
+        case 1u: vm->timer.period = value; return true;
+        case 2u: vm->timer.enabled = value != 0u; return true;
+        case 3u: vm->timer.irq_enable = value != 0u;
+                  amivm_irq_enable(vm, 6u, vm->timer.irq_enable); return true;
+        case 4u: vm->timer.periodic = value != 0u; return true;
+        default: return false;
+        }
+    }
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
         switch (o) {
         case 0u: vm->trackdisk.dma_address = (vm->trackdisk.dma_address & 0x00ffffffu) | ((uint32_t)value << 24); return true;
