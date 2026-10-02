@@ -43,6 +43,16 @@ enum amivm_machine_model {
     AMIVM_MACHINE_A4000
 };
 
+struct amivm_machine_profile {
+    enum amivm_machine_model id;
+    const char *name;
+    unsigned chipset_generation;
+    size_t default_chip_ram;
+    bool has_aga;
+    bool has_ide;
+    bool has_zorro;
+};
+
 struct amivm_config {
     enum amivm_machine_model machine;
     size_t ram_size;
@@ -126,6 +136,11 @@ struct amivm_vm {
     struct amivm_trackdisk trackdisk;
     struct amivm_timer timer;
 };
+
+const struct amivm_machine_profile *amivm_machine_profile_by_id(
+    enum amivm_machine_model id);
+const struct amivm_machine_profile *amivm_machine_profile_by_name(
+    const char *name);
 
 void amivm_config_init(struct amivm_config *config);
 bool amivm_parse_size_mib(const char *text, size_t *bytes_out);
