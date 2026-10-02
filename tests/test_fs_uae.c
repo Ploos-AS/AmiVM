@@ -150,6 +150,22 @@ int main(void)
                 CHECK(vm.m68k.d[1] == 0x80000001u);
                 CHECK((vm.m68k.sr & 0x04u) == 0u);
                 CHECK((vm.m68k.sr & 0x08u) != 0u);
+                vm.m68k.pc = AMIVM_RAM_BASE;
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE, 0x20u));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 1u, 0x3cu));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 2u, 0xdeu));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 3u, 0xadu));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 4u, 0xbeu));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 5u, 0xefu));
+                CHECK(amivm_m68k_execute_one(&vm) == 0);
+                CHECK(vm.m68k.d[1] == 0xdeadbeefu);
+                CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 6u);
+                vm.m68k.a[2] = 0x12345678u;
+                vm.m68k.pc = AMIVM_RAM_BASE;
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE, 0x24u));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 1u, 0x0au));
+                CHECK(amivm_m68k_execute_one(&vm) == 0);
+                CHECK(vm.m68k.d[2] == 0x12345678u);
             }
         }
         amivm_vm_destroy(&vm);
