@@ -152,6 +152,22 @@ struct amivm_trackdisk {
 
 typedef uint32_t (*amivm_cpu_step_fn)(struct amivm_vm *vm, void *cpu_state);
 
+enum amivm_m68k_exception {
+    AMIVM_M68K_EXC_NONE = 0,
+    AMIVM_M68K_EXC_RESET = 2,
+    AMIVM_M68K_EXC_BUS_ERROR = 2,
+    AMIVM_M68K_EXC_ADDRESS_ERROR = 3,
+    AMIVM_M68K_EXC_ILLEGAL = 4,
+    AMIVM_M68K_EXC_ZERO_DIVIDE = 5,
+    AMIVM_M68K_EXC_CHK = 6,
+    AMIVM_M68K_EXC_TRAPV = 7,
+    AMIVM_M68K_EXC_PRIVILEGE = 8,
+    AMIVM_M68K_EXC_TRACE = 9,
+    AMIVM_M68K_EXC_LINE_A = 10,
+    AMIVM_M68K_EXC_LINE_F = 11,
+    AMIVM_M68K_EXC_SPURIOUS_INTERRUPT = 24
+};
+
 struct amivm_m68k_registers {
     uint32_t d[8];
     uint32_t a[8];
@@ -258,6 +274,9 @@ int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
                                 const struct amivm_cpu_backend *backend);
 int amivm_vm_step(struct amivm_vm *vm);
 void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr);
+int amivm_m68k_raise_exception(struct amivm_vm *vm,
+                                      enum amivm_m68k_exception exception);
+
 
 
 int amivm_config_resolve(const struct amivm_config *config,
