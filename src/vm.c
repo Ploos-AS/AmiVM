@@ -299,6 +299,8 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
 static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
 {
     if (!vm) return AMIVM_FRAME_68000_SHORT;
+    if (vm->cpu_profile.id == AMIVM_CPU_68020)
+        return AMIVM_FRAME_68020_BUS;
     if (vm->cpu_profile.id == AMIVM_CPU_68030) {
         return vm->exception_bus_fault_in_progress ?
             AMIVM_FRAME_68030_LONG_BUS : AMIVM_FRAME_68030_SHORT_BUS;
