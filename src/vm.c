@@ -161,6 +161,28 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
+{
+    if (!vm || level < 1u || level > 7u) return;
+    if (!vm->irq_pending || level > vm->irq_level)
+        vm->irq_level = level;
+    vm->irq_pending = true;
+}
+
+int amivm_m68k_service_irq(struct amivm_vm *vm)
+{
+    uint8_t mask;
+    if (!vm || !vm->irq_pending) return 0;
+    mask = (uint8_t)((vm->m68k.sr >> 8) & 7u);
+    if (vm->irq_level <= mask) return 0;
+    vm->m68k.sr = (uint16_t)((vm->m68k.sr & ~0x0700u) |
+                             ((uint16_t)vm->irq_level << 8) | 0x2000u);
+    vm->pending_exception = AMIVM_M68K_EXC_SPURIOUS_INTERRUPT;
+    vm->pending_exception_vector = (uint8_t)(24u + vm->irq_level);
+    vm->irq_pending = false;
+    return vm->pending_exception_vector;
+}
+
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception)
 {
