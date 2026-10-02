@@ -310,6 +310,14 @@ int main(void)
                 CHECK(vm.exception_internal_state[1] == vm.m68k.sr);
                 CHECK(vm.exception_internal_state[2] == vm.exception_fault_address);
                 CHECK(vm.exception_internal_state[3] == vm.exception_fault_status);
+                CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &(bool){true}) ==
+                       vm.exception_internal_state[0]);
+                CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &(bool){true}) ==
+                       vm.exception_internal_state[1]);
+                CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 16u, &(bool){true}) ==
+                       vm.exception_internal_state[2]);
+                CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 20u, &(bool){true}) ==
+                       vm.exception_internal_state[3]);
                 vm.exception_bus_fault_in_progress = true;
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_LONG_BUS);
