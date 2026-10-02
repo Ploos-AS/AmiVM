@@ -614,7 +614,9 @@ static int amivm_m68k_write_exception_internal_state(struct amivm_vm *vm,
                                                                   uint32_t sp)
 {
     uint8_t i;
-    if (!vm || !layout || layout->internal_state_words == 0u) return 0;
+    if (!vm || !layout || !layout->preserves_internal_state ||
+        layout->internal_state_words == 0u)
+        return 0;
     for (i = 0u; i < layout->internal_state_words && i < 34u; ++i) {
         if (!amivm_m68k_write_u32(vm,
                                   sp + layout->internal_state_offset + (uint32_t)i * 4u,
