@@ -402,6 +402,15 @@ int main(void)
                  }
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  {
+                     uint8_t saved = 0u;
+                     CHECK(amivm_read8(&vm, vm.exception_frame_sp + 10u, &saved));
+                     CHECK(amivm_write8(&vm, vm.exception_frame_sp + 10u,
+                                        (uint8_t)(saved ^ 0x01u)));
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                     CHECK(amivm_write8(&vm, vm.exception_frame_sp + 10u, saved));
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 }
+                 {
                      uint32_t access_sp = vm.exception_frame_sp;
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                      CHECK(vm.m68k.a[7] == access_sp + 60u);
