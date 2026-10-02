@@ -416,6 +416,12 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
     } else {
         return -1;
     }
+    vm->m68k.a[7] += vm->exception_frame_size;
+    vm->exception_frame_active = false;
+    vm->exception_frame_sp = 0u;
+    vm->exception_frame_size = 0u;
+    vm->exception_frame_format = 0u;
+    vm->exception_frame_word_count = 0u;
     vm->pending_exception = AMIVM_M68K_EXC_NONE;
     vm->pending_exception_vector = 0u;
     return 0;
