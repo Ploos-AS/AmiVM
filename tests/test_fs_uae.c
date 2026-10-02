@@ -82,6 +82,13 @@ int main(void)
                 CHECK(vm.last_instruction_cycles == 12u);
                 CHECK(vm.cpu_cycles == 12u);
                 CHECK(vm.chipset_cycles == 12u);
+                amivm_m68k_reset(&vm, 0x00f80000u, 0x2700u);
+                CHECK(vm.m68k.pc == 0x00f80000u);
+                CHECK(vm.m68k.sr == 0x2700u);
+                for (size_t r = 0; r < 8u; ++r) {
+                    CHECK(vm.m68k.d[r] == 0u);
+                    CHECK(vm.m68k.a[r] == 0u);
+                }
             }
             CHECK(vm.aga.beam_h == 20u);
             CHECK(vm.aga.display_active);
