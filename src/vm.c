@@ -173,6 +173,33 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
     vm->irq_pending = true;
 }
 
+int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
+{
+    uint32_t sp;
+    uint32_t pc;
+    uint32_t address;
+    uint32_t status;
+    uint8_t hi, lo;
+    if (!vm || vm->exception_frame_size != 16u) return -1;
+    sp = vm->m68k.a[7];
+    if (!amivm_m68k_read_u32(vm, sp, &pc) ||
+        !amivm_read8(vm, sp + 4u, &hi) ||
+        !amivm_read8(vm, sp + 5u, &lo) ||
+        !amivm_m68k_read_u32(vm, sp + 8u, &address) ||
+        !amivm_m68k_read_u32(vm, sp + 12u, &status))
+        return -1;
+    vm->m68k.pc = pc;
+    vm->m68k.sr = (uint16_t)(((uint16_t)hi << 8) | lo);
+    vm->mmu_fault_address = address;
+    vm->mmu_fault_status = status;
+    vm->m68k.a[7] = sp + 16u;
+    vm->exception_frame_sp = 0u;
+    vm->exception_frame_size = 0u;
+    vm->pending_exception = AMIVM_M68K_EXC_NONE;
+    vm->m68k.exception = AMIVM_M68K_EXC_NONE;
+    return 0;
+}
+
 int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 {
     uint32_t sp;
