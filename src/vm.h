@@ -164,7 +164,8 @@ enum amivm_m68k_exception {
     AMIVM_M68K_EXC_TRACE = 9,
     AMIVM_M68K_EXC_LINE_A = 10,
     AMIVM_M68K_EXC_LINE_F = 11,
-    AMIVM_M68K_EXC_SPURIOUS_INTERRUPT = 24
+    AMIVM_M68K_EXC_SPURIOUS_INTERRUPT = 24,
+    AMIVM_M68K_EXC_MMU_FAULT = 56
 };
 
 enum amivm_m68k_mmu_fault {
@@ -300,6 +301,8 @@ struct amivm_vm {
     uint8_t pending_exception_vector;
     uint32_t mmu_fault_address;
     uint32_t mmu_fault_status;
+    uint32_t mmu_exception_pc;
+    uint16_t mmu_exception_sr;
     uint8_t irq_level;
     bool irq_pending;
     bool irq_in_service;
