@@ -23,6 +23,14 @@
 #define AMIVM_MAX_HARD_DRIVES 8u
 #define AMIVM_MAX_ADF_SIZE (1760u * 1024u)
 
+#define AMIVM_MAX_IRQ_LINES 8u
+
+struct amivm_irq_controller {
+    uint32_t pending;
+    uint32_t enabled;
+    uint8_t priority[AMIVM_MAX_IRQ_LINES];
+};
+
 struct amivm_config {
     size_t ram_size;
     const char *rom_path;
@@ -87,7 +95,7 @@ struct amivm_vm {
     size_t ram_page_count;
     uint8_t rom[AMIVM_ROM_SIZE];
     size_t rom_used;
-    uint32_t irq_pending;
+    struct amivm_irq_controller irq;
     uint64_t timer_ticks;
     uint64_t memory_write_generation;
     struct amivm_cpu_profile cpu_profile;
@@ -119,6 +127,9 @@ bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
                                uint64_t *generation);
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line);
 void amivm_clear_irq(struct amivm_vm *vm, unsigned line);
+void amivm_irq_enable(struct amivm_vm *vm, unsigned line, bool enable);
+bool amivm_irq_is_pending(const struct amivm_vm *vm, unsigned line);
+void amivm_irq_reset(struct amivm_vm *vm);
 int amivm_trackdisk_command(struct amivm_vm *vm,
                                enum amivm_trackdisk_command command);
 void amivm_trackdisk_reset(struct amivm_vm *vm);
