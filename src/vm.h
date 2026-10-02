@@ -57,6 +57,18 @@ struct amivm_machine_profile {
     bool accelerator_capable;
 };
 
+struct amivm_resolved_config {
+    enum amivm_machine_model machine;
+    const struct amivm_machine_profile *machine_profile;
+    const struct amivm_cpu_profile *cpu_profile;
+    const struct amivm_cpu_profile *accelerator_profile;
+    size_t chip_ram_size;
+    size_t fast_ram_size;
+    size_t total_ram_size;
+    enum amivm_mmu_model external_mmu;
+    const char *rom_path;
+};
+
 struct amivm_config {
     enum amivm_machine_model machine;
     size_t ram_size;
@@ -152,6 +164,8 @@ const struct amivm_machine_profile *amivm_machine_profile_by_id(
 const struct amivm_machine_profile *amivm_machine_profile_by_name(
     const char *name);
 
+int amivm_config_resolve(const struct amivm_config *config,
+                             struct amivm_resolved_config *resolved);
 void amivm_config_init(struct amivm_config *config);
 bool amivm_parse_size_mib(const char *text, size_t *bytes_out);
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config);
