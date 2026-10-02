@@ -281,14 +281,14 @@ static uint8_t amivm_m68k_frame_layout_format(uint8_t descriptor)
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
-        { 4u,  false, false, false, 0u, 0u, 0u, 0u, 0u, 0u, true,  true  },
-        { 6u,  true,  false, false, 6u, 0u, 0u, 0u, 0u, 0u, true,  true  },
-        { 8u,  true,  true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true  },
-        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false },
-        { 16u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 4u, true,  true  },
-        { 46u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 34u, true,  true  },
-        { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true  },
-        { 30u, true, true,  false, 6u, 20u, 10u, 2u, 8u, 8u, true,  true  }
+        { 4u,  false, false, false, 0u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
+        { 6u,  true,  false, false, 6u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
+        { 8u,  true,  true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
+        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false, false },
+        { 16u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 4u, true,  true,  true  },
+        { 46u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 34u, true,  true,  false },
+        { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
+        { 30u, true, true,  false, 6u, 20u, 10u, 2u, 8u, 8u, true,  true,  false  }
     };
     if (descriptor > AMIVM_FRAME_68040_ACCESS ||
         descriptor == AMIVM_FRAME_RESERVED_2)
@@ -516,7 +516,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
                    (vm->exception_entry_vector & 0x0fffu));
     amivm_m68k_capture_exception_internal_state(vm, layout);
-    if (vm->exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS)
+    if (layout->has_030_short_state)
         amivm_m68k_capture_030_short_state(vm);
     vm->exception_fault_stage = layout->has_fault_address ? 1u : 0u;
     if (layout->has_fault_address && vm->cpu_profile.exception_frame_family ==
