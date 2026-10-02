@@ -1404,10 +1404,10 @@ static enum reference_cycle_class reference_cycle_classify(uint16_t opcode)
     }
 }
 
-static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
-                                     uint16_t opcode)
+static uint32_t reference_profile_cycle_scale(
+    const struct amivm_cpu_profile *profile, unsigned base)
 {
-    unsigned base = reference_cycle_base(reference_cycle_classify(opcode));
+    /* Architectural timing only. This never throttles host execution. */
     switch (profile ? profile->id : AMIVM_CPU_68040) {
     case AMIVM_CPU_68020: return base * 2u;
     case AMIVM_CPU_68030: return base * 3u / 2u;
@@ -1417,6 +1417,13 @@ static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
     case AMIVM_CPU_HYPER060: return (base + 2u) / 3u ? (base + 2u) / 3u : 1u;
     default: return base;
     }
+}
+
+static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
+                                     uint16_t opcode)
+{
+    return reference_profile_cycle_scale(
+        profile, reference_cycle_base(reference_cycle_classify(opcode)));
 }
 
 static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
