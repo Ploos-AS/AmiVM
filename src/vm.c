@@ -166,7 +166,8 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
 {
     if (!vm || exception == AMIVM_M68K_EXC_NONE) return -1;
     vm->m68k.sr |= 0x2000u;
-    vm->m68k.pc = vm->m68k.pc;
+    vm->pending_exception = exception;
+    vm->pending_exception_vector = (uint8_t)exception;
     vm->last_instruction_cycles = 0u;
     return (int)exception;
 }
