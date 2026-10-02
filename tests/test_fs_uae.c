@@ -132,6 +132,15 @@ int main(void)
                 CHECK(vm.m68k.pc == 0x00123456u);
                 CHECK(vm.m68k.sr == 0x2000u);
                 CHECK(!vm.irq_in_service);
+                vm.m68k.stopped = false;
+                vm.m68k.exception = AMIVM_M68K_EXC_NONE;
+                vm.m68k.pc = AMIVM_RAM_BASE;
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE, 0x4eu));
+                CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 1u, 0x71u));
+                CHECK(amivm_m68k_execute_one(&vm) == 0);
+                CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 2u);
+                CHECK(vm.last_instruction_cycles == 4u);
+                CHECK(vm.m68k.exception == AMIVM_M68K_EXC_NONE);
             }
         }
         amivm_vm_destroy(&vm);
