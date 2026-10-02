@@ -246,14 +246,14 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
-        { 4u,  false, false, false, 0u, 0u, 0u },
-        { 6u,  true,  false, false, 6u, 0u, 0u },
-        { 8u,  true,  true,  true,  6u, 8u, 12u },
-        { 10u, true,  false, false, 6u, 0u, 0u },
-        { 16u, true,  true,  true,  6u, 16u, 0u },
-        { 46u, true,  true,  true,  6u, 16u, 0u },
-        { 8u,  true,  true,  true,  6u, 8u, 12u },
-        { 30u, true, true,  true,  6u, 20u, 10u }
+        { 4u,  false, false, false, 0u, 0u, 0u, 0u },
+        { 6u,  true,  false, false, 6u, 0u, 0u, 0u },
+        { 8u,  true,  true,  true,  6u, 8u, 12u, 4u },
+        { 10u, true,  false, false, 6u, 0u, 0u, 0u },
+        { 16u, true, true,  false, 6u, 16u, 0u, 0u },
+        { 46u, true, true,  false, 6u, 16u, 0u, 0u },
+        { 8u,  true, true,  true,  6u, 8u, 12u, 4u },
+        { 30u, true, true,  false, 6u, 20u, 0u, 0u }
     };
     if (descriptor > AMIVM_FRAME_68040_ACCESS) return NULL;
     return &layouts[descriptor];
