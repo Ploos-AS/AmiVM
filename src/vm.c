@@ -341,9 +341,8 @@ int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submo
 
 int amivm_m68k_set_cpu_model(struct amivm_vm *vm, uint8_t model)
 {
-    if (!vm || model > 4u) return -1;
-    vm->cpu_model = model;
-    return 0;
+    if (!vm || model > 5u) return -1;
+    return amivm_m68k_set_cpu_profile(vm, model, vm->cpu_submodel);
 }
 
 int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
