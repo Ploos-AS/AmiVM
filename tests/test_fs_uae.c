@@ -40,6 +40,13 @@ int main(void)
     CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
     {
         struct amivm_resolved_config resolved;
+        struct amivm_vm vm;
+        CHECK(amivm_config_resolve(&config, &resolved) == 0);
+        CHECK(amivm_vm_init(&vm, &config) == 0);
+        CHECK(vm.machine == AMIVM_MACHINE_A1200);
+        CHECK(vm.chip_ram_size == 2u * 1024u * 1024u);
+        CHECK(vm.fast_ram_size == 32u * 1024u * 1024u);
+        amivm_vm_destroy(&vm);
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
         CHECK(resolved.machine == AMIVM_MACHINE_A1200);
         CHECK(resolved.machine_profile != NULL);
