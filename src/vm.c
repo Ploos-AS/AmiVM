@@ -283,11 +283,40 @@ int amivm_m68k_execute_one(struct amivm_vm *vm)
         return 0;
     }
 
-    /* MOVE.L Dn,Dn: 0x2000 | dst<<9 | src */
+    /* MOVE.L Dn,Dn */
     if ((op & 0xf1c0u) == 0x2000u) {
         unsigned src = op & 7u;
         unsigned dst = (op >> 9) & 7u;
         uint32_t value = vm->m68k.d[src];
+        vm->m68k.d[dst] = value;
+        vm->m68k.pc += 2u;
+        vm->m68k.sr &= (uint16_t)~0x0fu;
+        if (value == 0u) vm->m68k.sr |= 0x04u;
+        if (value & 0x80000000u) vm->m68k.sr |= 0x08u;
+        amivm_vm_account_instruction(vm, 4u);
+        return 0;
+    }
+
+    /* MOVE.L #imm,Dn */
+    if ((op & 0xf1ffu) == 0x203cu) {
+        unsigned dst = (op >> 9) & 7u;
+        bool ok;
+        uint32_t value = amivm_m68k_read_u32(vm, vm->m68k.pc + 2u, &ok);
+        if (!ok) return amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
+        vm->m68k.d[dst] = value;
+        vm->m68k.pc += 6u;
+        vm->m68k.sr &= (uint16_t)~0x0fu;
+        if (value == 0u) vm->m68k.sr |= 0x04u;
+        if (value & 0x80000000u) vm->m68k.sr |= 0x08u;
+        amivm_vm_account_instruction(vm, 12u);
+        return 0;
+    }
+
+    /* MOVE.L An,Dn (address register source) */
+    if ((op & 0xf1f8u) == 0x2008u) {
+        unsigned src = op & 7u;
+        unsigned dst = (op >> 9) & 7u;
+        uint32_t value = vm->m68k.a[src];
         vm->m68k.d[dst] = value;
         vm->m68k.pc += 2u;
         vm->m68k.sr &= (uint16_t)~0x0fu;
