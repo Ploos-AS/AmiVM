@@ -9,6 +9,7 @@ static const struct amivm_device_desc amivm_devices[] = {
     {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 2u},
     {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u},
     {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u},
+    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 6u},
 };
 
 static bool in_range(uint32_t addr, uint32_t base, size_t size)
@@ -137,6 +138,7 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->memory_write_generation = 1u;
     amivm_irq_reset(vm);
     for (unsigned i = 0; i < AMIVM_MAX_IRQ_LINES; ++i) vm->irq.priority[i] = (uint8_t)i;
+    amivm_timer_reset(vm);
     amivm_trackdisk_reset(vm);
     for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
         if (config->floppy_images[i] &&
@@ -254,6 +256,28 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         case 0u: *value = (uint8_t)(vm->irq.pending & 0xffu); return true;
         case 1u: *value = (uint8_t)(vm->irq.enabled & 0xffu); return true;
         case 2u: *value = (uint8_t)(vm->irq.pending & vm->irq.enabled); return true;
+        default: return false;
+        }
+    }
+    if (in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_TIMER_BASE;
+        switch (o) {
+        case 0u: *value = (uint8_t)vm->timer.counter; return true;
+        case 1u: *value = (uint8_t)vm->timer.period; return true;
+        case 2u: *value = vm->timer.enabled ? 1u : 0u; return true;
+        case 3u: *value = vm->timer.irq_enable ? 1u : 0u; return true;
+        case 4u: *value = vm->timer.periodic ? 1u : 0u; return true;
+        default: return false;
+        }
+    }
+    if (in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_TIMER_BASE;
+        switch (o) {
+        case 0u: vm->timer.counter = value; return true;
+        case 1u: vm->timer.period = value; return true;
+        case 2u: vm->timer.enabled = value != 0u; return true;
+        case 3u: vm->timer.irq_enable = value != 0u; amivm_irq_enable(vm, 6u, vm->timer.irq_enable); return true;
+        case 4u: vm->timer.periodic = value != 0u; return true;
         default: return false;
         }
     }
@@ -394,6 +418,26 @@ int amivm_media_write_sector(struct amivm_media *media, unsigned sector,
         return -1;
     memcpy(media->data + offset, buffer, size);
     return 0;
+}
+
+void amivm_timer_reset(struct amivm_vm *vm)
+{
+    if (!vm) return;
+    memset(&vm->timer, 0, sizeof vm->timer);
+}
+
+void amivm_timer_tick(struct amivm_vm *vm, uint64_t cycles)
+{
+    if (!vm || !vm->timer.enabled || vm->timer.period == 0u)
+        return;
+    vm->timer.counter += cycles;
+    if (vm->timer.counter >= vm->timer.period) {
+        vm->timer.counter %= vm->timer.period;
+        if (vm->timer.irq_enable)
+            amivm_raise_irq(vm, 6u);
+        if (!vm->timer.periodic)
+            vm->timer.enabled = false;
+    }
 }
 
 void amivm_trackdisk_reset(struct amivm_vm *vm)
