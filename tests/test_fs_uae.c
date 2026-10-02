@@ -38,6 +38,17 @@ int main(void)
     CHECK(config.ram_size == 34u * 1024u * 1024u);
     CHECK(config.chip_ram_size == 2u * 1024u * 1024u);
     CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
+    {
+        struct amivm_resolved_config resolved;
+        CHECK(amivm_config_resolve(&config, &resolved) == 0);
+        CHECK(resolved.machine == AMIVM_MACHINE_A1200);
+        CHECK(resolved.machine_profile != NULL);
+        CHECK(resolved.cpu_profile != NULL);
+        CHECK(resolved.accelerator_profile != NULL);
+        CHECK(resolved.chip_ram_size == 2u * 1024u * 1024u);
+        CHECK(resolved.fast_ram_size == 32u * 1024u * 1024u);
+        CHECK(resolved.total_ram_size == 34u * 1024u * 1024u);
+    }
 
     f = fopen(path, "w");
     CHECK(f != NULL);
