@@ -107,6 +107,19 @@ int amivm_config_resolve(const struct amivm_config *config,
     resolved->total_ram_size = config->chip_ram_size + config->fast_ram_size;
     resolved->external_mmu = config->external_mmu;
     resolved->rom_path = config->rom_path;
+    resolved->device_count = 0u;
+    {
+        size_t i;
+        for (i = 0; i < sizeof amivm_devices / sizeof amivm_devices[0]; ++i) {
+            const struct amivm_device_desc *d = &amivm_devices[i];
+            unsigned f = d->required_machine_flags;
+            if ((f & AMIVM_DEVF_AGA) && !resolved->hardware.has_aga) continue;
+            if ((f & AMIVM_DEVF_IDE) && !resolved->hardware.has_ide) continue;
+            if ((f & AMIVM_DEVF_ZORRO) && !resolved->hardware.has_zorro) continue;
+            if (resolved->device_count < 16u)
+                resolved->devices[resolved->device_count++] = d;
+        }
+    }
     return 0;
 }
 
