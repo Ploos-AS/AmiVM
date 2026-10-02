@@ -85,10 +85,11 @@ static int set_option(const char *key, const char *value,
     } else if (strcmp(key, "chip_memory") == 0 || strcmp(key, "fast_memory") == 0) {
         if (!amivm_parse_size_mib(value, &mib)) { ++r->malformed; return 1; }
         if (strcmp(key, "chip_memory") == 0) {
-            if (mib > 0u) config->ram_size = mib * 1024u * 1024u;
+            config->chip_ram_size = mib * 1024u * 1024u;
         } else {
-            config->ram_size += mib * 1024u * 1024u;
+            config->fast_ram_size = mib * 1024u * 1024u;
         }
+        config->ram_size = config->chip_ram_size + config->fast_ram_size;
         ++r->supported;
         return 0;
     } else if (strcmp(key, "kickstart_rom_file") == 0 ||
