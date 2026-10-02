@@ -185,6 +185,8 @@ static int set_option(const char *key, const char *value,
                 (strcmp(profile_name, "68030") == 0 ||
                  strcmp(profile_name, "68040") == 0 ||
                  strcmp(profile_name, "68060") == 0);
+            if (config->accelerator_present)
+                config->accelerator_profile = p;
         } else if (profile_name == NULL) {
             ++r->unsupported;
             return 0;
