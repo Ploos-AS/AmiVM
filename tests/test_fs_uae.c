@@ -153,6 +153,14 @@ int main(void)
     CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
     CHECK(config.machine == AMIVM_MACHINE_A1200);
     CHECK(strcmp(config.cpu_profile->name, "68040") == 0);
+    {
+        const struct amivm_machine_profile *p =
+            amivm_machine_profile_by_id(config.machine);
+        CHECK(p != NULL);
+        CHECK(p->has_aga);
+        CHECK(p->has_ide);
+        CHECK(p->default_chip_ram == 2u * 1024u * 1024u);
+    }
 
     f = fopen(path, "w");
     CHECK(f != NULL);
