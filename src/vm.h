@@ -264,6 +264,7 @@ struct amivm_vm {
     uint8_t pending_exception_vector;
     uint8_t irq_level;
     bool irq_pending;
+    bool irq_in_service;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
@@ -280,6 +281,7 @@ int amivm_vm_step(struct amivm_vm *vm);
 void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr);
 void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
+int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception);
 
