@@ -85,7 +85,14 @@ static int set_option(const char *key, const char *value,
     } else if (strcmp(key, "chip_memory") == 0 || strcmp(key, "fast_memory") == 0) {
         if (!amivm_parse_size_mib(value, &mib)) { ++r->malformed; return 1; }
         if (strcmp(key, "chip_memory") == 0) {
-            config->chip_ram_size = mib * 1024u * 1024u;
+            const struct amivm_machine_profile *mp =
+                amivm_machine_profile_by_id(config->machine);
+            size_t bytes = mib * 1024u * 1024u;
+            if (mp != NULL && mp->max_chip_ram != 0u && bytes > mp->max_chip_ram) {
+                ++r->unsupported;
+                return 1;
+            }
+            config->chip_ram_size = bytes;
         } else {
             config->fast_ram_size = mib * 1024u * 1024u;
         }
