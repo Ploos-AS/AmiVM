@@ -357,6 +357,10 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->exception_frame_size = (uint8_t)(vm->exception_frame_word_count * 2u);
     vm->exception_frame_magic = 0x45584632u;
     vm->exception_frame_vector_offset = (uint16_t)(vm->exception_entry_vector * 4u);
+    vm->exception_format_vector_word =
+        (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
+                   (vm->exception_entry_vector & 0x0fffu));
+    vm->exception_fault_stage = (vm->exception_frame_type == 2u) ? 1u : 0u;
     if (vm->exception_frame_type == 0u) {
         vm->exception_frame_size = 8u;
         vm->exception_frame_format = 0u;
