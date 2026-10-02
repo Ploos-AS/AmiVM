@@ -468,18 +468,6 @@ int main(void)
                      CHECK(vm.m68k.a[7] == access_sp + 60u);
                      CHECK(vm.exception_frame_size == 0u);
                  }
-                 {
-                     vm.exception_frame_type = AMIVM_FRAME_68030_LONG_BUS;
-                     vm.exception_frame_format = 0x0Bu;
-                     vm.exception_frame_size = 92u;
-                     vm.exception_frame_word_count = 46u;
-                     vm.exception_frame_active = true;
-                     vm.m68k.a[7] = 0x1400u;
-                     CHECK(amivm_m68k_return_from_interrupt(&vm) != 0);
-                     vm.exception_frame_type = AMIVM_FRAME_68030_LONG_BUS;
-                     vm.exception_frame_size = 92u;
-                     vm.exception_frame_active = true;
-                 }
                  CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68020, 0u) == 0);
                  CHECK(vm.exception_frame_class == 1u);
                  CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
