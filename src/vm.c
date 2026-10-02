@@ -446,6 +446,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     amivm_m68k_capture_exception_internal_state(vm, layout);
     vm->exception_fault_stage =
         (vm->exception_frame_type == 2u) ? 1u : 0u;
+    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
+        vm->exception_fslw = vm->exception_fault_status;
 
     if (layout->has_format_vector) {
         if (!amivm_write8(vm, sp + 6u,
