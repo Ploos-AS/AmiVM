@@ -119,6 +119,9 @@ int main(void)
                 CHECK(vm.exception_frame_format == 2u);
                 CHECK(vm.exception_frame_word_count == 8u);
                 CHECK(vm.exception_frame_size == 16u);
+                CHECK(vm.exception_frame_format == 2u);
+                CHECK(vm.exception_frame_word_count == 8u);
+                CHECK((vm.exception_format_vector_word >> 12) == 2u);
                 CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 2u);
                 CHECK(!vm.exception_frame_active);
                 vm.m68k.exception = AMIVM_M68K_EXC_NONE;
