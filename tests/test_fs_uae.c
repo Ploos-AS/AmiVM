@@ -365,6 +365,7 @@ int main(void)
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 1u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                 CHECK(vm.exception_frame_format == 1u);
+                CHECK(vm.exception_frame_format == 1u);
                 CHECK(vm.exception_frame_word_count == 6u);
                 CHECK(amivm_m68k_set_exception_frame_type(&vm, 2u) == 0);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
