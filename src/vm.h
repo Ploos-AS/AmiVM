@@ -303,6 +303,8 @@ struct amivm_vm {
     uint32_t mmu_fault_status;
     uint32_t mmu_exception_pc;
     uint16_t mmu_exception_sr;
+    uint32_t exception_fault_address;
+    uint32_t exception_fault_status;
     uint8_t irq_level;
     bool irq_pending;
     bool irq_in_service;
