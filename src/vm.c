@@ -681,6 +681,9 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
         vm->exception_frame_word_count = layout->words;
         vm->exception_frame_size = (uint8_t)(layout->words * 2u);
     }
+    if ((uint16_t)(fv & 0x0fffu) !=
+        (uint16_t)(vm->exception_entry_vector & 0x0fffu))
+        return -1;
     vm->exception_frame_vector_offset = (uint16_t)(fv & 0x0fffu);
     return 0;
 }
