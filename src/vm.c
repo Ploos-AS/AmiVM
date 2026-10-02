@@ -271,7 +271,9 @@ const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor
         { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u },
         { 30u, true, true,  false, 6u, 20u, 10u, 2u, 8u, 8u }
     };
-    if (descriptor > AMIVM_FRAME_68040_ACCESS) return NULL;
+    if (descriptor > AMIVM_FRAME_68040_ACCESS ||
+        descriptor == AMIVM_FRAME_RESERVED_2)
+        return NULL;
     return &layouts[descriptor];
 }
 
