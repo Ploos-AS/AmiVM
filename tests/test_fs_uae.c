@@ -376,6 +376,12 @@ int main(void)
                  CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                  CHECK(vm.exception_frame_type == AMIVM_FRAME_68060_ACCESS);
                  CHECK(vm.exception_frame_format == 0x04u);
+                 CHECK(vm.cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68060);
+                 CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_HYPER040, 0u) == 0);
+                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68040_ACCESS);
+                 CHECK(vm.exception_frame_format == 0x07u);
+                 CHECK(vm.cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68040);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x07u) == AMIVM_FRAME_68040_ACCESS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x04u) == AMIVM_FRAME_68060_ACCESS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x09u) ==
