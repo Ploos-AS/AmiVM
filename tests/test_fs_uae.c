@@ -763,6 +763,7 @@ int main(void)
                 CHECK((vm.exception_format_vector_word >> 12) == vm.exception_frame_format);
                 CHECK((vm.exception_format_vector_word & 0x0fffu) == vm.exception_entry_vector);
                 CHECK(vm.exception_fault_stage == 1u);
+                CHECK(amivm_m68k_frame_layout(vm.exception_frame_type)->has_fault_address);
                       (uint16_t)(vm.exception_entry_vector * 4u));
                 CHECK(vm.exception_frame_word_count == 4u);
                 CHECK(vm.exception_frame_magic == 0x45584632u);
