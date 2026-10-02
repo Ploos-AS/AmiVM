@@ -437,10 +437,14 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
-    vm->exception_frame_format = (vm->exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS) ? 0xAu :
-        (vm->exception_frame_type == AMIVM_FRAME_68040_ACCESS) ? 0x7u :
-        (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS) ? 0x4u :
-        vm->exception_frame_class;
+    switch (vm->exception_frame_type) {
+    case AMIVM_FRAME_68020_BUS: vm->exception_frame_format = 0x2u; break;
+    case AMIVM_FRAME_68030_SHORT_BUS: vm->exception_frame_format = 0xAu; break;
+    case AMIVM_FRAME_68030_LONG_BUS: vm->exception_frame_format = 0xBu; break;
+    case AMIVM_FRAME_68040_ACCESS: vm->exception_frame_format = 0x7u; break;
+    case AMIVM_FRAME_68060_ACCESS: vm->exception_frame_format = 0x4u; break;
+    default: vm->exception_frame_format = vm->exception_frame_class; break;
+    }
     vm->exception_frame_word_count = layout->words;
     vm->exception_frame_size = frame_size;
     vm->exception_frame_magic = 0x45584632u;
