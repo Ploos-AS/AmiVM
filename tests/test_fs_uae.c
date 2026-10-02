@@ -335,6 +335,8 @@ int main(void)
                  CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68020, 0u) == 0);
                  CHECK(vm.cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68020);
                  CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68030, 0u) == 0);
+                 CHECK(amivm_m68k_decode_frame_format(&vm, 0x7000u) != 0);
+                 CHECK(amivm_m68k_decode_frame_format(&vm, 0xA000u) == 0);
                  vm.exception_internal_state[0] = 0x11223344u;
                  vm.exception_internal_state[1] = 0x55667788u;
                  CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68030, 0u) == 0);
