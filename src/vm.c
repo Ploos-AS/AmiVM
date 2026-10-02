@@ -161,6 +161,16 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+void amivm_vm_advance_cycles(struct amivm_vm *vm, unsigned cycles)
+{
+    unsigned chipset_cycles;
+    if (!vm) return;
+    vm->cpu_cycles += cycles;
+    vm->chipset_cycles += cycles;
+    chipset_cycles = cycles;
+    amivm_aga_advance_beam(vm, chipset_cycles);
+}
+
 void amivm_aga_advance_beam(struct amivm_vm *vm, unsigned cycles)
 {
     unsigned i;
@@ -381,7 +391,9 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->machine = resolved.machine;
     vm->chip_ram_size = resolved.chip_ram_size;
     vm->fast_ram_size = resolved.fast_ram_size;
-    vm->device_count = resolved.device_count;
+    vm->cpu_cycles = 0u;
+    vm->chipset_cycles = 0u;
+        vm->device_count = resolved.device_count;
     memset(&vm->aga, 0, sizeof vm->aga);
     vm->aga.beam_h = 0u;
     vm->aga.beam_v = 0u;
