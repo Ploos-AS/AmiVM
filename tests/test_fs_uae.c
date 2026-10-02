@@ -345,8 +345,15 @@ int main(void)
                      CHECK(amivm_m68k_write_u32(&vm, 0x1000u, vm.m68k.pc) == 1);
                      CHECK(amivm_write8(&vm, 0x1004u, (uint8_t)(vm.m68k.sr >> 8)));
                      CHECK(amivm_write8(&vm, 0x1005u, (uint8_t)vm.m68k.sr));
+                     CHECK(amivm_m68k_write_u32(&vm, 0x1008u, 0x11223344u));
+                     CHECK(amivm_m68k_write_u32(&vm, 0x100Cu, 0x55667788u));
+                     vm.exception_internal_state[0] = 0u;
+                     vm.exception_internal_state[1] = 0u;
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                      CHECK(vm.m68k.a[7] == 0x1014u);
+                     CHECK(vm.exception_internal_state[0] == 0x11223344u);
+                     CHECK(vm.exception_internal_state[1] == 0x55667788u);
                  }
                  {
                      CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68030, 0u) == 0);
