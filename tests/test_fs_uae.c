@@ -62,6 +62,10 @@ int main(void)
     amivm_config_init(&config);
     CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
     CHECK(config.accelerator_present);
+    CHECK(config.accelerator_profile != NULL);
+    CHECK(strcmp(config.accelerator_profile->name, "68040") == 0);
+    CHECK(config.accelerator_profile->has_mmu);
+    CHECK(config.accelerator_profile->has_fpu);
     CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
