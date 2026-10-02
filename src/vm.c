@@ -238,6 +238,19 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
+{
+    if (!vm || vm->exception_frame_size == 0u ||
+        vm->exception_frame_word_count == 0u ||
+        vm->exception_frame_size !=
+            (uint8_t)(vm->exception_frame_word_count * 2u))
+        return -1;
+    if (vm->exception_frame_format > 2u ||
+        vm->exception_frame_magic != 0x45584632u)
+        return -1;
+    return 0;
+}
+
 int amivm_m68k_set_exception_frame_type(struct amivm_vm *vm, uint8_t type)
 {
     if (!vm || type > 2u) return -1;
@@ -323,6 +336,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->exception_frame_size = 16u;
     vm->exception_frame_format = 2u;
     vm->exception_frame_word_count = 8u;
+    vm->exception_frame_magic = 0x45584632u;
     if (vm->exception_frame_type == 0u) {
         vm->exception_frame_size = 8u;
         vm->exception_frame_format = 0u;
