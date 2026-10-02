@@ -387,8 +387,10 @@ int main(void)
                     size_t i;
                     for (i = 0u; i < sizeof frame_types / sizeof frame_types[0]; ++i) {
                         uint32_t frame_sp;
+                        uint32_t old_sp = vm.m68k.a[7];
                         CHECK(amivm_m68k_set_exception_frame_type(&vm, frame_types[i]) == 0);
                         CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                        CHECK(vm.m68k.a[7] == old_sp - frame_sizes[i]);
                         CHECK(vm.exception_frame_size == frame_sizes[i]);
                         CHECK(vm.exception_frame_word_count ==
                               (uint8_t)(frame_sizes[i] / 2u));
