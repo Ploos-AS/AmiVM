@@ -347,8 +347,24 @@ int amivm_m68k_execute_one(struct amivm_vm *vm)
         return 0;
     }
     if (op == 0x4e73u) {
+        if (!vm->m68k.supervisor) {
+            vm->m68k.exception = AMIVM_M68K_EXC_PRIVILEGE;
+            return amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_PRIVILEGE);
+        }
         vm->m68k.pc += 2u;
         return amivm_m68k_return_from_interrupt(vm);
+    }
+
+    /* TRAP #n */
+    if ((op & 0xfff0u) == 0x4e40u) {
+        unsigned n = op & 0x0fu;
+        vm->m68k.pc += 2u;
+        vm->pending_exception = (enum amivm_m68k_exception)(32u + n);
+        vm->pending_exception_vector = (uint8_t)(32u + n);
+        vm->m68k.supervisor = true;
+        vm->m68k.sr |= 0x2000u;
+        amivm_vm_account_instruction(vm, 4u);
+        return 0;
     }
 
     vm->m68k.exception = AMIVM_M68K_EXC_ILLEGAL;
