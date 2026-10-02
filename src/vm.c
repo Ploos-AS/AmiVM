@@ -282,6 +282,20 @@ int amivm_m68k_execute_one(struct amivm_vm *vm)
         amivm_vm_account_instruction(vm, 4u);
         return 0;
     }
+
+    /* MOVE.L Dn,Dn: 0x2000 | dst<<9 | src */
+    if ((op & 0xf1c0u) == 0x2000u) {
+        unsigned src = op & 7u;
+        unsigned dst = (op >> 9) & 7u;
+        uint32_t value = vm->m68k.d[src];
+        vm->m68k.d[dst] = value;
+        vm->m68k.pc += 2u;
+        vm->m68k.sr &= (uint16_t)~0x0fu;
+        if (value == 0u) vm->m68k.sr |= 0x04u;
+        if (value & 0x80000000u) vm->m68k.sr |= 0x08u;
+        amivm_vm_account_instruction(vm, 4u);
+        return 0;
+    }
     if (op == 0x4e72u) {
         vm->m68k.pc += 2u;
         vm->m68k.stopped = true;
