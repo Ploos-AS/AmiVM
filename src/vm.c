@@ -63,6 +63,85 @@ static const struct amivm_device_desc *amivm_device_for_address(
     return NULL;
 }
 
+static bool device_aga_read8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                  uint32_t offset, uint8_t *value)
+{
+    (void)state;
+    if (!vm || !value) return false;
+    switch (offset) {
+    case 0u: *value = vm->aga.bplcon0; return true;
+    case 1u: *value = vm->aga.diwstrt; return true;
+    case 2u: *value = vm->aga.diwstop; return true;
+    case 3u: *value = vm->aga.dmacon; return true;
+    default: return false;
+    }
+}
+
+static bool device_aga_write8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                   uint32_t offset, uint8_t value)
+{
+    (void)state;
+    if (!vm) return false;
+    switch (offset) {
+    case 0u: vm->aga.bplcon0 = value; return true;
+    case 1u: vm->aga.diwstrt = value; return true;
+    case 2u: vm->aga.diwstop = value; return true;
+    case 3u: vm->aga.dmacon = value; return true;
+    default: return false;
+    }
+}
+
+static bool device_ide_read8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                  uint32_t offset, uint8_t *value)
+{
+    (void)state;
+    if (!vm || !value) return false;
+    switch (offset) {
+    case 0u: *value = vm->ide.status; return true;
+    case 1u: *value = vm->ide.command; return true;
+    case 2u: *value = (uint8_t)(vm->ide.lba >> 24); return true;
+    case 3u: *value = (uint8_t)(vm->ide.lba >> 16); return true;
+    case 4u: *value = (uint8_t)(vm->ide.lba >> 8); return true;
+    case 5u: *value = (uint8_t)vm->ide.lba; return true;
+    default: return false;
+    }
+}
+
+static bool device_ide_write8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                   uint32_t offset, uint8_t value)
+{
+    (void)state;
+    if (!vm) return false;
+    switch (offset) {
+    case 0u: vm->ide.command = value; return true;
+    case 2u: vm->ide.lba = (vm->ide.lba & 0x00ffffffu) | ((uint32_t)value << 24); return true;
+    case 3u: vm->ide.lba = (vm->ide.lba & 0xff00ffffu) | ((uint32_t)value << 16); return true;
+    case 4u: vm->ide.lba = (vm->ide.lba & 0xffff00ffu) | ((uint32_t)value << 8); return true;
+    case 5u: vm->ide.lba = (vm->ide.lba & 0xffffff00u) | value; return true;
+    default: return false;
+    }
+}
+
+static bool device_zorro_read8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                    uint32_t offset, uint8_t *value)
+{
+    (void)state;
+    (void)offset;
+    if (!vm || !value) return false;
+    *value = vm->zorro.configured;
+    return true;
+}
+
+static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_state *state,
+                                     uint32_t offset, uint8_t value)
+{
+    (void)state;
+    (void)offset;
+    if (!vm) return false;
+    vm->zorro.configured = value;
+    return true;
+}
+
 static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
 {
     size_t page;
