@@ -372,6 +372,11 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
         return -1;
     if (vm->exception_frame_format !=
             (uint8_t)amivm_m68k_frame_layout_format(vm->exception_frame_type) ||
+        vm->exception_frame_vector_offset !=
+            (uint16_t)(vm->exception_entry_vector * 4u) ||
+        vm->exception_format_vector_word !=
+            (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
+                       (vm->exception_entry_vector & 0x0fffu)) ||
         vm->exception_frame_magic != 0x45584632u)
         return -1;
     return 0;
