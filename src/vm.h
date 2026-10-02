@@ -16,6 +16,7 @@
 #define AMIVM_TIMER_BASE    (AMIVM_MMIO_BASE + 0x1000u)
 #define AMIVM_IRQ_BASE      (AMIVM_MMIO_BASE + 0x2000u)
 #define AMIVM_TRACKDISK_BASE (AMIVM_MMIO_BASE + 0x3000u)
+#define AMIVM_TIMER_BASE     (AMIVM_MMIO_BASE + 0x4000u)
 #define AMIVM_MMIO_PAGE_SIZE 0x1000u
 #define AMIVM_RAM_PAGE_SIZE 0x1000u
 
@@ -68,6 +69,14 @@ enum amivm_trackdisk_command {
     AMIVM_TRACKDISK_SEEK = 3
 };
 
+struct amivm_timer {
+    uint64_t counter;
+    uint64_t period;
+    bool enabled;
+    bool irq_enable;
+    bool periodic;
+};
+
 struct amivm_trackdisk {
     uint32_t dma_address;
     unsigned track;
@@ -102,6 +111,7 @@ struct amivm_vm {
     struct amivm_media floppy[AMIVM_MAX_FLOPPY_IMAGES];
     struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
     struct amivm_trackdisk trackdisk;
+    struct amivm_timer timer;
 };
 
 void amivm_config_init(struct amivm_config *config);
@@ -133,6 +143,8 @@ void amivm_irq_reset(struct amivm_vm *vm);
 int amivm_trackdisk_command(struct amivm_vm *vm,
                                enum amivm_trackdisk_command command);
 void amivm_trackdisk_reset(struct amivm_vm *vm);
+void amivm_timer_reset(struct amivm_vm *vm);
+void amivm_timer_tick(struct amivm_vm *vm, uint64_t cycles);
 void amivm_tick(struct amivm_vm *vm, uint64_t ticks);
 void amivm_dump_machine(const struct amivm_vm *vm, FILE *out);
 int amivm_selftest(void);
