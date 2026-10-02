@@ -153,6 +153,7 @@ struct amivm_device_desc {
     uint32_t base;
     uint32_t size;
     unsigned irq_line;
+    unsigned required_machine_flags;
 };
 
 struct amivm_vm {
@@ -195,6 +196,8 @@ int amivm_media_read_sector(struct amivm_media *media, unsigned sector,
 int amivm_media_write_sector(struct amivm_media *media, unsigned sector,
                              const void *buffer, size_t size);
 
+size_t amivm_device_count_for_hardware(
+    const struct amivm_hardware_profile *hardware);
 size_t amivm_device_count(void);
 const struct amivm_device_desc *amivm_device_at(size_t index);
 const struct amivm_device_desc *amivm_find_device(const char *name);
