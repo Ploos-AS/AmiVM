@@ -295,6 +295,12 @@ int main(void)
                     CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
                     CHECK(vector == 27u);
                     CHECK(vm.exception_handler_pc == 0x00123456u);
+                    vm.m68k.pc = 0x00002000u;
+                    vm.m68k.sr = 0x0000u;
+                    vm.m68k.a[7] = AMIVM_RAM_BASE + 0x3000u;
+                    CHECK(amivm_m68k_enter_trap(&vm, 32u) == 0);
+                    CHECK(vm.m68k.pc == 0x00123456u);
+                    CHECK((vm.m68k.sr & 0x2000u) != 0u);
                 }
                 vm.m68k.pc = 0x00abcdefu;
                 vm.m68k.sr = 0x0000u;
