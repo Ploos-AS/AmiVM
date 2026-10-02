@@ -152,6 +152,19 @@ struct amivm_trackdisk {
 
 typedef uint32_t (*amivm_cpu_step_fn)(struct amivm_vm *vm, void *cpu_state);
 
+struct amivm_m68k_registers {
+    uint32_t d[8];
+    uint32_t a[8];
+    uint32_t pc;
+    uint16_t sr;
+};
+
+struct amivm_m68k_step_result {
+    uint32_t cycles;
+    uint8_t exception;
+    bool stopped;
+};
+
 struct amivm_cpu_backend {
     const char *name;
     amivm_cpu_step_fn step;
@@ -230,6 +243,7 @@ struct amivm_vm {
     uint64_t chipset_cycles;
     uint32_t last_instruction_cycles;
     struct amivm_cpu_backend cpu_backend;
+    struct amivm_m68k_registers m68k;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
