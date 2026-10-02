@@ -727,11 +727,16 @@ int main(void)
                                        (unsigned)ql->internal_state_words * 4u <=
                                        (unsigned)ql->format_offset);
                              if (ql->has_fault_address)
+                              CHECK((ql->fault_address_offset & 1u) == 0u);
+                              CHECK((unsigned)ql->fault_address_offset + 4u <= (unsigned)ql->words * 2u);
                                  CHECK((unsigned)ql->format_offset + 2u <=
                                        (unsigned)ql->fault_address_offset ||
                                        (unsigned)ql->fault_address_offset + 4u <=
                                        (unsigned)ql->format_offset);
                              if (ql->has_fault_status)
+                              CHECK((ql->fault_status_offset & 1u) == 0u);
+                              CHECK(ql->fault_status_bytes == 2u || ql->fault_status_bytes == 4u);
+                              CHECK((unsigned)ql->fault_status_offset + (unsigned)ql->fault_status_bytes <= (unsigned)ql->words * 2u);
                                  CHECK((unsigned)ql->format_offset + 2u <=
                                        (unsigned)ql->fault_status_offset ||
                                        (unsigned)ql->fault_status_offset +
