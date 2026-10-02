@@ -106,6 +106,13 @@ int main(void)
             }
             CHECK(vm.aga.beam_h == 20u);
             CHECK(vm.aga.display_active);
+            vm.aga.vblank_irq_enable = true;
+            vm.m68k.sr = 0x2000u;
+            vm.aga.beam_h = 226u;
+            vm.aga.beam_v = 19u;
+            amivm_vm_advance_cycles(&vm, 1u);
+            CHECK(vm.irq_pending);
+            CHECK(vm.irq_level == 3u);
         }
         amivm_vm_destroy(&vm);
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
