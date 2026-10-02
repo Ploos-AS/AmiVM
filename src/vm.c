@@ -246,14 +246,14 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
-        { 4u, false, false, false },
-        { 6u, true,  false, false },
-        { 8u, true,  true,  true  },
-        { 10u, true, false, false },
-        { 16u, true, true,  true  },
-        { 46u, true, true,  true  },
-        { 8u, true, true,  true  },
-        { 30u, true, true,  true  }
+        { 4u,  false, false, false, 0u, 0u, 0u },
+        { 6u,  true,  false, false, 6u, 0u, 0u },
+        { 8u,  true,  true,  true,  6u, 8u, 12u },
+        { 10u, true,  false, false, 6u, 0u, 0u },
+        { 16u, true,  true,  true,  6u, 16u, 0u },
+        { 46u, true,  true,  true,  6u, 16u, 0u },
+        { 8u,  true,  true,  true,  6u, 8u, 12u },
+        { 30u, true, true,  true,  6u, 20u, 10u }
     };
     if (descriptor > AMIVM_FRAME_68040_ACCESS) return NULL;
     return &layouts[descriptor];
@@ -263,7 +263,7 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
 {
     switch (format) {
     case 0x0u: return AMIVM_FRAME_68000_SHORT;
-    case 0x1u: return AMIVM_FRAME_68020_BUS;
+    case 0x2u: return AMIVM_FRAME_68020_BUS;
     case 0x2u: return AMIVM_FRAME_68040_MMU;
     case 0x9u: return AMIVM_FRAME_68030_COPROC_MID;
     case 0xAu: return AMIVM_FRAME_68030_SHORT_BUS;
