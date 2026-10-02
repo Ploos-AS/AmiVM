@@ -330,6 +330,7 @@ struct amivm_vm {
     uint16_t mmu_exception_sr;
     uint32_t exception_fault_address;
     uint32_t exception_fault_status;
+    uint32_t exception_fslw;
     uint32_t exception_frame_sp;
     uint32_t exception_vector_base;
     uint32_t exception_handler_pc;
