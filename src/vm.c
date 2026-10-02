@@ -254,9 +254,14 @@ int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submo
     if (!vm || model > 5u) return -1;
     vm->cpu_model = model;
     vm->cpu_submodel = submodel;
-    if (model <= 1u) vm->exception_frame_class = 0u;
-    else if (model <= 3u) vm->exception_frame_class = 1u;
-    else vm->exception_frame_class = 2u;
+    {
+        const struct amivm_cpu_profile *profile =
+            amivm_cpu_profile_by_id((enum amivm_cpu_profile_id)model);
+        if (!profile || profile->default_exception_frame_class > 2u)
+            return -1;
+        vm->exception_frame_class =
+            (uint8_t)profile->default_exception_frame_class;
+    }
     return 0;
 }
 
