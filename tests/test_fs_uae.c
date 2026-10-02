@@ -63,7 +63,7 @@ int main(void)
             uint8_t v = 0u;
             CHECK(amivm_read8(&vm, vm.devices[4].desc->base + 8u, &v));
             CHECK(v == 0u);
-            aga_advance_beam(&vm, 20u);
+            amivm_vm_advance_cycles(&vm, 20u);
             CHECK(vm.aga.beam_h == 20u);
             CHECK(vm.aga.display_active);
         }
