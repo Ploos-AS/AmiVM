@@ -281,14 +281,14 @@ static uint8_t amivm_m68k_frame_layout_format(uint8_t descriptor)
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
-        { 4u,  false, false, false, 0u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
-        { 6u,  true,  false, false, 6u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
-        { 8u,  true,  true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
-        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false, false, true  },
-        { 16u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 4u, true,  true,  true  },
-        { 46u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 34u, true,  true,  false },
-        { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
-        { 30u, true, true,  false, 6u, 20u, 10u, 2u, 8u, 8u, true,  true,  false  }
+        { 4u,  false, false, false, 0u, 0u, 0u, 0u, 0u, 0u, true,  true,  false, false },
+        { 6u,  true,  false, false, 6u, 0u, 0u, 0u, 0u, 0u, true,  true,  false, false },
+        { 8u,  true,  true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false, false },
+        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false, false, true,  true  },
+        { 16u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 4u, true,  true,  true,  false, true  },
+        { 46u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 34u, true,  true,  false, false, true },
+        { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false, false },
+        { 30u, true, true,  false, 6u, 20u, 10u, 2u, 8u, 8u, true,  true,  false, false, true  }
     };
     if (descriptor > AMIVM_FRAME_68040_ACCESS ||
         descriptor == AMIVM_FRAME_RESERVED_2)
