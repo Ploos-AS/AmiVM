@@ -78,6 +78,15 @@ int main(void)
             CHECK(amivm_cpu_step(&probe, &vm, backend) == 1);
             CHECK(probe.last_step_cycles == expected[i]);
         }
+        for (unsigned i = 0; i < 4u; ++i) {
+            amivm_cpu_set_profile(&probe, amivm_cpu_profile_by_id(ids[i]));
+            probe.pc = AMIVM_RAM_BASE + 0x8100u;
+            put16(vm.ram + 0x8100u, 0x7000u); /* MOVEQ */
+            CHECK(amivm_cpu_step(&probe, &vm, backend) == 1);
+            CHECK(probe.last_step_cycles == (ids[i] == AMIVM_CPU_68020 ? 8u :
+                                             ids[i] == AMIVM_CPU_68030 ? 6u :
+                                             ids[i] == AMIVM_CPU_68040 ? 4u : 2u));
+        }
     }
     CHECK(vm.trackdisk.track == 0u);
     CHECK(vm.trackdisk.head == 0u);
