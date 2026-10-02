@@ -64,6 +64,21 @@ int main(void)
         CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
 
     CHECK(vm.trackdisk.dma_address == AMIVM_RAM_BASE + 0x2000u);
+    {
+        struct amivm_cpu_state probe = cpu;
+        const unsigned expected[] = { 8u, 6u, 4u, 2u };
+        const enum amivm_cpu_profile_id ids[] = {
+            AMIVM_CPU_68020, AMIVM_CPU_68030, AMIVM_CPU_68040, AMIVM_CPU_68060
+        };
+        for (unsigned i = 0; i < 4u; ++i) {
+            amivm_cpu_set_profile(&probe,
+                amivm_cpu_profile_by_id(ids[i]));
+            probe.pc = AMIVM_RAM_BASE + 0x8000u;
+            put16(vm.ram + 0x8000u, 0x4e71u);
+            CHECK(amivm_cpu_step(&probe, &vm, backend) == 1);
+            CHECK(probe.last_step_cycles == expected[i]);
+        }
+    }
     CHECK(vm.trackdisk.track == 0u);
     CHECK(vm.trackdisk.head == 0u);
     CHECK(vm.trackdisk.sector == 0u);
@@ -128,6 +143,6 @@ int main(void)
 
     amivm_vm_destroy(&vm);
     remove("m2_150.adf");
-    puts("AmiVM M2.157 CPU cycle-driven timer qualification qualification: PASS");
+    puts("AmiVM M2.158 profile-dependent CPU cycle qualification qualification: PASS");
     return 0;
 }
