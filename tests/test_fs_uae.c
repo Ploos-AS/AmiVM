@@ -569,6 +569,27 @@ int main(void)
                              CHECK((unsigned)ql->internal_state_offset +
                                    (unsigned)ql->internal_state_words * 4u <=
                                    (unsigned)ql->fault_address_offset);
+                         if (ql->has_format_vector) {
+                             CHECK((unsigned)ql->format_offset + 2u <=
+                                   (unsigned)ql->words * 2u);
+                             if (ql->internal_state_words)
+                                 CHECK((unsigned)ql->format_offset + 2u <=
+                                       (unsigned)ql->internal_state_offset ||
+                                       (unsigned)ql->internal_state_offset +
+                                       (unsigned)ql->internal_state_words * 4u <=
+                                       (unsigned)ql->format_offset);
+                             if (ql->has_fault_address)
+                                 CHECK((unsigned)ql->format_offset + 2u <=
+                                       (unsigned)ql->fault_address_offset ||
+                                       (unsigned)ql->fault_address_offset + 4u <=
+                                       (unsigned)ql->format_offset);
+                             if (ql->has_fault_status)
+                                 CHECK((unsigned)ql->format_offset + 2u <=
+                                       (unsigned)ql->fault_status_offset ||
+                                       (unsigned)ql->fault_status_offset +
+                                       (unsigned)ql->fault_status_bytes <=
+                                       (unsigned)ql->format_offset);
+                         }
                          if (ql->has_fault_status && ql->internal_state_words)
                              CHECK((unsigned)ql->internal_state_offset +
                                    (unsigned)ql->internal_state_words * 4u <=
