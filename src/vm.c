@@ -249,7 +249,7 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         return true;
     }
     if (addr == AMIVM_IRQ_BASE) {
-        *value = (uint8_t)(vm->irq_pending & 0xffu);
+        *value = (uint8_t)(vm->irq.pending & 0xffu);
         return true;
     }
     if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
@@ -292,7 +292,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         return true;
     }
     if (addr == AMIVM_IRQ_BASE + 4u) {
-        vm->irq_pending &= ~(uint32_t)value;
+        vm->irq.pending &= ~(uint32_t)value;
         return true;
     }
     if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
@@ -454,14 +454,14 @@ int amivm_trackdisk_command(struct amivm_vm *vm,
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line)
 {
     if (vm != NULL && line < 32u) {
-        vm->irq_pending |= 1u << line;
+        vm->irq.pending |= 1u << line;
     }
 }
 
 void amivm_clear_irq(struct amivm_vm *vm, unsigned line)
 {
     if (vm != NULL && line < 32u) {
-        vm->irq_pending &= ~(1u << line);
+        vm->irq.pending &= ~(1u << line);
     }
 }
 
