@@ -353,10 +353,20 @@ int main(void)
                     uint32_t access_address =
                         amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &ok);
                     CHECK(ok);
+                    CHECK(access_address == vm.exception_060_access_address);
                     CHECK(access_address == vm.exception_fault_address);
                     CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &ok) ==
                           vm.exception_fslw);
                     CHECK(ok);
+                    {
+                        uint8_t saved = 0u;
+                        CHECK(amivm_read8(&vm, vm.exception_frame_sp + 12u, &saved));
+                        CHECK(amivm_write8(&vm, vm.exception_frame_sp + 12u,
+                                           (uint8_t)(saved ^ 0x01u)));
+                        CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                        CHECK(amivm_write8(&vm, vm.exception_frame_sp + 12u, saved));
+                        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                    }
                 }
                 {
                     uint32_t access_sp = vm.exception_frame_sp;
