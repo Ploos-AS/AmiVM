@@ -334,7 +334,11 @@ int main(void)
                      vm.exception_frame_format = 0x09u;
                      vm.exception_frame_size = 20u;
                      vm.m68k.a[7] = 0x1000u;
-                     CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                     CHECK(amivm_m68k_write_u32(&vm, 0x1000u, vm.m68k.pc) == 1);
+                     CHECK(amivm_write8(&vm, 0x1004u, (uint8_t)(vm.m68k.sr >> 8)));
+                     CHECK(amivm_write8(&vm, 0x1005u, (uint8_t)vm.m68k.sr));
+                     CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                     CHECK(vm.m68k.a[7] == 0x1014u);
                  }
                  {
                      const struct amivm_m68k_frame_layout *l9 =
