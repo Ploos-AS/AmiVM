@@ -423,7 +423,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 
     vm->exception_frame_type = amivm_m68k_exception_frame_descriptor(vm);
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
-    if (!layout) return -1;
+    if (!layout || !layout->implemented) return -1;
     frame_size = (uint8_t)(layout->words * 2u);
 
     sp = vm->m68k.a[7];
@@ -568,7 +568,7 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
         const struct amivm_m68k_frame_layout *layout;
         if (descriptor < 0) return -1;
         layout = amivm_m68k_frame_layout((uint8_t)descriptor);
-        if (!layout) return -1;
+        if (!layout || !layout->implemented) return -1;
         vm->exception_frame_format = format;
         vm->exception_frame_type = (uint8_t)descriptor;
         vm->exception_frame_word_count = layout->words;
