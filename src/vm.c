@@ -284,7 +284,7 @@ const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor
         { 4u,  false, false, false, 0u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
         { 6u,  true,  false, false, 6u, 0u, 0u, 0u, 0u, 0u, true,  true,  false },
         { 8u,  true,  true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
-        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false, false },
+        { 10u, true,  false, false, 6u, 0u, 0u, 0u, 8u, 2u, true,  false, false, true  },
         { 16u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 4u, true,  true,  true  },
         { 46u, true, true,  false, 6u, 16u, 0u, 0u, 8u, 34u, true,  true,  false },
         { 8u,  true, true,  true,  6u, 8u, 12u, 4u, 0u, 0u, true,  true,  false },
