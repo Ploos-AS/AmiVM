@@ -55,6 +55,10 @@ int main(void)
         CHECK(resolved.hardware.has_aga);
         CHECK(resolved.hardware.has_ide);
         CHECK(amivm_device_count_for_hardware(&resolved.hardware) == 6u);
+        CHECK(resolved.device_count == 6u);
+        CHECK(strcmp(resolved.devices[0]->name, "vmserial") == 0);
+        CHECK(strcmp(resolved.devices[4]->name, "aga") == 0);
+        CHECK(strcmp(resolved.devices[5]->name, "ide") == 0);
         CHECK(resolved.cpu_profile != NULL);
         CHECK(resolved.accelerator_profile != NULL);
         CHECK(resolved.chip_ram_size == 2u * 1024u * 1024u);
