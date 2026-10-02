@@ -205,6 +205,22 @@ int main(void)
             CHECK(value == 0x5au);
             CHECK(vm.mmu.enabled);
             vm.mmu.tt0 = 0u;
+            CHECK(amivm_mmu_configure_two_level(&vm, AMIVM_RAM_BASE + 0x3000u, 4u, 4u) == 0);
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3000u, 0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3001u, 0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3002u, 0x80u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x3003u, 0x01u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x4000u, 0x80u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x4001u, 0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x4002u, 0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x4003u, 0x01u));
+            {
+                uint32_t physical = 0u;
+                CHECK(amivm_mmu_translate(&vm, 0x00001234u, false, &physical) == 0);
+                CHECK(physical == 0x80001234u);
+            }
+            vm.mmu.root_index_bits = 0u;
+            vm.mmu.leaf_index_bits = 0u;
             CHECK(amivm_mmu_configure_page_table(&vm, AMIVM_RAM_BASE + 0x1000u, 0xffffffffu, 12u, 4u) == 0);
             CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x1000u + 1u, 0x80u));
             CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x1000u + 2u, 0x10u));
