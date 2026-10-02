@@ -726,7 +726,8 @@ static int amivm_m68k_validate_exception_internal_state(const struct amivm_vm *v
     uint8_t i;
     bool ok;
     uint32_t value;
-    if (!vm || !layout || layout->internal_state_words == 0u) return 0;
+    if (!vm || !layout || !layout->preserves_internal_state ||
+        layout->internal_state_words == 0u) return 0;
     for (i = 0u; i < layout->internal_state_words && i < 34u; ++i) {
         value = amivm_m68k_read_u32((struct amivm_vm *)vm,
                                     sp + layout->internal_state_offset + (uint32_t)i * 4u,
