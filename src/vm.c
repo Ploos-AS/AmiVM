@@ -346,6 +346,8 @@ int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector)
     vm->pending_exception = AMIVM_M68K_EXC_NONE;
     vm->pending_exception_vector = v;
     *vector = v;
+    if (amivm_m68k_enter_exception(vm, v) != 0)
+        return -1;
     return 1;
 }
 
