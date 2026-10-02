@@ -299,6 +299,7 @@ struct amivm_vm {
     struct amivm_mmu_state mmu;
     enum amivm_m68k_exception pending_exception;
     uint8_t pending_exception_vector;
+    uint32_t exception_vector_base;
     uint32_t mmu_fault_address;
     uint32_t mmu_fault_status;
     uint32_t mmu_exception_pc;
@@ -334,6 +335,9 @@ int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm);
 int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm);
+int amivm_m68k_exception_enter(struct amivm_vm *vm,
+                                  uint8_t vector);
+
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
 int amivm_m68k_enter_exception(struct amivm_vm *vm,
                                 enum amivm_m68k_exception exception,
