@@ -288,6 +288,11 @@ int main(void)
                 vm.exception_frame_magic = 0u;
                 CHECK(amivm_m68k_return_from_interrupt(&vm) != 0);
                 CHECK(vm.m68k.stopped);
+                vm.m68k.stopped = false;
+                vm.exception_frame_active = true;
+                vm.m68k.a[7] = vm.exception_frame_sp;
+                CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                CHECK(!vm.m68k.stopped);
                 vm.exception_frame_magic = 0x45584632u;
                 vm.m68k.stopped = false;
                 vm.exception_frame_active = false;
