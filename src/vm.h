@@ -172,6 +172,8 @@ struct amivm_m68k_registers {
     uint32_t a[8];
     uint32_t pc;
     uint16_t sr;
+    bool stopped;
+    uint8_t exception;
 };
 
 struct amivm_m68k_step_result {
@@ -285,6 +287,7 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
+int amivm_m68k_execute_one(struct amivm_vm *vm);
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception);
 
