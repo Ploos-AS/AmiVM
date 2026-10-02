@@ -223,6 +223,8 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
         vm->exception_frame_size != (uint8_t)(layout->words * 2u))
         return -1;
     sp = vm->m68k.a[7];
+    if (vm->exception_frame_sp != 0u && sp != vm->exception_frame_sp)
+        return -1;
     if (!amivm_m68k_read_u32(vm, sp, &pc) ||
         !amivm_read8(vm, sp + 4u, &hi) ||
         !amivm_read8(vm, sp + 5u, &lo))
@@ -230,6 +232,10 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     vm->m68k.pc = pc;
     vm->m68k.sr = (uint16_t)(((uint16_t)hi << 8) | lo);
     if (layout->has_fault_address) {
+        if ((layout->fault_address_offset & 1u) != 0u ||
+            (uint32_t)layout->fault_address_offset + 4u >
+                (uint32_t)layout->words * 2u)
+            return -1;
         if (!amivm_m68k_read_u32(vm, sp + layout->fault_address_offset, &address))
             return -1;
         vm->mmu_fault_address = address;
