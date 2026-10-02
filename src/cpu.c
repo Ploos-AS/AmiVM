@@ -1586,6 +1586,10 @@ int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    const struct amivm_cpu_backend *backend)
 {
+    int rc;
     if (backend == NULL || backend->step == NULL) return -1;
-    return backend->step(cpu, vm);
+    rc = backend->step(cpu, vm);
+    if (rc > 0)
+        amivm_timer_tick(vm, 1u);
+    return rc;
 }
