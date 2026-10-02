@@ -326,6 +326,18 @@ int main(void)
                     CHECK(amivm_m68k_frame_descriptor_for_format(0x02u) == AMIVM_FRAME_68020_BUS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x07u) == AMIVM_FRAME_68040_ACCESS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x04u) == AMIVM_FRAME_68060_ACCESS);
+                 CHECK(amivm_m68k_frame_descriptor_for_format(0x09u) ==
+                       AMIVM_FRAME_68030_COPROC_MID);
+                 {
+                     const struct amivm_m68k_frame_layout *l9 =
+                         amivm_m68k_frame_layout(AMIVM_FRAME_68030_COPROC_MID);
+                     CHECK(l9 != NULL);
+                     CHECK(l9->words == 10u);
+                     CHECK(l9->has_format_vector);
+                     CHECK(l9->format_offset == 6u);
+                     CHECK(!l9->has_fault_address);
+                     CHECK(!l9->has_fault_status);
+                 }
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                     {
                         uint8_t saved = 0u;
