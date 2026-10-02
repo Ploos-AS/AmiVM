@@ -250,6 +250,24 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         *value = (uint8_t)(vm->irq_pending & 0xffu);
         return true;
     }
+    if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_TRACKDISK_BASE;
+        switch (o) {
+        case 0u: *value = (uint8_t)(vm->trackdisk.dma_address >> 24); return true;
+        case 1u: *value = (uint8_t)(vm->trackdisk.dma_address >> 16); return true;
+        case 2u: *value = (uint8_t)(vm->trackdisk.dma_address >> 8); return true;
+        case 3u: *value = (uint8_t)vm->trackdisk.dma_address; return true;
+        case 4u: *value = (uint8_t)vm->trackdisk.track; return true;
+        case 5u: *value = (uint8_t)vm->trackdisk.head; return true;
+        case 6u: *value = (uint8_t)vm->trackdisk.sector; return true;
+        case 7u: *value = (uint8_t)vm->trackdisk.command; return true;
+        case 8u: *value = vm->trackdisk.status; return true;
+        case 9u: *value = vm->trackdisk.error; return true;
+        case 10u: *value = vm->trackdisk.irq_enable ? 1u : 0u; return true;
+        case 11u: *value = vm->trackdisk.write_protected ? 1u : 0u; return true;
+        default: return false;
+        }
+    }
     return false;
 }
 
@@ -274,6 +292,21 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     if (addr == AMIVM_IRQ_BASE + 4u) {
         vm->irq_pending &= ~(uint32_t)value;
         return true;
+    }
+    if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_TRACKDISK_BASE;
+        switch (o) {
+        case 0u: vm->trackdisk.dma_address = (vm->trackdisk.dma_address & 0x00ffffffu) | ((uint32_t)value << 24); return true;
+        case 1u: vm->trackdisk.dma_address = (vm->trackdisk.dma_address & 0xff00ffffu) | ((uint32_t)value << 16); return true;
+        case 2u: vm->trackdisk.dma_address = (vm->trackdisk.dma_address & 0xffff00ffu) | ((uint32_t)value << 8); return true;
+        case 3u: vm->trackdisk.dma_address = (vm->trackdisk.dma_address & 0xffffff00u) | value; return true;
+        case 4u: vm->trackdisk.track = value; return true;
+        case 5u: vm->trackdisk.head = value; return true;
+        case 6u: vm->trackdisk.sector = value; return true;
+        case 7u: return amivm_trackdisk_command(vm, (enum amivm_trackdisk_command)value) == 0;
+        case 10u: vm->trackdisk.irq_enable = value != 0u; return true;
+        default: return false;
+        }
     }
     return false;
 }
