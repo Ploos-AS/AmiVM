@@ -451,8 +451,10 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     amivm_m68k_capture_exception_internal_state(vm, layout);
     vm->exception_fault_stage =
         (vm->exception_frame_type == 2u) ? 1u : 0u;
-    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
+    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS) {
+        vm->exception_060_access_address = vm->exception_fault_address;
         vm->exception_fslw = vm->exception_fault_status;
+    }
 
     if (amivm_m68k_write_exception_internal_state(vm, layout, sp) != 0) {
         vm->exception_stack_fault = true;
@@ -468,6 +470,9 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
             return -1;
         }
     }
+
+    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
+        vm->exception_fault_address = vm->exception_060_access_address;
 
     if (layout->has_fault_address) {
         if (!amivm_m68k_write_u32(vm, sp + layout->fault_address_offset,
