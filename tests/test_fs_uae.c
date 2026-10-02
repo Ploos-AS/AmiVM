@@ -17,6 +17,9 @@ int main(void)
     fputs("cpu=68040\n", f);
     fputs("chip_memory=2\n", f);
     fputs("fast_memory=32\n", f);
+    fputs("accelerator=68030\n", f);
+    fputs("fpu_model=68030\n", f);
+    fputs("mmu_model=68851\n", f);
     fputs("uae_cpu_speed=real\n", f);
     fputs("uae_cpu_multiplier=2\n", f);
     fputs("fullscreen=1\n", f);
@@ -31,6 +34,7 @@ int main(void)
     CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
     CHECK(config.cpu_profile != NULL);
     CHECK(strcmp(config.cpu_profile->name, "68040") == 0);
+    CHECK(config.external_mmu == AMIVM_MMU_68851);
     CHECK(config.ram_size == 34u * 1024u * 1024u);
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
