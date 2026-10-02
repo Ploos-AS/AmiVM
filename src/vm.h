@@ -319,6 +319,8 @@ struct amivm_vm {
     uint8_t cpu_submodel;
     uint8_t exception_frame_class;
     uint16_t exception_frame_vector_offset;
+    uint16_t exception_format_vector_word;
+    uint32_t exception_fault_stage;
     uint32_t exception_frame_magic;
     uint8_t exception_depth;
     bool exception_stack_fault;
