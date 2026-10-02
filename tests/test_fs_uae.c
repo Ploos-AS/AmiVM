@@ -406,6 +406,29 @@ int main(void)
                          CHECK(ql != NULL);
                          CHECK(ql->words > 0u);
                          CHECK((unsigned)ql->words * 2u >= 8u);
+                         if (qualification_frames[qi] == AMIVM_FRAME_68030_SHORT_BUS) {
+                             CHECK(ql->words == 16u);
+                             CHECK(ql->has_fault_address);
+                             CHECK(ql->fault_address_offset == 16u);
+                             CHECK(ql->internal_state_offset == 8u);
+                             CHECK(ql->internal_state_words == 4u);
+                         } else if (qualification_frames[qi] == AMIVM_FRAME_68030_LONG_BUS) {
+                             CHECK(ql->words == 46u);
+                             CHECK(ql->has_fault_address);
+                             CHECK(ql->fault_address_offset == 16u);
+                             CHECK(ql->internal_state_offset == 8u);
+                             CHECK(ql->internal_state_words == 34u);
+                         } else if (qualification_frames[qi] == AMIVM_FRAME_68040_ACCESS) {
+                             CHECK(ql->words == 30u);
+                             CHECK(ql->fault_address_offset == 20u);
+                             CHECK(ql->fault_status_offset == 10u);
+                             CHECK(ql->fault_status_bytes == 0u);
+                         } else if (qualification_frames[qi] == AMIVM_FRAME_68060_ACCESS) {
+                             CHECK(ql->words == 8u);
+                             CHECK(ql->fault_address_offset == 8u);
+                             CHECK(ql->fault_status_offset == 12u);
+                             CHECK(ql->fault_status_bytes == 4u);
+                         }
                      }
                  }
                  CHECK(amivm_m68k_set_cpu_profile(&vm, 4u, 0u) == 0);
