@@ -277,7 +277,11 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
 static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
 {
     if (!vm) return AMIVM_FRAME_68000_SHORT;
-    if (vm->pending_exception == AMIVM_M68K_EXC_MMU_FAULT) {
+    if (vm->cpu_profile.id == AMIVM_CPU_68030 ||
+        vm->cpu_profile.id == AMIVM_CPU_68040 ||
+        vm->cpu_profile.id == AMIVM_CPU_68060 ||
+        vm->cpu_profile.id == AMIVM_CPU_HYPER040 ||
+        vm->cpu_profile.id == AMIVM_CPU_HYPER060) {
         switch (vm->cpu_profile.id) {
         case AMIVM_CPU_68030:
             return AMIVM_FRAME_68030_SHORT_BUS;
