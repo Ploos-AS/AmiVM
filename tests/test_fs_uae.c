@@ -329,6 +329,14 @@ int main(void)
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x09u) ==
                        AMIVM_FRAME_68030_COPROC_MID);
                  {
+                     CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68030, 0u) == 0);
+                     vm.exception_frame_type = AMIVM_FRAME_68030_COPROC_MID;
+                     vm.exception_frame_format = 0x09u;
+                     vm.exception_frame_size = 20u;
+                     vm.m68k.a[7] = 0x1000u;
+                     CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                 }
+                 {
                      const struct amivm_m68k_frame_layout *l9 =
                          amivm_m68k_frame_layout(AMIVM_FRAME_68030_COPROC_MID);
                      CHECK(l9 != NULL);
