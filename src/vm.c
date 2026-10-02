@@ -377,6 +377,20 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
+{
+    uint8_t format;
+    if (!vm) return -1;
+    format = (uint8_t)(fv >> 12);
+    if (format > 2u) return -1;
+    vm->exception_frame_format = format;
+    vm->exception_frame_word_count =
+        (format == 0u) ? 4u : (format == 1u ? 6u : 8u);
+    vm->exception_frame_size = (uint8_t)(vm->exception_frame_word_count * 2u);
+    vm->exception_frame_vector_offset = (uint16_t)(fv & 0x0fffu);
+    return 0;
+}
+
 static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
 {
     uint32_t sp, pc, fault_addr, fault_status;
@@ -396,7 +410,7 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
             !amivm_read8(vm, sp + 7u, &f1))
             return -1;
         fv = (uint16_t)(((uint16_t)f0 << 8) | f1);
-        if (fv != vm->exception_format_vector_word)
+        if (amivm_m68k_decode_frame_format(vm, fv) != 0)
             return -1;
     }
     if (vm->exception_frame_size >= 16u) {
