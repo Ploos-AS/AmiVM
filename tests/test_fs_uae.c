@@ -146,6 +146,16 @@ int main(void)
 
     f = fopen(path, "w");
     CHECK(f != NULL);
+    fputs("amiga_model=A1200\n", f);
+    fputs("accelerator=68040\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
+    CHECK(config.machine == AMIVM_MACHINE_A1200);
+    CHECK(strcmp(config.cpu_profile->name, "68040") == 0);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
     fputs("amiga_model=A500\n", f);
     fclose(f);
     amivm_config_init(&config);
