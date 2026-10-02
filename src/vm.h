@@ -180,6 +180,7 @@ struct amivm_mmu_state {
     uint32_t test_logical_page;
     uint32_t test_physical_page;
     bool test_write_protect;
+    bool mmu_supervisor;
     uint32_t page_table_base;
     uint32_t page_table_mask;
     uint8_t page_shift;
