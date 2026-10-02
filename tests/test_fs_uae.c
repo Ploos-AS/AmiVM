@@ -332,6 +332,12 @@ int main(void)
                     CHECK(vm.exception_internal_state[0] == vm.m68k.pc);
                     CHECK(vm.exception_internal_state[33] == vm.m68k.pc + 132u);
                     CHECK(amivm_m68k_frame_descriptor_for_format(0x02u) == AMIVM_FRAME_68020_BUS);
+                 CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68020, 0u) == 0);
+                 vm.exception_bus_fault_in_progress = false;
+                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68020_BUS);
+                 CHECK(vm.exception_frame_format == 0x02u);
+                 CHECK(vm.exception_frame_size == 12u);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x07u) == AMIVM_FRAME_68040_ACCESS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x04u) == AMIVM_FRAME_68060_ACCESS);
                  CHECK(amivm_m68k_frame_descriptor_for_format(0x09u) ==
