@@ -263,6 +263,8 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     if (exception == AMIVM_M68K_EXC_MMU_FAULT) {
         vm->mmu_exception_pc = vm->m68k.pc;
         vm->mmu_exception_sr = vm->m68k.sr;
+        vm->exception_fault_address = vm->mmu_fault_address;
+        vm->exception_fault_status = vm->mmu_fault_status;
     }
     vm->m68k.sr |= 0x2000u;
     vm->pending_exception = exception;
