@@ -85,6 +85,15 @@ int amivm_config_resolve(const struct amivm_config *config,
     memset(resolved, 0, sizeof *resolved);
     resolved->machine = config->machine;
     resolved->machine_profile = mp;
+    resolved->hardware.machine = mp->id;
+    resolved->hardware.chipset =
+        mp->chipset_generation == 3u ? AMIVM_CHIPSET_AGA :
+        mp->chipset_generation == 2u ? AMIVM_CHIPSET_ECS :
+        mp->chipset_generation == 1u ? AMIVM_CHIPSET_OCS :
+        AMIVM_CHIPSET_NONE;
+    resolved->hardware.has_aga = mp->has_aga;
+    resolved->hardware.has_ide = mp->has_ide;
+    resolved->hardware.has_zorro = mp->has_zorro;
     resolved->cpu_profile = config->cpu_profile;
     resolved->accelerator_profile = config->accelerator_profile;
     resolved->chip_ram_size = config->chip_ram_size;
