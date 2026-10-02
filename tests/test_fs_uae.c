@@ -310,6 +310,10 @@ int main(void)
                     vm.m68k.a[7] = 8u;
                     CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
                     CHECK(vm.exception_stack_fault);
+                    vm.exception_depth = 1u;
+                    CHECK(amivm_m68k_enter_mmu_exception(&vm) != 0);
+                    CHECK(vm.exception_double_fault);
+                    CHECK(vm.exception_halted);
                     vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2000u;
                     vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2400u;
                     vm.mmu_fault_address = AMIVM_RAM_BASE + 0x2345u;
