@@ -256,6 +256,9 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->chip_ram_size = resolved.chip_ram_size;
     vm->fast_ram_size = resolved.fast_ram_size;
     vm->device_count = resolved.device_count;
+    memset(&vm->aga, 0, sizeof vm->aga);
+    memset(&vm->ide, 0, sizeof vm->ide);
+    memset(&vm->zorro, 0, sizeof vm->zorro);
     for (size_t i = 0; i < resolved.device_count; ++i) {
         vm->devices[i].desc = resolved.devices[i];
         vm->devices[i].instantiated = true;
