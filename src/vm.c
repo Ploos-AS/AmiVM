@@ -342,6 +342,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     }
     sp -= 16u;
     if (!amivm_m68k_write_u32(vm, sp, vm->mmu_exception_pc) ||
+        !amivm_write8(vm, sp + 6u, (uint8_t)(vm->exception_format_vector_word >> 8)) ||
+        !amivm_write8(vm, sp + 7u, (uint8_t)vm->exception_format_vector_word) ||
         !amivm_write8(vm, sp + 4u, (uint8_t)(vm->mmu_exception_sr >> 8)) ||
         !amivm_write8(vm, sp + 5u, (uint8_t)vm->mmu_exception_sr) ||
         !amivm_m68k_write_u32(vm, sp + 8u, vm->exception_fault_address) ||
