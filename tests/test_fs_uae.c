@@ -411,6 +411,14 @@ int main(void)
                      vm.exception_internal_state[0] = 0u;
                      vm.exception_internal_state[1] = 0u;
                      CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 vm.exception_frame_vector_offset++;
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                 vm.exception_frame_vector_offset--;
+                 vm.exception_format_vector_word ^= 1u;
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                 vm.exception_format_vector_word ^= 1u;
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  vm.exception_frame_size++;
                  CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
                  vm.exception_frame_size--;
