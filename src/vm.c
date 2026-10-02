@@ -389,6 +389,16 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
     if (!amivm_read8(vm, sp + 4u, &b0) ||
         !amivm_read8(vm, sp + 5u, &b1))
         return -1;
+    if (vm->exception_frame_size >= 8u) {
+        uint8_t f0 = 0u, f1 = 0u;
+        uint16_t fv;
+        if (!amivm_read8(vm, sp + 6u, &f0) ||
+            !amivm_read8(vm, sp + 7u, &f1))
+            return -1;
+        fv = (uint16_t)(((uint16_t)f0 << 8) | f1);
+        if (fv != vm->exception_format_vector_word)
+            return -1;
+    }
     if (vm->exception_frame_size >= 16u) {
         fault_addr = amivm_m68k_read_u32(vm, sp + 8u, &ok);
         if (!ok) return -1;
