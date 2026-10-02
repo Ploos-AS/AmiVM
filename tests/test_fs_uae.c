@@ -341,6 +341,20 @@ int main(void)
                      CHECK(vm.m68k.a[7] == 0x1014u);
                  }
                  {
+                     CHECK(amivm_m68k_set_cpu_profile(&vm, AMIVM_CPU_68030, 0u) == 0);
+                     vm.exception_bus_fault_in_progress = false;
+                     vm.m68k.a[7] = 0x1200u;
+                     vm.m68k.pc = 0x12345678u;
+                     vm.m68k.sr = 0x2700u;
+                     vm.exception_fault_address = 0x00abcdefu;
+                     vm.exception_fault_status = 0x00001234u;
+                     CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                     CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS);
+                     CHECK(vm.exception_frame_format == 0x0Au);
+                     CHECK(vm.exception_frame_size == 32u);
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 }
+                 {
                      const struct amivm_m68k_frame_layout *l9 =
                          amivm_m68k_frame_layout(AMIVM_FRAME_68030_COPROC_MID);
                      CHECK(l9 != NULL);
