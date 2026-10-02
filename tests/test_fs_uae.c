@@ -83,6 +83,25 @@ int main(void)
             CHECK(vm.trackdisk.status == 0x01u);
             CHECK(vm.ram[0x2000u] == 0x44u);
             CHECK(vm.ram[0x2001u] == 0x4fu);
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 0u,
+                               0x10u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 1u,
+                               0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 2u,
+                               0x20u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 3u,
+                               0x00u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 4u, 0u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 5u, 0u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 6u, 0u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 10u, 1u));
+            CHECK(amivm_write8(&vm, AMIVM_TRACKDISK_BASE + 7u,
+                               AMIVM_TRACKDISK_READ_SECTOR));
+            {
+                uint8_t status = 0u;
+                CHECK(amivm_read8(&vm, AMIVM_TRACKDISK_BASE + 8u, &status));
+                CHECK(status == 0x01u);
+            }
             amivm_clear_irq(&vm, 3u);
             vm.trackdisk.track = 80u;
             CHECK(amivm_trackdisk_command(&vm,
@@ -115,6 +134,6 @@ int main(void)
 
     remove(path);
     remove("disk.adf");
-    puts("AmiVM M2.147 TrackDisk DMA/IRQ qualification: PASS");
+    puts("AmiVM M2.148 TrackDisk MMIO register qualification: PASS");
     return 0;
 }
