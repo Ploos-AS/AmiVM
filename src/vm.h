@@ -313,6 +313,8 @@ struct amivm_vm {
     bool exception_entry_active;
     uint8_t exception_frame_size;
     uint8_t exception_frame_type;
+    uint8_t exception_frame_format;
+    uint16_t exception_frame_word_count;
     uint8_t exception_depth;
     bool exception_stack_fault;
     bool exception_double_fault;
