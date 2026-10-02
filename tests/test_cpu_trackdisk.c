@@ -71,6 +71,28 @@ int main(void)
     CHECK(vm.trackdisk.status == 0x01u);
     CHECK((vm.irq_pending & (1u << 3)) != 0u);
     CHECK(vm.ram[0x2000u] == 0x44u);
+
+    /* Autovector level 3 = vector 27; handler contains RTE. */
+    {
+        uint32_t handler = AMIVM_RAM_BASE + 0x3000u;
+        uint32_t vector_addr = cpu.vbr + (27u * 4u);
+        CHECK(amivm_write8(&vm, vector_addr + 0u, (uint8_t)(handler >> 24)));
+        CHECK(amivm_write8(&vm, vector_addr + 1u, (uint8_t)(handler >> 16)));
+        CHECK(amivm_write8(&vm, vector_addr + 2u, (uint8_t)(handler >> 8)));
+        CHECK(amivm_write8(&vm, vector_addr + 3u, (uint8_t)handler));
+        CHECK(amivm_write8(&vm, handler + 0u, 0x4eu));
+        CHECK(amivm_write8(&vm, handler + 1u, 0x73u));
+        cpu.sr = 0x2000u;
+        cpu.pc = AMIVM_RAM_BASE + 0x1000u;
+        vm.irq_pending |= (1u << 3);
+        CHECK(amivm_cpu_step(&cpu, &vm, backend) == 2);
+        CHECK(cpu.pc == handler);
+        CHECK(cpu.last_exception_vector == 27u);
+        CHECK((vm.irq_pending & (1u << 3)) == 0u);
+        CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+        CHECK(cpu.pc == AMIVM_RAM_BASE + 0x1000u);
+        CHECK(cpu.sr == 0x2000u);
+    }
     CHECK(vm.ram[0x2001u] == 0x4fu);
     CHECK(vm.ram[0x2002u] == 0x53u);
 
