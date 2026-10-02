@@ -317,6 +317,12 @@ static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
 {
     if (!vm || model > 5u) return -1;
+    /*
+     * A live exception frame belongs to the current CPU profile.  Do not
+     * retarget the CPU underneath it; callers must RTE/clear the frame first.
+     */
+    if (vm->exception_frame_active || vm->exception_frame_size != 0u)
+        return -1;
     vm->cpu_model = model;
     vm->cpu_submodel = submodel;
     {
