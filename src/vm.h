@@ -220,6 +220,7 @@ struct amivm_vm {
     size_t device_count;
     uint64_t cpu_cycles;
     uint64_t chipset_cycles;
+    uint32_t last_instruction_cycles;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
@@ -229,6 +230,7 @@ const struct amivm_machine_profile *amivm_machine_profile_by_name(
 
 void amivm_aga_advance_beam(struct amivm_vm *vm, unsigned cycles);
 void amivm_vm_advance_cycles(struct amivm_vm *vm, unsigned cycles);
+void amivm_vm_account_instruction(struct amivm_vm *vm, unsigned cycles);
 
 
 int amivm_config_resolve(const struct amivm_config *config,
