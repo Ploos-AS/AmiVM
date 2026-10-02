@@ -394,6 +394,33 @@ int main(void)
                         CHECK(vm.exception_frame_size == frame_sizes[i]);
                         CHECK(vm.exception_frame_word_count ==
                               (uint8_t)(frame_sizes[i] / 2u));
+                        {
+                            bool ok = false;
+                            uint32_t stacked_pc = amivm_m68k_read_u32(&vm, vm.exception_frame_sp, &ok);
+                            uint8_t sr_hi = 0u, sr_lo = 0u;
+                            CHECK(ok);
+                            CHECK(stacked_pc == vm.mmu_exception_pc);
+                            CHECK(amivm_read8(&vm, vm.exception_frame_sp + 4u, &sr_hi));
+                            CHECK(amivm_read8(&vm, vm.exception_frame_sp + 5u, &sr_lo));
+                            CHECK((((uint16_t)sr_hi << 8) | sr_lo) == vm.mmu_exception_sr);
+                            if (frame_types[i] != 0u) {
+                                uint8_t fv_hi = 0u, fv_lo = 0u;
+                                CHECK(amivm_read8(&vm, vm.exception_frame_sp + 6u, &fv_hi));
+                                CHECK(amivm_read8(&vm, vm.exception_frame_sp + 7u, &fv_lo));
+                                CHECK((((uint16_t)fv_hi << 8) | fv_lo) ==
+                                      vm.exception_format_vector_word);
+                            }
+                            if (frame_types[i] == 2u) {
+                                bool fault_ok = false;
+                                uint32_t fault_address =
+                                    amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &fault_ok);
+                                uint32_t fault_status =
+                                    amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &fault_ok);
+                                CHECK(fault_ok);
+                                CHECK(fault_address == vm.exception_fault_address);
+                                CHECK(fault_status == vm.exception_fault_status);
+                            }
+                        }
                         CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                         frame_sp = vm.exception_frame_sp;
                         vm.exception_frame_active = true;
