@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "FAIL: %s\n", #x); return 1; } } while (0)
 
@@ -18,9 +19,20 @@ int main(void)
     struct amivm_vm vm;
     struct amivm_cpu_state cpu;
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
+    FILE *adf;
+    uint8_t sector[512] = { 0 };
     uint32_t pc = AMIVM_RAM_BASE;
 
+    adf = fopen("m2_150.adf", "wb");
+    CHECK(adf != NULL);
+    sector[0] = 0x44u; sector[1] = 0x4fu; sector[2] = 0x53u;
+    CHECK(fwrite(sector, 1, sizeof sector, adf) == sizeof sector);
+    CHECK(fseek(adf, (long)(1760u * 1024u) - 1L, SEEK_SET) == 0);
+    CHECK(fputc(0, adf) != EOF);
+    fclose(adf);
+
     amivm_config_init(&config);
+    config.floppy_images[0] = "m2_150.adf";
     config.ram_size = 2u * 1024u * 1024u;
     config.cpu_profile = amivm_cpu_profile_by_name("68040");
     CHECK(amivm_vm_init(&vm, &config) == 0);
@@ -53,9 +65,14 @@ int main(void)
     CHECK(vm.trackdisk.head == 0u);
     CHECK(vm.trackdisk.sector == 0u);
     CHECK(vm.trackdisk.command == AMIVM_TRACKDISK_READ_SECTOR);
-    CHECK(vm.trackdisk.status == 0x80u || vm.trackdisk.status == 0x01u);
+    CHECK(vm.trackdisk.status == 0x01u);
+    CHECK((vm.irq_pending & (1u << 3)) != 0u);
+    CHECK(vm.ram[0x2000u] == 0x44u);
+    CHECK(vm.ram[0x2001u] == 0x4fu);
+    CHECK(vm.ram[0x2002u] == 0x53u);
 
     amivm_vm_destroy(&vm);
-    puts("AmiVM M2.149 CPU-to-TrackDisk MMIO qualification: PASS");
+    remove("m2_150.adf");
+    puts("AmiVM M2.150 CPU-to-MMIO-to-DMA-to-ADF-to-IRQ qualification: PASS");
     return 0;
 }
