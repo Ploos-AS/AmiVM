@@ -248,9 +248,14 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         *value = (uint8_t)(vm->timer_ticks & 0xffu);
         return true;
     }
-    if (addr == AMIVM_IRQ_BASE) {
-        *value = (uint8_t)(vm->irq.pending & 0xffu);
-        return true;
+    if (in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_IRQ_BASE;
+        switch (o) {
+        case 0u: *value = (uint8_t)(vm->irq.pending & 0xffu); return true;
+        case 1u: *value = (uint8_t)(vm->irq.enabled & 0xffu); return true;
+        case 2u: *value = (uint8_t)(vm->irq.pending & vm->irq.enabled); return true;
+        default: return false;
+        }
     }
     if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
@@ -291,9 +296,14 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         fflush(stdout);
         return true;
     }
-    if (addr == AMIVM_IRQ_BASE + 4u) {
-        vm->irq.pending &= ~(uint32_t)value;
-        return true;
+    if (in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+        uint32_t o = addr - AMIVM_IRQ_BASE;
+        switch (o) {
+        case 0u: return false;
+        case 1u: vm->irq.enabled = (vm->irq.enabled & 0xffffff00u) | value; return true;
+        case 2u: vm->irq.pending &= ~(uint32_t)value; return true;
+        default: return false;
+        }
     }
     if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
