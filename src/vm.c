@@ -173,6 +173,21 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
     vm->irq_pending = true;
 }
 
+int amivm_m68k_exception_enter(struct amivm_vm *vm, uint8_t vector)
+{
+    uint32_t vector_addr;
+    uint32_t handler;
+    bool ok;
+    if (!vm || vector >= 256u) return -1;
+    vector_addr = vm->exception_vector_base + (uint32_t)vector * 4u;
+    handler = amivm_m68k_read_u32(vm, vector_addr, &ok);
+    if (!ok) return -1;
+    vm->m68k.pc = handler;
+    vm->m68k.sr |= 0x2000u;
+    vm->pending_exception_vector = vector;
+    return 0;
+}
+
 int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
 {
     uint32_t sp;
