@@ -257,6 +257,7 @@ void amivm_vm_account_instruction(struct amivm_vm *vm, unsigned cycles);
 int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
                                 const struct amivm_cpu_backend *backend);
 int amivm_vm_step(struct amivm_vm *vm);
+void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr);
 
 
 int amivm_config_resolve(const struct amivm_config *config,
