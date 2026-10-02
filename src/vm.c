@@ -425,17 +425,23 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
 
 static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
 {
+    const struct amivm_m68k_frame_layout *layout;
     uint32_t sp, pc, fault_addr, fault_status;
     uint8_t b0, b1;
     bool ok;
-    if (!vm || vm->exception_frame_size < 8u) return -1;
+    if (!vm) return -1;
+    layout = amivm_m68k_frame_layout(vm->exception_frame_format);
+    if (!layout || vm->exception_frame_size !=
+        (uint8_t)(layout->words * 2u))
+        return -1;
     sp = vm->m68k.a[7];
     pc = amivm_m68k_read_u32(vm, sp, &ok);
     if (!ok) return -1;
     if (!amivm_read8(vm, sp + 4u, &b0) ||
         !amivm_read8(vm, sp + 5u, &b1))
         return -1;
-    if (vm->exception_frame_size >= 8u) {
+
+    if (layout->has_format_vector) {
         uint8_t f0 = 0u, f1 = 0u;
         uint16_t fv;
         if (!amivm_read8(vm, sp + 6u, &f0) ||
@@ -444,8 +450,13 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
         fv = (uint16_t)(((uint16_t)f0 << 8) | f1);
         if (amivm_m68k_decode_frame_format(vm, fv) != 0)
             return -1;
+        layout = amivm_m68k_frame_layout(vm->exception_frame_format);
+        if (!layout || vm->exception_frame_size !=
+            (uint8_t)(layout->words * 2u))
+            return -1;
     }
-    if (vm->exception_frame_size >= 16u) {
+
+    if (layout->has_fault_address && layout->has_fault_status) {
         fault_addr = amivm_m68k_read_u32(vm, sp + 8u, &ok);
         if (!ok) return -1;
         fault_status = amivm_m68k_read_u32(vm, sp + 12u, &ok);
