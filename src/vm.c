@@ -4,12 +4,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define AMIVM_DEVF_AGA  0x01u
+#define AMIVM_DEVF_IDE  0x02u
+#define AMIVM_DEVF_ZORRO 0x04u
+
 static const struct amivm_device_desc amivm_devices[] = {
-    {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u},
-    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 2u},
-    {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u},
-    {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u},
-    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 6u},
+    {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u, 0u},
+    {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u, 0u},
+    {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u, 0u},
+    {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 6u, 0u},
+    {"aga", AMIVM_MMIO_BASE + 0x5000u, AMIVM_MMIO_PAGE_SIZE, 7u, AMIVM_DEVF_AGA},
+    {"ide", AMIVM_MMIO_BASE + 0x6000u, AMIVM_MMIO_PAGE_SIZE, 8u, AMIVM_DEVF_IDE},
+    {"zorro", AMIVM_MMIO_BASE + 0x7000u, AMIVM_MMIO_PAGE_SIZE, 9u, AMIVM_DEVF_ZORRO},
 };
 
 static bool in_range(uint32_t addr, uint32_t base, size_t size)
@@ -277,6 +283,22 @@ int amivm_vm_load_rom(struct amivm_vm *vm, const char *path)
     fclose(fp);
     vm->rom_used = n;
     return 0;
+}
+
+size_t amivm_device_count_for_hardware(
+    const struct amivm_hardware_profile *hardware)
+{
+    size_t n = 0u;
+    size_t i;
+    if (!hardware) return 0u;
+    for (i = 0; i < sizeof amivm_devices / sizeof amivm_devices[0]; ++i) {
+        unsigned f = amivm_devices[i].required_machine_flags;
+        if ((f & AMIVM_DEVF_AGA) && !hardware->has_aga) continue;
+        if ((f & AMIVM_DEVF_IDE) && !hardware->has_ide) continue;
+        if ((f & AMIVM_DEVF_ZORRO) && !hardware->has_zorro) continue;
+        ++n;
+    }
+    return n;
 }
 
 size_t amivm_device_count(void)
