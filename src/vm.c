@@ -237,14 +237,20 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     uint32_t sp;
     if (!vm) return -1;
     sp = vm->m68k.a[7];
-    if (sp < 16u) return -1;
+    vm->exception_stack_fault = false;
+    if (sp < 16u) {
+        vm->exception_stack_fault = true;
+        return -1;
+    }
     sp -= 16u;
     if (!amivm_m68k_write_u32(vm, sp, vm->mmu_exception_pc) ||
         !amivm_write8(vm, sp + 4u, (uint8_t)(vm->mmu_exception_sr >> 8)) ||
         !amivm_write8(vm, sp + 5u, (uint8_t)vm->mmu_exception_sr) ||
         !amivm_m68k_write_u32(vm, sp + 8u, vm->exception_fault_address) ||
-        !amivm_m68k_write_u32(vm, sp + 12u, vm->exception_fault_status))
+        !amivm_m68k_write_u32(vm, sp + 12u, vm->exception_fault_status)) {
+        vm->exception_stack_fault = true;
         return -1;
+    }
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
     vm->exception_frame_size = 16u;
