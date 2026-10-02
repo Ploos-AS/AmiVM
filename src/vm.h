@@ -298,6 +298,8 @@ struct amivm_vm {
     struct amivm_mmu_state mmu;
     enum amivm_m68k_exception pending_exception;
     uint8_t pending_exception_vector;
+    uint32_t mmu_fault_address;
+    uint32_t mmu_fault_status;
     uint8_t irq_level;
     bool irq_pending;
     bool irq_in_service;
