@@ -69,7 +69,7 @@ int main(void)
     CHECK(vm.trackdisk.sector == 0u);
     CHECK(vm.trackdisk.command == AMIVM_TRACKDISK_READ_SECTOR);
     CHECK(vm.trackdisk.status == 0x01u);
-    CHECK((vm.irq_pending & (1u << 3)) != 0u);
+    CHECK((vm.irq.pending & (1u << 3)) != 0u);
     CHECK(vm.ram[0x2000u] == 0x44u);
 
     /* Autovector level 3 = vector 27; handler contains RTE. */
@@ -84,11 +84,11 @@ int main(void)
         CHECK(amivm_write8(&vm, handler + 1u, 0x73u));
         cpu.sr = 0x2000u;
         cpu.pc = AMIVM_RAM_BASE + 0x1000u;
-        vm.irq_pending |= (1u << 3);
+        vm.irq.pending |= (1u << 3);
         CHECK(amivm_cpu_step(&cpu, &vm, backend) == 2);
         CHECK(cpu.pc == handler);
         CHECK(cpu.last_exception_vector == 27u);
-        CHECK((vm.irq_pending & (1u << 3)) == 0u);
+        CHECK((vm.irq.pending & (1u << 3)) == 0u);
         CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
         CHECK(cpu.pc == AMIVM_RAM_BASE + 0x1000u);
         CHECK(cpu.sr == 0x2000u);
