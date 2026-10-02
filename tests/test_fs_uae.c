@@ -52,7 +52,11 @@ int main(void)
         CHECK(strcmp(vm.devices[4].desc->name, "aga") == 0);
         CHECK(strcmp(vm.devices[5].desc->name, "ide") == 0);
         CHECK(amivm_write8(&vm, vm.devices[4].desc->base, 0x12u));
+        CHECK(amivm_write8(&vm, vm.devices[4].desc->base + 1u, 0x34u));
         { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[4].desc->base, &v)); CHECK(v == 0x12u); }
+        { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[4].desc->base + 1u, &v)); CHECK(v == 0x34u); }
+        CHECK(amivm_write8(&vm, vm.devices[4].desc->base + 6u, 0x01u));
+        { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[4].desc->base + 7u, &v)); CHECK(v == 0x01u); }
         CHECK(amivm_write8(&vm, vm.devices[5].desc->base + 1u, 0x34u));
         { uint8_t v = 0u; CHECK(amivm_read8(&vm, vm.devices[5].desc->base + 1u, &v)); CHECK(v == 0x34u); }
         amivm_vm_destroy(&vm);
