@@ -35,16 +35,22 @@ static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
 }
 
 static const struct amivm_machine_profile machine_profiles[] = {
-    { AMIVM_MACHINE_GENERIC, "generic", 0u, 0u, false, false, false },
-    { AMIVM_MACHINE_A1200, "A1200", 3u, 2u * 1024u * 1024u, true, true, false },
-    { AMIVM_MACHINE_A3000, "A3000", 2u, 2u * 1024u * 1024u, false, false, true },
-    { AMIVM_MACHINE_A4000, "A4000", 3u, 2u * 1024u * 1024u, true, true, true },
-    { AMIVM_MACHINE_A500, "A500", 1u, 512u * 1024u, false, false, false },
-    { AMIVM_MACHINE_A500PLUS, "A500+", 1u, 1u * 1024u * 1024u, false, false, false },
-    { AMIVM_MACHINE_A600, "A600", 1u, 1u * 1024u * 1024u, false, true, false },
-    { AMIVM_MACHINE_A1000, "A1000", 1u, 256u * 1024u, false, false, false },
-    { AMIVM_MACHINE_A2000, "A2000", 1u, 1u * 1024u * 1024u, false, false, true }
+    { AMIVM_MACHINE_GENERIC, "generic", 0u, 0u, false, false, 0u },
+    { AMIVM_MACHINE_A1200, "A1200", 3u, 2u * 1024u * 1024u, true, true, 2u * 1024u * 1024u },
+    { AMIVM_MACHINE_A3000, "A3000", 2u, 2u * 1024u * 1024u, false, false, 2u * 1024u * 1024u },
+    { AMIVM_MACHINE_A4000, "A4000", 3u, 2u * 1024u * 1024u, true, true, 2u * 1024u * 1024u },
+    { AMIVM_MACHINE_A500, "A500", 1u, 512u * 1024u, false, false, 512u * 1024u },
+    { AMIVM_MACHINE_A500PLUS, "A500+", 1u, 1u * 1024u * 1024u, false, false, 1u * 1024u * 1024u },
+    { AMIVM_MACHINE_A600, "A600", 1u, 1u * 1024u * 1024u, false, true, 1u * 1024u * 1024u },
+    { AMIVM_MACHINE_A1000, "A1000", 1u, 256u * 1024u, false, false, 256u * 1024u },
+    { AMIVM_MACHINE_A2000, "A2000", 1u, 1u * 1024u * 1024u, false, false, 1u * 1024u * 1024u }
 };
+
+static bool machine_memory_valid(enum amivm_machine_model id, size_t chip_ram)
+{
+    const struct amivm_machine_profile *p = amivm_machine_profile_by_id(id);
+    return p != NULL && chip_ram <= p->max_chip_ram;
+}
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
     enum amivm_machine_model id)
