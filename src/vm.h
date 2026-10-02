@@ -288,6 +288,8 @@ int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
+uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok);
+bool amivm_m68k_write_u32(struct amivm_vm *vm, uint32_t addr, uint32_t value);
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
                                       enum amivm_m68k_exception exception);
 
