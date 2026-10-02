@@ -234,12 +234,21 @@ int main(void)
             vm.mmu.test_page_valid = true;
             vm.mmu.test_logical_page = AMIVM_RAM_BASE + 0x4000u;
             vm.mmu.test_physical_page = AMIVM_RAM_BASE + 0x8000u;
+            vm.mmu.mmu_supervisor = true;
             vm.mmu.test_write_protect = false;
             {
                 uint32_t physical = 0u;
                 CHECK(amivm_mmu_translate(&vm, AMIVM_RAM_BASE + 0x4567u, false, &physical) == 0);
                 CHECK(physical == AMIVM_RAM_BASE + 0x8567u);
             }
+            vm.mmu.mmu_supervisor = false;
+            vm.mmu.test_write_protect = false;
+            {
+                uint32_t physical = 0u;
+                CHECK(amivm_mmu_translate(&vm, AMIVM_RAM_BASE + 0x4567u, false, &physical) != 0);
+                CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+            }
+            vm.mmu.mmu_supervisor = true;
             vm.mmu.test_write_protect = true;
             {
                 uint32_t physical = 0u;
