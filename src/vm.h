@@ -166,6 +166,7 @@ struct amivm_m68k_frame_layout {
     bool implemented;
     bool semantically_decoded;
     bool has_030_short_state;
+    bool has_opaque_coproc_state;
 };
 
 enum amivm_m68k_frame_descriptor {
