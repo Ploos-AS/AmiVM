@@ -311,6 +311,13 @@ int main(void)
                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_LONG_BUS);
                 CHECK(vm.exception_frame_format == 0x0Bu);
                 CHECK(vm.exception_frame_size == 92u);
+                {
+                    const struct amivm_m68k_frame_layout *long_layout =
+                        amivm_m68k_frame_layout(AMIVM_FRAME_68030_LONG_BUS);
+                    CHECK(long_layout != NULL);
+                    CHECK(long_layout->internal_state_offset == 8u);
+                    CHECK(long_layout->internal_state_words == 34u);
+                }
                 vm.exception_bus_fault_in_progress = false;
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 3u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 1u);
