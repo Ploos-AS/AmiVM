@@ -135,6 +135,8 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->memory_write_generation = 1u;
+    amivm_irq_reset(vm);
+    for (unsigned i = 0; i < AMIVM_MAX_IRQ_LINES; ++i) vm->irq.priority[i] = (uint8_t)i;
     amivm_trackdisk_reset(vm);
     for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
         if (config->floppy_images[i] &&
