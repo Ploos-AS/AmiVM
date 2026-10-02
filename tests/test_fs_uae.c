@@ -54,6 +54,25 @@ int main(void)
         CHECK(amivm_vm_init(&vm, &config) == 0);
         CHECK(amivm_media_read(&vm.floppy[0], 0u, readback, sizeof readback) == 0);
         CHECK(readback[0] == 0x44u && readback[1] == 0x4fu && readback[2] == 0x53u);
+        CHECK(vm.floppy[0].tracks == 80u);
+        CHECK(vm.floppy[0].heads == 2u);
+        CHECK(vm.floppy[0].sectors_per_track == 11u);
+        CHECK(vm.floppy[0].sector_size == 512u);
+        {
+            uint8_t sector[512] = { 0 };
+            CHECK(amivm_media_seek(&vm.floppy[0], 0u, 0u) == 0);
+            CHECK(amivm_media_read_sector(&vm.floppy[0], 0u, sector,
+                                          sizeof sector) == 0);
+            CHECK(sector[0] == 0x44u && sector[1] == 0x4fu &&
+                  sector[2] == 0x53u);
+            CHECK(amivm_media_seek(&vm.floppy[0], 79u, 1u) == 0);
+            CHECK(amivm_media_read_sector(&vm.floppy[0], 10u, sector,
+                                          sizeof sector) == 0);
+            CHECK(amivm_media_seek(&vm.floppy[0], 80u, 0u) != 0);
+            CHECK(amivm_media_seek(&vm.floppy[0], 0u, 2u) != 0);
+            CHECK(amivm_media_write_sector(&vm.floppy[0], 0u, sector,
+                                           sizeof sector) != 0);
+        }
         amivm_vm_destroy(&vm);
     }
 
@@ -79,6 +98,6 @@ int main(void)
 
     remove(path);
     remove("disk.adf");
-    puts("AmiVM M2.145 ADF media backend qualification: PASS");
+    puts("AmiVM M2.146 ADF track/sector backend qualification: PASS");
     return 0;
 }
