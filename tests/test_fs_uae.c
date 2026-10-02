@@ -45,6 +45,17 @@ int main(void)
         fclose(adf);
     }
     CHECK(strcmp(config.hard_drives[0], "DH0") == 0);
+    {
+        struct amivm_vm vm;
+        uint8_t readback[3] = { 0 };
+        amivm_config_init(&config);
+        config.cpu_profile = amivm_cpu_profile_by_name("68040");
+        config.floppy_images[0] = "disk.adf";
+        CHECK(amivm_vm_init(&vm, &config) == 0);
+        CHECK(amivm_media_read(&vm.floppy[0], 0u, readback, sizeof readback) == 0);
+        CHECK(readback[0] == 0x44u && readback[1] == 0x4fu && readback[2] == 0x53u);
+        amivm_vm_destroy(&vm);
+    }
 
     f = fopen(path, "w");
     CHECK(f != NULL);
