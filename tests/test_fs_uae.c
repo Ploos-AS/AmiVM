@@ -50,6 +50,10 @@ int main(void)
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
         CHECK(resolved.machine == AMIVM_MACHINE_A1200);
         CHECK(resolved.machine_profile != NULL);
+        CHECK(resolved.hardware.machine == AMIVM_MACHINE_A1200);
+        CHECK(resolved.hardware.chipset == AMIVM_CHIPSET_AGA);
+        CHECK(resolved.hardware.has_aga);
+        CHECK(resolved.hardware.has_ide);
         CHECK(resolved.cpu_profile != NULL);
         CHECK(resolved.accelerator_profile != NULL);
         CHECK(resolved.chip_ram_size == 2u * 1024u * 1024u);
