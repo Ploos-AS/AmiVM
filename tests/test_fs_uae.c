@@ -323,7 +323,10 @@ int main(void)
                     CHECK(long_layout->internal_state_words == 34u);
                     CHECK(vm.exception_internal_state[0] == vm.m68k.pc);
                     CHECK(vm.exception_internal_state[33] == vm.m68k.pc + 132u);
-                    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                    CHECK(amivm_m68k_frame_descriptor_for_format(0x02u) == AMIVM_FRAME_68020_BUS);
+                 CHECK(amivm_m68k_frame_descriptor_for_format(0x07u) == AMIVM_FRAME_68040_ACCESS);
+                 CHECK(amivm_m68k_frame_descriptor_for_format(0x04u) == AMIVM_FRAME_68060_ACCESS);
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                     {
                         uint8_t saved = 0u;
                         CHECK(amivm_read8(&vm, vm.exception_frame_sp + 8u, &saved));
