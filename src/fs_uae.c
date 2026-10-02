@@ -168,6 +168,10 @@ static int set_option(const char *key, const char *value,
                 amivm_cpu_profile_by_name(profile_name);
             if (p == NULL) { ++r->unsupported; return 1; }
             config->cpu_profile = p;
+            config->accelerator_present =
+                (strcmp(profile_name, "68030") == 0 ||
+                 strcmp(profile_name, "68040") == 0 ||
+                 strcmp(profile_name, "68060") == 0);
         } else if (profile_name == NULL) {
             ++r->unsupported;
             return 0;
