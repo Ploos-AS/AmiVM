@@ -307,6 +307,10 @@ int main(void)
                     CHECK((vm.m68k.sr & 0x2000u) != 0u);
                     CHECK(vm.exception_frame_sp == vm.m68k.a[7]);
                     CHECK(vm.exception_depth == 1u);
+                    vm.m68k.a[7] = 8u;
+                    CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
+                    CHECK(vm.exception_stack_fault);
+                    vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2000u;
                     vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2400u;
                     vm.mmu_fault_address = AMIVM_RAM_BASE + 0x2345u;
                     vm.mmu_fault_status = 0x12u;
