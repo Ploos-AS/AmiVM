@@ -178,7 +178,13 @@ static int amivm_m68k_enter_mmu_exception(struct amivm_vm *vm)
     uint32_t handler;
     bool ok;
     if (!vm || vm->exception_vector_base == 0u) return -1;
-    if (amivm_m68k_stack_mmu_exception(vm) != 0) return -1;
+    if (amivm_m68k_stack_mmu_exception(vm) != 0) {
+        if (vm->exception_depth != 0u) {
+            vm->exception_double_fault = true;
+            vm->exception_halted = true;
+        }
+        return -1;
+    }
     handler = amivm_m68k_read_u32(vm,
                                   vm->exception_vector_base + 56u * 4u, &ok);
     if (!ok) return -1;
