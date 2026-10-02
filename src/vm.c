@@ -238,6 +238,13 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+int amivm_m68k_set_exception_frame_type(struct amivm_vm *vm, uint8_t type)
+{
+    if (!vm || type > 2u) return -1;
+    vm->exception_frame_type = type;
+    return 0;
+}
+
 int amivm_m68k_enter_trap(struct amivm_vm *vm, uint8_t vector)
 {
     if (!vm || vector < 32u || vector > 47u) return -1;
@@ -314,6 +321,10 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
     vm->exception_frame_size = 16u;
+    if (vm->exception_frame_type == 0u)
+        vm->exception_frame_size = 8u;
+    else if (vm->exception_frame_type == 1u)
+        vm->exception_frame_size = 12u;
     if (vm->exception_depth < 255u)
         vm->exception_depth++;
     return 0;
