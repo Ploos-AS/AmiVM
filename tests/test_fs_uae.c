@@ -303,6 +303,9 @@ int main(void)
                 CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
                 CHECK(vm.m68k.pc == 0x00abcdefu);
                 CHECK(vm.m68k.sr == 0x2000u);
+                CHECK(vm.m68k.a[7] == vm.exception_frame_sp + 0u || vm.exception_frame_sp == 0u);
+                CHECK(!vm.exception_frame_active);
+                CHECK(vm.exception_frame_size == 0u);
                 vm.exception_frame_magic = 0x45584632u;
                 vm.m68k.stopped = false;
                 vm.exception_frame_active = false;
