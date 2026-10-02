@@ -274,6 +274,26 @@ static int amivm_m68k_frame_descriptor_for_format(uint8_t format)
     }
 }
 
+static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
+{
+    if (!vm) return AMIVM_FRAME_68000_SHORT;
+    if (vm->pending_exception == AMIVM_M68K_EXC_MMU_FAULT) {
+        switch (vm->cpu_profile.id) {
+        case AMIVM_CPU_68030:
+            return AMIVM_FRAME_68030_SHORT_BUS;
+        case AMIVM_CPU_68040:
+        case AMIVM_CPU_HYPER040:
+            return AMIVM_FRAME_68040_ACCESS;
+        case AMIVM_CPU_68060:
+        case AMIVM_CPU_HYPER060:
+            return AMIVM_FRAME_68060_ACCESS;
+        default:
+            break;
+        }
+    }
+    return (uint8_t)vm->exception_frame_class;
+}
+
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
 {
     if (!vm || model > 5u) return -1;
@@ -383,7 +403,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 
     if (!vm) return -1;
 
-    layout = amivm_m68k_frame_layout(vm->exception_frame_class);
+    vm->exception_frame_type = amivm_m68k_exception_frame_descriptor(vm);
+    layout = amivm_m68k_frame_layout(vm->exception_frame_type);
     if (!layout) return -1;
     frame_size = (uint8_t)(layout->words * 2u);
 
@@ -404,7 +425,10 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
-    vm->exception_frame_format = vm->exception_frame_class;
+    vm->exception_frame_format = (vm->exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS) ? 0xAu :
+        (vm->exception_frame_type == AMIVM_FRAME_68040_ACCESS) ? 0x7u :
+        (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS) ? 0x4u :
+        vm->exception_frame_class;
     vm->exception_frame_word_count = layout->words;
     vm->exception_frame_size = frame_size;
     vm->exception_frame_magic = 0x45584632u;
