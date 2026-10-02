@@ -414,6 +414,8 @@ int main(void)
                                 bool fault_ok = false;
                                 uint32_t fault_address =
                                     amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 8u, &fault_ok);
+                                CHECK(fault_ok);
+                                fault_ok = false;
                                 uint32_t fault_status =
                                     amivm_m68k_read_u32(&vm, vm.exception_frame_sp + 12u, &fault_ok);
                                 CHECK(fault_ok);
