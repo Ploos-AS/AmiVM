@@ -364,14 +364,14 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
     const struct amivm_m68k_frame_layout *layout;
     if (!vm) return -1;
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
-    if (!layout || vm->exception_frame_size == 0u ||
+    if (!layout || !layout->implemented ||
+        vm->exception_frame_size == 0u ||
         vm->exception_frame_word_count == 0u ||
-        vm->exception_frame_size !=
-            (uint8_t)(vm->exception_frame_word_count * 2u))
+        vm->exception_frame_word_count != layout->words ||
+        vm->exception_frame_size != (uint8_t)(layout->words * 2u))
         return -1;
     if (vm->exception_frame_format !=
             (uint8_t)amivm_m68k_frame_layout_format(vm->exception_frame_type) ||
-        vm->exception_frame_word_count != layout->words ||
         vm->exception_frame_magic != 0x45584632u)
         return -1;
     return 0;
