@@ -443,6 +443,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->exception_format_vector_word =
         (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
                    (vm->exception_entry_vector & 0x0fffu));
+    amivm_m68k_capture_exception_internal_state(vm, layout);
     vm->exception_fault_stage =
         (vm->exception_frame_type == 2u) ? 1u : 0u;
 
@@ -491,6 +492,16 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     if (vm->exception_depth < 255u)
         vm->exception_depth++;
     return 0;
+}
+
+static void amivm_m68k_capture_exception_internal_state(struct amivm_vm *vm,
+                                                               const struct amivm_m68k_frame_layout *layout)
+{
+    uint8_t i;
+    if (!vm || !layout || layout->internal_state_words == 0u) return;
+    for (i = 0u; i < layout->internal_state_words && i < 34u; ++i)
+        vm->exception_internal_state[i] =
+            (uint32_t)(vm->m68k.pc + (uint32_t)i * 4u);
 }
 
 static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
