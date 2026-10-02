@@ -121,6 +121,17 @@ int main(void)
                 CHECK(vm.irq_in_service);
                 CHECK(((vm.m68k.sr >> 8) & 7u) == 3u);
                 CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 0);
+                vm.m68k.pc = 0x00123456u;
+                vm.m68k.sr = 0x2000u;
+                amivm_m68k_request_irq(&vm, 3u);
+                CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+                CHECK(vm.irq_saved_pc == 0x00123456u);
+                CHECK(vm.irq_saved_sr == 0x2000u);
+                vm.m68k.pc = 0x00abcdefu;
+                CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                CHECK(vm.m68k.pc == 0x00123456u);
+                CHECK(vm.m68k.sr == 0x2000u);
+                CHECK(!vm.irq_in_service);
             }
         }
         amivm_vm_destroy(&vm);
