@@ -318,6 +318,8 @@ int amivm_m68k_enter_exception(struct amivm_vm *vm,
 int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor);
 bool amivm_m68k_is_supervisor(const struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
+int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
+                              uint32_t logical, bool write);
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical);
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok);
