@@ -51,6 +51,7 @@ struct amivm_machine_profile {
     bool has_aga;
     bool has_ide;
     bool has_zorro;
+    size_t max_chip_ram;
 };
 
 struct amivm_config {
