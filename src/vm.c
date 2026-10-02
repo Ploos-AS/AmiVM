@@ -306,7 +306,10 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
         case 5u: vm->trackdisk.head = value; return true;
         case 6u: vm->trackdisk.sector = value; return true;
         case 7u: return amivm_trackdisk_command(vm, (enum amivm_trackdisk_command)value) == 0;
-        case 10u: vm->trackdisk.irq_enable = value != 0u; return true;
+        case 10u:
+            vm->trackdisk.irq_enable = value != 0u;
+            amivm_irq_enable(vm, 3u, vm->trackdisk.irq_enable);
+            return true;
         default: return false;
         }
     }
