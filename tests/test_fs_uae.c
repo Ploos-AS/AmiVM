@@ -46,6 +46,23 @@ int main(void)
     amivm_config_init(&config);
     CHECK(amivm_fsuae_load_config(path, &config, &report, false) != 0);
     CHECK(report.unsupported > 0u);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
+    fputs("amiga_model=A1200\nchip_memory=2M\nfast_memory=32M\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) != 0);
+    CHECK(report.unsupported > 0u);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
+    fputs("amiga_model=A1200\naccelerator=68040\nchip_memory=2M\nfast_memory=32M\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) == 0);
+    CHECK(config.accelerator_present);
+    CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
     CHECK(report.unsupported == 1u);
