@@ -173,6 +173,21 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
     vm->irq_pending = true;
 }
 
+static int amivm_m68k_enter_mmu_exception(struct amivm_vm *vm)
+{
+    uint32_t handler;
+    bool ok;
+    if (!vm || vm->exception_vector_base == 0u) return -1;
+    if (amivm_m68k_stack_mmu_exception(vm) != 0) return -1;
+    handler = amivm_m68k_read_u32(vm,
+                                  vm->exception_vector_base + 56u * 4u, &ok);
+    if (!ok) return -1;
+    vm->m68k.sr |= 0x2000u;
+    vm->pending_exception_vector = 56u;
+    vm->m68k.pc = handler;
+    return 0;
+}
+
 int amivm_m68k_exception_enter(struct amivm_vm *vm, uint8_t vector)
 {
     uint32_t vector_addr;
@@ -1019,10 +1034,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
     if (amivm_mmu_translate(vm, addr, false, &physical) != 0) {
         vm->m68k.exception = AMIVM_M68K_EXC_MMU_FAULT;
         (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_MMU_FAULT);
-        if (vm->exception_vector_base != 0u) {
-            (void)amivm_m68k_stack_mmu_exception(vm);
-            (void)amivm_m68k_exception_enter(vm, 56u);
-        }
+        if (vm->exception_vector_base != 0u)
+            (void)amivm_m68k_enter_mmu_exception(vm);
         if (vm->exception_vector_base != 0u) {
             (void)amivm_m68k_stack_mmu_exception(vm);
             (void)amivm_m68k_exception_enter(vm, 56u);
