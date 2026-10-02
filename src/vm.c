@@ -354,6 +354,11 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
 {
     if (!vm) return -1;
+    if (vm->exception_frame_active &&
+        amivm_m68k_validate_exception_frame(vm) != 0) {
+        vm->m68k.stopped = true;
+        return -1;
+    }
     if (vm->irq_in_service) {
         vm->m68k.pc = vm->irq_saved_pc;
         vm->m68k.sr = vm->irq_saved_sr;
