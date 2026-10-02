@@ -260,6 +260,8 @@ int main(void)
                 uint8_t value = 0u;
                 CHECK(!amivm_read8(&vm, AMIVM_RAM_BASE + 0x200u, &value));
                 CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_INVALID);
+                CHECK(vm.mmu_fault_address == AMIVM_RAM_BASE + 0x200u);
+                CHECK((vm.mmu_fault_status & 16u) != 0u);
                 CHECK(vm.m68k.exception == AMIVM_M68K_EXC_BUS_ERROR);
             }
             vm.mmu.enabled = false;
