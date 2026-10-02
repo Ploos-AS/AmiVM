@@ -345,7 +345,7 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
         vm->exception_frame_size !=
             (uint8_t)(vm->exception_frame_word_count * 2u))
         return -1;
-    if (vm->exception_frame_format > 2u ||
+    if (vm->exception_frame_format > 0x0Bu ||
         vm->exception_frame_word_count != layout->words ||
         vm->exception_frame_magic != 0x45584632u)
         return -1;
