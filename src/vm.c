@@ -330,6 +330,9 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     vm->mmu.last_logical = logical;
     vm->mmu.last_write = write;
     vm->mmu.last_fault = AMIVM_MMU_FAULT_NONE;
+    vm->mmu_fault_address = logical;
+    vm->mmu_fault_status = (write ? 2u : 0u) |
+                            (vm->mmu.mmu_supervisor ? 1u : 0u);
 
     if (!vm->mmu.enabled || amivm_mmu_tt_match(&vm->mmu, logical, write)) {
         *physical = logical;
@@ -352,6 +355,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         leaf_base = amivm_m68k_read_u32(vm, root_pte_addr, &ok);
         if (!ok || (leaf_base & 1u) == 0u) {
             vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
+            vm->mmu_fault_status |= 16u;
             return -1;
         }
         pte_addr = (leaf_base & ~page_mask) + leaf_index * 4u;
@@ -362,10 +366,12 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         }
         if (!vm->mmu.mmu_supervisor && (pte & 4u) == 0u) {
             vm->mmu.last_fault = AMIVM_MMU_FAULT_SUPERVISOR;
+            vm->mmu_fault_status |= 8u;
             return -1;
         }
         if (write && (pte & 2u) != 0u) {
             vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+            vm->mmu_fault_status |= 4u;
             return -1;
         }
         *physical = (pte & ~page_mask) | (logical & page_mask);
