@@ -449,6 +449,8 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
                    (vm->exception_entry_vector & 0x0fffu));
     amivm_m68k_capture_exception_internal_state(vm, layout);
+    if (vm->exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS)
+        amivm_m68k_capture_030_short_state(vm);
     vm->exception_fault_stage =
         (vm->exception_frame_type == 2u) ? 1u : 0u;
     if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS) {
@@ -519,6 +521,15 @@ static void amivm_m68k_capture_exception_internal_state(struct amivm_vm *vm,
     for (i = 0u; i < layout->internal_state_words && i < 34u; ++i)
         vm->exception_internal_state[i] =
             (uint32_t)(vm->m68k.pc + (uint32_t)i * 4u);
+}
+
+static void amivm_m68k_capture_030_short_state(struct amivm_vm *vm)
+{
+    if (!vm) return;
+    vm->exception_internal_state[0] = vm->m68k.pc;
+    vm->exception_internal_state[1] = vm->m68k.sr;
+    vm->exception_internal_state[2] = vm->exception_fault_address;
+    vm->exception_internal_state[3] = vm->exception_fault_status;
 }
 
 static int amivm_m68k_write_exception_internal_state(struct amivm_vm *vm,
