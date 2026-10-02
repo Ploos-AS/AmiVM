@@ -446,15 +446,17 @@ int main(void)
                  vm.exception_frame_format ^= 1u;
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
-                     CHECK({
-                     CHECK(    uint32_t saved_sp = vm.m68k.a[7];
-                     CHECK(    uint32_t saved_pc = vm.mmu_exception_pc;
-                     CHECK(    uint16_t saved_sr = vm.mmu_exception_sr;
-                     CHECK(    amivm_m68k_rte_mmu_exception(&vm) == 0);;
-                     CHECK(    CHECK(vm.m68k.pc == saved_pc);
-                     CHECK(    CHECK(vm.m68k.sr == saved_sr);
-                     CHECK(    CHECK(vm.m68k.a[7] >= saved_sp);
-                     CHECK(}
+                                      {
+                     uint32_t saved_sp = vm.m68k.a[7];
+                     uint32_t saved_pc = vm.mmu_exception_pc;
+                     uint16_t saved_sr = vm.mmu_exception_sr;
+                     CHECK(amivm_m68k_validate_exception_internal_state(
+                         &vm, amivm_m68k_frame_layout(vm.exception_frame_type),
+                         vm.m68k.a[7]) == 0);
+                     CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                     CHECK(vm.m68k.pc == saved_pc);
+                     CHECK(vm.m68k.sr == saved_sr);
+                     CHECK(vm.m68k.a[7] >= saved_sp);
                      CHECK(vm.m68k.a[7] == 0x1014u);
                      CHECK(vm.exception_internal_state[0] == 0x11223344u);
                      CHECK(vm.exception_internal_state[1] == 0x55667788u);
