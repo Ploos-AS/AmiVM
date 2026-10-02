@@ -31,7 +31,20 @@ struct amivm_irq_controller {
     uint8_t priority[AMIVM_MAX_IRQ_LINES];
 };
 
+enum amivm_machine_model {
+    AMIVM_MACHINE_GENERIC = 0,
+    AMIVM_MACHINE_A500,
+    AMIVM_MACHINE_A500PLUS,
+    AMIVM_MACHINE_A600,
+    AMIVM_MACHINE_A1000,
+    AMIVM_MACHINE_A2000,
+    AMIVM_MACHINE_A1200,
+    AMIVM_MACHINE_A3000,
+    AMIVM_MACHINE_A4000
+};
+
 struct amivm_config {
+    enum amivm_machine_model machine;
     size_t ram_size;
     const char *rom_path;
     const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
@@ -106,6 +119,7 @@ struct amivm_vm {
     struct amivm_irq_controller irq;
     uint64_t timer_ticks;
     uint64_t memory_write_generation;
+    enum amivm_machine_model machine;
     struct amivm_cpu_profile cpu_profile;
     struct amivm_media floppy[AMIVM_MAX_FLOPPY_IMAGES];
     struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
