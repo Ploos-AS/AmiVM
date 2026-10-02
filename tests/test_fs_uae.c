@@ -413,8 +413,16 @@ int main(void)
                     uint32_t long_sp = vm.exception_frame_sp;
                     vm.exception_frame_active = true;
                     vm.m68k.a[7] = long_sp;
+                    CHECK(amivm_m68k_write_u32(&vm, long_sp + 8u, 0xCAFEBABEu));
+                    CHECK(amivm_m68k_write_u32(&vm, long_sp + 12u, 0x13572468u));
+                    CHECK(amivm_m68k_write_u32(&vm, long_sp + 16u, 0x24681357u));
+                    CHECK(amivm_m68k_write_u32(&vm, long_sp + 20u, 0x89ABCDEFu));
                     CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
                     CHECK(vm.m68k.a[7] == long_sp + 92u);
+                    CHECK(vm.exception_internal_state[0] == 0xCAFEBABEu);
+                    CHECK(vm.exception_internal_state[1] == 0x13572468u);
+                    CHECK(vm.exception_internal_state[2] == 0x24681357u);
+                    CHECK(vm.exception_internal_state[3] == 0x89ABCDEFu);
                     CHECK(!vm.exception_frame_active);
                 }
                 vm.exception_bus_fault_in_progress = false;
