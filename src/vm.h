@@ -213,6 +213,7 @@ struct amivm_aga_state {
     uint16_t beam_h;
     uint16_t beam_v;
     bool display_active;
+    bool vblank_irq_enable;
 };
 
 struct amivm_ide_state {
