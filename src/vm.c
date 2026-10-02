@@ -321,10 +321,17 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
     vm->exception_frame_size = 16u;
-    if (vm->exception_frame_type == 0u)
+    vm->exception_frame_format = 2u;
+    vm->exception_frame_word_count = 8u;
+    if (vm->exception_frame_type == 0u) {
         vm->exception_frame_size = 8u;
-    else if (vm->exception_frame_type == 1u)
+        vm->exception_frame_format = 0u;
+        vm->exception_frame_word_count = 4u;
+    } else if (vm->exception_frame_type == 1u) {
         vm->exception_frame_size = 12u;
+        vm->exception_frame_format = 1u;
+        vm->exception_frame_word_count = 6u;
+    }
     if (vm->exception_depth < 255u)
         vm->exception_depth++;
     return 0;
