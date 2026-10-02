@@ -104,6 +104,22 @@ int main(void)
                 CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 1u, 0x45u));
                 CHECK(amivm_m68k_execute_one(&vm) == 0);
                 CHECK(vm.pending_exception_vector == 0u);
+                vm.m68k.pc = 0x00111111u;
+                vm.m68k.sr = 0x0000u;
+                vm.m68k.supervisor = false;
+                CHECK(amivm_m68k_enter_exception(&vm, AMIVM_M68K_EXC_ILLEGAL,
+                                                   vm.m68k.pc) == 4);
+                CHECK(vm.exception_frame_active);
+                CHECK(vm.exception_saved_pc == 0x00111111u);
+                CHECK(vm.exception_saved_sr == 0x0000u);
+                CHECK(vm.m68k.supervisor);
+                vm.m68k.pc = 0x00f00000u;
+                CHECK(amivm_m68k_set_supervisor(&vm, true) == 0);
+                CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                CHECK(vm.m68k.pc == 0x00111111u);
+                CHECK(vm.m68k.sr == 0x0000u);
+                CHECK(!vm.m68k.supervisor);
+                CHECK(!vm.exception_frame_active);
                 CHECK(amivm_m68k_raise_exception(&vm, AMIVM_M68K_EXC_ILLEGAL) == 4);
                 CHECK(vm.pending_exception == AMIVM_M68K_EXC_ILLEGAL);
                 CHECK(vm.pending_exception_vector == 4u);
