@@ -323,7 +323,10 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical)
 {
+    bool supervisor;
     if (!vm || !physical) return -1;
+    supervisor = (vm->m68k.sr & 0x2000u) != 0u;
+    vm->mmu.mmu_supervisor = supervisor;
     vm->mmu.last_logical = logical;
     vm->mmu.last_write = write;
     vm->mmu.last_fault = AMIVM_MMU_FAULT_NONE;
