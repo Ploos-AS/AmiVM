@@ -670,8 +670,8 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
         return -1;
     }
     if (vm->exception_frame_active) {
-        layout = amivm_m68k_frame_layout(vm->exception_frame_format);
-        if (!layout || vm->exception_frame_size !=
+        layout = amivm_m68k_frame_layout(vm->exception_frame_type);
+        if (!layout || !layout->implemented || vm->exception_frame_size !=
             (uint8_t)(layout->words * 2u))
             return -1;
     }
