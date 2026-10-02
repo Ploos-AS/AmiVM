@@ -287,6 +287,15 @@ int main(void)
                 CHECK(vm.m68k.pc == 0x00123456u);
                 CHECK((vm.m68k.sr & 0x2000u) != 0u);
                 CHECK(!vm.exception_entry_active);
+                vm.irq_pending = true;
+                vm.irq_level = 3u;
+                vm.m68k.sr = 0x2000u;
+                {
+                    uint8_t vector = 0u;
+                    CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+                    CHECK(vector == 27u);
+                    CHECK(vm.exception_handler_pc == 0x00123456u);
+                }
                 vm.m68k.pc = 0x00abcdefu;
                 vm.m68k.sr = 0x0000u;
                 CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
