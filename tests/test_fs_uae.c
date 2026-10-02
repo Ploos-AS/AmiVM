@@ -89,6 +89,16 @@ int main(void)
                 CHECK(vm.pending_exception == AMIVM_M68K_EXC_ILLEGAL);
                 CHECK(vm.pending_exception_vector == 4u);
                 CHECK((vm.m68k.sr & 0x2000u) != 0u);
+                vm.m68k.sr = 0x2000u;
+                amivm_m68k_request_irq(&vm, 4u);
+                CHECK(vm.irq_pending);
+                CHECK(vm.irq_level == 4u);
+                CHECK(amivm_m68k_service_irq(&vm) == 28);
+                CHECK(!vm.irq_pending);
+                CHECK(((vm.m68k.sr >> 8) & 7u) == 4u);
+                amivm_m68k_request_irq(&vm, 3u);
+                CHECK(amivm_m68k_service_irq(&vm) == 0);
+                CHECK(vm.irq_pending);
                 for (size_t r = 0; r < 8u; ++r) {
                     CHECK(vm.m68k.d[r] == 0u);
                     CHECK(vm.m68k.a[r] == 0u);
