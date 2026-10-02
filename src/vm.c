@@ -238,6 +238,17 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
+{
+    static const struct amivm_m68k_frame_layout layouts[] = {
+        { 4u, false, false, false },
+        { 6u, true,  false, false },
+        { 8u, true,  true,  true  }
+    };
+    if (descriptor > AMIVM_FRAME_68040_MMU) return NULL;
+    return &layouts[descriptor];
+}
+
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
 {
     if (!vm || model > 5u) return -1;
