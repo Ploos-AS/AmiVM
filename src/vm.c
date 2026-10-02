@@ -265,17 +265,22 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     vm->mmu_fault_address = new_fault_address;
     vm->mmu_fault_status = new_fault_status;
     vm->exception_fslw = new_fslw;
-    vm->m68k.a[7] = sp + (uint32_t)(layout->words * 2u);
-    vm->exception_frame_sp = 0u;
-    vm->exception_frame_size = 0u;
-    vm->exception_frame_type = AMIVM_FRAME_68000_SHORT;
-    vm->exception_bus_fault_in_progress = false;
-    vm->exception_frame_format = 0u;
-    vm->exception_frame_word_count = 0u;
-    if (vm->exception_depth != 0u)
-        vm->exception_depth--;
-    vm->pending_exception = AMIVM_M68K_EXC_NONE;
-    vm->m68k.exception = AMIVM_M68K_EXC_NONE;
+    {
+        uint32_t next_sp = sp + (uint32_t)(layout->words * 2u);
+        uint8_t next_depth = vm->exception_depth;
+        if (next_depth != 0u)
+            next_depth--;
+        vm->m68k.a[7] = next_sp;
+        vm->exception_frame_sp = 0u;
+        vm->exception_frame_size = 0u;
+        vm->exception_frame_type = AMIVM_FRAME_68000_SHORT;
+        vm->exception_bus_fault_in_progress = false;
+        vm->exception_frame_format = 0u;
+        vm->exception_frame_word_count = 0u;
+        vm->exception_depth = next_depth;
+        vm->pending_exception = AMIVM_M68K_EXC_NONE;
+        vm->m68k.exception = AMIVM_M68K_EXC_NONE;
+    }
     return 0;
 }
 
