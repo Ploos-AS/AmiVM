@@ -85,6 +85,10 @@ int main(void)
                 amivm_m68k_reset(&vm, 0x00f80000u, 0x2700u);
                 CHECK(vm.m68k.pc == 0x00f80000u);
                 CHECK(vm.m68k.sr == 0x2700u);
+                CHECK(amivm_m68k_raise_exception(&vm, AMIVM_M68K_EXC_ILLEGAL) == 4);
+                CHECK(vm.pending_exception == AMIVM_M68K_EXC_ILLEGAL);
+                CHECK(vm.pending_exception_vector == 4u);
+                CHECK((vm.m68k.sr & 0x2000u) != 0u);
                 for (size_t r = 0; r < 8u; ++r) {
                     CHECK(vm.m68k.d[r] == 0u);
                     CHECK(vm.m68k.a[r] == 0u);
