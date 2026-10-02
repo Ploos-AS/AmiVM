@@ -72,6 +72,23 @@ int main(void)
             CHECK(amivm_media_seek(&vm.floppy[0], 0u, 2u) != 0);
             CHECK(amivm_media_write_sector(&vm.floppy[0], 0u, sector,
                                            sizeof sector) != 0);
+            vm.trackdisk.dma_address = AMIVM_RAM_BASE + 0x2000u;
+            vm.trackdisk.track = 0u;
+            vm.trackdisk.head = 0u;
+            vm.trackdisk.sector = 0u;
+            vm.trackdisk.irq_enable = true;
+            CHECK(amivm_trackdisk_command(&vm,
+                                          AMIVM_TRACKDISK_READ_SECTOR) == 0);
+            CHECK((vm.irq_pending & (1u << 3)) != 0u);
+            CHECK(vm.trackdisk.status == 0x01u);
+            CHECK(vm.ram[0x2000u] == 0x44u);
+            CHECK(vm.ram[0x2001u] == 0x4fu);
+            amivm_clear_irq(&vm, 3u);
+            vm.trackdisk.track = 80u;
+            CHECK(amivm_trackdisk_command(&vm,
+                                          AMIVM_TRACKDISK_SEEK) != 0);
+            CHECK(vm.trackdisk.error == 2u);
+            CHECK(vm.trackdisk.status == 0x80u);
         }
         amivm_vm_destroy(&vm);
     }
@@ -98,6 +115,6 @@ int main(void)
 
     remove(path);
     remove("disk.adf");
-    puts("AmiVM M2.146 ADF track/sector backend qualification: PASS");
+    puts("AmiVM M2.147 TrackDisk DMA/IRQ qualification: PASS");
     return 0;
 }
