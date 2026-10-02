@@ -169,10 +169,11 @@ struct amivm_device_desc {
 };
 
 struct amivm_aga_state {
-    uint8_t bplcon0;
-    uint8_t diwstrt;
-    uint8_t diwstop;
-    uint8_t dmacon;
+    uint16_t bplcon0;
+    uint16_t diwstrt;
+    uint16_t diwstop;
+    uint16_t dmacon;
+    uint16_t dmaconr;
 };
 
 struct amivm_ide_state {
