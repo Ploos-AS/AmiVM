@@ -184,6 +184,9 @@ struct amivm_mmu_state {
     uint32_t page_table_mask;
     uint8_t page_shift;
     uint32_t page_table_entries;
+    uint32_t root_table_base;
+    uint8_t root_index_bits;
+    uint8_t leaf_index_bits;
     uint32_t tc;
     uint32_t srp;
     uint32_t crp;
@@ -326,6 +329,10 @@ int amivm_m68k_enter_exception(struct amivm_vm *vm,
 int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor);
 bool amivm_m68k_is_supervisor(const struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
+int amivm_mmu_configure_two_level(struct amivm_vm *vm,
+                                      uint32_t root_base,
+                                      uint8_t root_bits,
+                                      uint8_t leaf_bits);
 int amivm_mmu_configure_page_table(struct amivm_vm *vm,
                                          uint32_t base, uint32_t mask,
                                          uint8_t page_shift, uint32_t entries);
