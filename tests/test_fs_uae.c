@@ -46,6 +46,11 @@ int main(void)
         CHECK(vm.machine == AMIVM_MACHINE_A1200);
         CHECK(vm.chip_ram_size == 2u * 1024u * 1024u);
         CHECK(vm.fast_ram_size == 32u * 1024u * 1024u);
+        CHECK(vm.device_count == 6u);
+        CHECK(vm.devices[0].instantiated);
+        CHECK(vm.devices[0].enabled);
+        CHECK(strcmp(vm.devices[4].desc->name, "aga") == 0);
+        CHECK(strcmp(vm.devices[5].desc->name, "ide") == 0);
         amivm_vm_destroy(&vm);
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
         CHECK(resolved.machine == AMIVM_MACHINE_A1200);
