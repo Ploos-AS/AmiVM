@@ -426,6 +426,31 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         default: return false;
         }
     }
+    {
+        const struct amivm_device_desc *d = amivm_device_for_address(vm, addr);
+        if (d && strcmp(d->name, "aga") == 0) {
+            uint32_t o = addr - d->base;
+            switch (o) {
+            case 0u: *value = vm->aga.bplcon0; return true;
+            case 1u: *value = vm->aga.diwstrt; return true;
+            case 2u: *value = vm->aga.diwstop; return true;
+            case 3u: *value = vm->aga.dmacon; return true;
+            default: return false;
+            }
+        }
+        if (d && strcmp(d->name, "ide") == 0) {
+            uint32_t o = addr - d->base;
+            switch (o) {
+            case 0u: *value = vm->ide.status; return true;
+            case 1u: *value = vm->ide.command; return true;
+            default: return false;
+            }
+        }
+        if (d && strcmp(d->name, "zorro") == 0) {
+            *value = vm->zorro.configured;
+            return true;
+        }
+    }
     if (amivm_device_for_address(vm, addr) &&
         in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
@@ -488,6 +513,30 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
                   amivm_irq_enable(vm, 6u, vm->timer.irq_enable); return true;
         case 4u: vm->timer.periodic = value != 0u; return true;
         default: return false;
+        }
+    }
+    {
+        const struct amivm_device_desc *d = amivm_device_for_address(vm, addr);
+        if (d && strcmp(d->name, "aga") == 0) {
+            uint32_t o = addr - d->base;
+            switch (o) {
+            case 0u: vm->aga.bplcon0 = value; return true;
+            case 1u: vm->aga.diwstrt = value; return true;
+            case 2u: vm->aga.diwstop = value; return true;
+            case 3u: vm->aga.dmacon = value; return true;
+            default: return false;
+            }
+        }
+        if (d && strcmp(d->name, "ide") == 0) {
+            uint32_t o = addr - d->base;
+            switch (o) {
+            case 0u: vm->ide.command = value; return true;
+            default: return false;
+            }
+        }
+        if (d && strcmp(d->name, "zorro") == 0) {
+            vm->zorro.configured = value;
+            return true;
         }
     }
     if (amivm_device_for_address(vm, addr) &&
