@@ -129,6 +129,16 @@ int main(void)
                 CHECK(amivm_m68k_set_supervisor(&vm, true) == 0);
                 CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
                 CHECK(vm.m68k.pc == 0x00111111u);
+                {
+                    uint32_t physical = 0u;
+                    CHECK(amivm_mmu_translate(&vm, 0x00123456u, false, &physical) == 0);
+                    CHECK(physical == 0x00123456u);
+                    vm.mmu.enabled = true;
+                    CHECK(amivm_mmu_translate(&vm, 0x00abcdefu, true, &physical) == 0);
+                    CHECK(physical == 0x00abcdefu);
+                    CHECK(vm.mmu.last_logical == 0x00abcdefu);
+                    CHECK(vm.mmu.last_write);
+                }
                 CHECK(vm.m68k.sr == 0x0000u);
                 CHECK(!vm.m68k.supervisor);
                 CHECK(!vm.exception_frame_active);
