@@ -79,6 +79,7 @@ void amivm_config_init(struct amivm_config *config)
     config->chip_ram_size = 0u;
     config->fast_ram_size = 0u;
     config->accelerator_present = false;
+    config->accelerator_profile = NULL;
     config->rom_path = NULL;
     memset(config->floppy_images, 0, sizeof config->floppy_images);
     memset(config->hard_drives, 0, sizeof config->hard_drives);
