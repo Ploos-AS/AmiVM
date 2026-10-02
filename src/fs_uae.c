@@ -94,7 +94,20 @@ static int set_option(const char *key, const char *value,
             }
             config->chip_ram_size = bytes;
         } else {
-            config->fast_ram_size = mib * 1024u * 1024u;
+            const struct amivm_machine_profile *mp =
+                amivm_machine_profile_by_id(config->machine);
+            size_t bytes = mib * 1024u * 1024u;
+            if (mp != NULL && bytes > mp->max_fast_ram &&
+                !config->accelerator_present) {
+                ++r->unsupported;
+                return 1;
+            }
+            if (mp != NULL && mp->max_fast_ram != 0u &&
+                bytes > mp->max_fast_ram) {
+                ++r->unsupported;
+                return 1;
+            }
+            config->fast_ram_size = bytes;
         }
         config->ram_size = config->chip_ram_size + config->fast_ram_size;
         ++r->supported;
