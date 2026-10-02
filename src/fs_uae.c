@@ -126,7 +126,48 @@ static int set_option(const char *key, const char *value,
         }
         ++r->supported;
         return 0;
-    } else if (strcmp(key, "accelerator") == 0) {
+    } else if (strcmp(key, "accelerator") == 0 ||
+               strcmp(key, "cpu_model") == 0 ||
+               strcmp(key, "fpu_model") == 0 ||
+               strcmp(key, "mmu_model") == 0) {
+        const char *profile_name = NULL;
+        if (strcmp(key, "accelerator") == 0) {
+            if (strcmp(value, "68020") == 0 || strcmp(value, "68030") == 0 ||
+                strcmp(value, "68040") == 0 || strcmp(value, "68060") == 0)
+                profile_name = value;
+        } else if (strcmp(key, "cpu_model") == 0) {
+            profile_name = value;
+        } else if (strcmp(key, "fpu_model") == 0) {
+            /* FPU capability is already part of the selected CPU profile. */
+            if (strcmp(value, "68040") == 0 || strcmp(value, "68060") == 0 ||
+                strcmp(value, "none") == 0)
+                ++r->supported;
+            else
+                ++r->unsupported;
+            return 0;
+        } else {
+            if (strcmp(value, "68851") == 0) {
+                config->external_mmu = AMIVM_MMU_68851;
+                ++r->supported;
+                return 0;
+            }
+            if (strcmp(value, "68030") == 0 || strcmp(value, "68040") == 0 ||
+                strcmp(value, "68060") == 0 || strcmp(value, "none") == 0) {
+                ++r->supported;
+                return 0;
+            }
+            ++r->unsupported;
+            return 0;
+        }
+        if (profile_name != NULL && !*cpu_explicit) {
+            const struct amivm_cpu_profile *p =
+                amivm_cpu_profile_by_name(profile_name);
+            if (p == NULL) { ++r->unsupported; return 1; }
+            config->cpu_profile = p;
+        } else if (profile_name == NULL) {
+            ++r->unsupported;
+            return 0;
+        }
         ++r->supported;
         return 0;
     } else if (strncmp(key, "floppy_image_", 13u) == 0) {
