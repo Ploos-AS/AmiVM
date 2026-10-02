@@ -243,9 +243,14 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     vm->m68k.sr = (uint16_t)(((uint16_t)hi << 8) | lo);
     vm->mmu_fault_address = address;
     vm->mmu_fault_status = status;
+    if (vm->exception_frame_type == AMIVM_FRAME_68060_ACCESS)
+        vm->exception_fslw = status;
     vm->m68k.a[7] = sp + (uint32_t)(layout->words * 2u);
     vm->exception_frame_sp = 0u;
     vm->exception_frame_size = 0u;
+    vm->exception_frame_type = AMIVM_FRAME_68000_SHORT;
+    vm->exception_frame_format = 0u;
+    vm->exception_frame_word_count = 0u;
     if (vm->exception_depth != 0u)
         vm->exception_depth--;
     vm->pending_exception = AMIVM_M68K_EXC_NONE;
