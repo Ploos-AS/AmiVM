@@ -150,12 +150,22 @@ struct amivm_trackdisk {
     bool write_protected;
 };
 
+struct amivm_vm;
+typedef bool (*amivm_device_read8_fn)(struct amivm_vm *vm,
+                                      const struct amivm_device_state *state,
+                                      uint32_t offset, uint8_t *value);
+typedef bool (*amivm_device_write8_fn)(struct amivm_vm *vm,
+                                       const struct amivm_device_state *state,
+                                       uint32_t offset, uint8_t value);
+
 struct amivm_device_desc {
     const char *name;
     uint32_t base;
     uint32_t size;
     unsigned irq_line;
     unsigned required_machine_flags;
+    amivm_device_read8_fn read8;
+    amivm_device_write8_fn write8;
 };
 
 struct amivm_aga_state {
