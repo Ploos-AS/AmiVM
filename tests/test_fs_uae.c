@@ -205,6 +205,16 @@ int main(void)
             CHECK(value == 0x5au);
             CHECK(vm.mmu.enabled);
             vm.mmu.tt0 = 0u;
+            CHECK(amivm_mmu_configure_page_table(&vm, AMIVM_RAM_BASE + 0x1000u, 0xffffffffu, 12u, 4u) == 0);
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x1000u + 1u, 0x80u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x1000u + 2u, 0x10u));
+            CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x1000u + 3u, 0x01u));
+            {
+                uint32_t physical = 0u;
+                CHECK(amivm_mmu_translate(&vm, AMIVM_RAM_BASE + 0x123u, false, &physical) == 0);
+                CHECK(physical == (0x80000000u | 0x123u));
+            }
+            vm.mmu.page_table_entries = 0u;
             vm.mmu.test_page_valid = true;
             vm.mmu.test_logical_page = AMIVM_RAM_BASE + 0x4000u;
             vm.mmu.test_physical_page = AMIVM_RAM_BASE + 0x8000u;
