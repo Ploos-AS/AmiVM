@@ -108,6 +108,10 @@ int main(void)
                 CHECK(vm.pending_exception_vector == 32u);
                 CHECK(vm.m68k.supervisor);
                 CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+                CHECK(vm.m68k.a[7] >= vm.exception_frame_sp);
+                vm.m68k.a[7] = vm.exception_frame_sp;
+                vm.exception_frame_active = true;
+                CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                 CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 2u);
                 CHECK(!vm.exception_frame_active);
                 vm.m68k.exception = AMIVM_M68K_EXC_NONE;
