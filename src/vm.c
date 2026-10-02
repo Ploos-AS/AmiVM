@@ -357,6 +357,10 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
             vm->mmu.last_fault = AMIVM_MMU_FAULT_INVALID;
             return -1;
         }
+        if (!vm->mmu.mmu_supervisor && (pte & 4u) == 0u) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_SUPERVISOR;
+            return -1;
+        }
         if (write && (pte & 2u) != 0u) {
             vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
             return -1;
@@ -390,6 +394,10 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
 
     if (vm->mmu.test_page_valid &&
         (logical & 0xfffff000u) == (vm->mmu.test_logical_page & 0xfffff000u)) {
+        if (!vm->mmu.mmu_supervisor) {
+            vm->mmu.last_fault = AMIVM_MMU_FAULT_SUPERVISOR;
+            return -1;
+        }
         if (write && vm->mmu.test_write_protect) {
             vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
             return -1;
