@@ -238,6 +238,15 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+int amivm_m68k_enter_trap(struct amivm_vm *vm, uint8_t vector)
+{
+    if (!vm || vector < 32u || vector > 47u) return -1;
+    vm->m68k.exception = AMIVM_M68K_EXC_TRAP;
+    if (amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_TRAP) != 0)
+        return -1;
+    return amivm_m68k_enter_exception(vm, vector);
+}
+
 int amivm_m68k_enter_exception(struct amivm_vm *vm, uint8_t vector)
 {
     uint32_t old_sp, old_pc, old_sr;
