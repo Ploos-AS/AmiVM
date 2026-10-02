@@ -163,6 +163,8 @@ struct amivm_m68k_frame_layout {
     uint8_t fault_status_bytes;
     uint8_t internal_state_offset;
     uint8_t internal_state_words;
+    bool implemented;
+    bool semantically_decoded;
 };
 
 enum amivm_m68k_frame_descriptor {
