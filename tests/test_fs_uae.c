@@ -422,7 +422,7 @@ int main(void)
                              CHECK(ql->words == 30u);
                              CHECK(ql->fault_address_offset == 20u);
                              CHECK(ql->fault_status_offset == 10u);
-                             CHECK(ql->fault_status_bytes == 0u);
+                             CHECK(ql->fault_status_bytes == 2u);
                          } else if (qualification_frames[qi] == AMIVM_FRAME_68060_ACCESS) {
                              CHECK(ql->words == 8u);
                              CHECK(ql->fault_address_offset == 8u);
