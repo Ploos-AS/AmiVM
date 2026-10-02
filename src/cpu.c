@@ -1361,6 +1361,19 @@ illegal:
     return deliver_fault(cpu, vm, instruction_pc);
 }
 
+static uint32_t reference_cycle_cost(uint16_t opcode)
+{
+    switch (opcode >> 12u) {
+    case 0x6u: return 10u; /* branches */
+    case 0x7u: return 4u;  /* MOVEQ */
+    case 0x4u: return 8u;  /* system/control */
+    case 0x5u: return 8u;  /* quick/addq/subq */
+    case 0x2u:
+    case 0x3u: return 8u;  /* MOVE */
+    default: return 4u;    /* deterministic baseline */
+    }
+}
+
 static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 {
     uint16_t opcode;
@@ -1368,6 +1381,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     int irq_rc;
 
     if (cpu == NULL || vm == NULL || cpu->stopped) return -1;
+    cpu->last_step_cycles = 4u;
     cpu->last_fault = AMIVM_CPU_FAULT_NONE;
     cpu->fault_address = 0u;
     cpu->fault_opcode = 0u;
@@ -1380,6 +1394,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     if (fetch16(cpu, vm, cpu->pc, &opcode) != 0)
         return deliver_fault(cpu, vm, instruction_pc);
     next_pc = cpu->pc + 2u;
+    cpu->last_step_cycles = reference_cycle_cost(opcode);
 
     if (opcode == OP_NOP) { cpu->pc = next_pc; return 1; }
     if ((opcode & 0xffc0u) == OP_PMMU_BASE)
@@ -1590,6 +1605,6 @@ int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     if (backend == NULL || backend->step == NULL) return -1;
     rc = backend->step(cpu, vm);
     if (rc > 0)
-        amivm_timer_tick(vm, 1u);
+        amivm_timer_tick(vm, cpu->last_step_cycles ? cpu->last_step_cycles : 4u);
     return rc;
 }
