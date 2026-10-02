@@ -81,6 +81,19 @@ static int probe_media(const char *path, enum amivm_media_type type,
     strcpy(media->path, path);
     media->type = type;
     media->size = (size_t)end;
+    if (type == AMIVM_MEDIA_ADF) {
+        FILE *data_fp = fopen(path, "rb");
+        if (!data_fp) { free(media->path); media->path = NULL; return -1; }
+        media->data = malloc(media->size);
+        if (!media->data ||
+            fread(media->data, 1, media->size, data_fp) != media->size) {
+            fclose(data_fp);
+            free(media->data); media->data = NULL;
+            free(media->path); media->path = NULL;
+            return -1;
+        }
+        fclose(data_fp);
+    }
     return 0;
 }
 
@@ -134,6 +147,7 @@ void amivm_vm_destroy(struct amivm_vm *vm)
         return;
     }
     for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
+        free(vm->floppy[i].data);
         free(vm->floppy[i].path);
     for (size_t i = 0; i < AMIVM_MAX_HARD_DRIVES; ++i)
         free(vm->hard_drive[i].path);
@@ -265,6 +279,19 @@ bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
     if (page >= vm->ram_page_count) return false;
     *generation = vm->ram_page_generation[page];
     return true;
+}
+
+int amivm_media_read(const struct amivm_media *media, size_t offset,
+                     void *buffer, size_t size)
+{
+    if (!media || !buffer || media->type == AMIVM_MEDIA_NONE ||
+        offset > media->size || size > media->size - offset)
+        return -1;
+    if (media->data) {
+        memcpy(buffer, media->data + offset, size);
+        return 0;
+    }
+    return -1;
 }
 
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line)
