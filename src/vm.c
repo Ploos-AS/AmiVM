@@ -175,30 +175,33 @@ static int probe_media(const char *path, enum amivm_media_type type,
 
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
 {
+    struct amivm_resolved_config resolved;
     if (vm == NULL || config == NULL || config->ram_size == 0u) {
         return -1;
     }
+    if (amivm_config_resolve(config, &resolved) != 0)
+        return -1;
 
     memset(vm, 0, sizeof(*vm));
-    if (config->cpu_profile == NULL) return -1;
+    if (resolved.cpu_profile == NULL) return -1;
     if (config->external_mmu != AMIVM_MMU_NONE) {
         if (!amivm_cpu_profile_attach_mmu(&vm->cpu_profile,
-                                          config->cpu_profile,
-                                          config->external_mmu))
+                                          resolved.cpu_profile,
+                                          resolved.external_mmu))
             return -1;
     } else {
-        vm->cpu_profile = *config->cpu_profile;
+        vm->cpu_profile = *resolved.cpu_profile;
     }
-    vm->ram = calloc(1, config->ram_size);
+    vm->ram = calloc(1, resolved.total_ram_size);
     if (vm->ram == NULL) {
         return -1;
     }
-    vm->ram_size = config->ram_size;
-    vm->machine = config->machine;
-    vm->chip_ram_size = config->chip_ram_size;
-    vm->fast_ram_size = config->fast_ram_size;
+    vm->ram_size = resolved.total_ram_size;
+    vm->machine = resolved.machine;
+    vm->chip_ram_size = resolved.chip_ram_size;
+    vm->fast_ram_size = resolved.fast_ram_size;
 
-    vm->ram_page_count = (config->ram_size + AMIVM_RAM_PAGE_SIZE - 1u) /
+    vm->ram_page_count = (resolved.total_ram_size + AMIVM_RAM_PAGE_SIZE - 1u) /
                          AMIVM_RAM_PAGE_SIZE;
     vm->ram_page_generation = calloc(vm->ram_page_count, sizeof(*vm->ram_page_generation));
     if (vm->ram_page_generation == NULL) {
