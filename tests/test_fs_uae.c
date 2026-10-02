@@ -38,6 +38,14 @@ int main(void)
     CHECK(config.ram_size == 34u * 1024u * 1024u);
     CHECK(config.chip_ram_size == 2u * 1024u * 1024u);
     CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
+
+    f = fopen(path, "w");
+    CHECK(f != NULL);
+    fputs("amiga_model=A1200\nchip_memory=4M\n", f);
+    fclose(f);
+    amivm_config_init(&config);
+    CHECK(amivm_fsuae_load_config(path, &config, &report, false) != 0);
+    CHECK(report.unsupported > 0u);
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
     CHECK(report.unsupported == 1u);
