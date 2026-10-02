@@ -377,20 +377,6 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         vm->exception_frame_size = (uint8_t)(layout->words * 2u);
     }
     vm->exception_frame_format = vm->exception_frame_class;
-    switch (vm->exception_frame_format) {
-    case AMIVM_FRAME_68000_SHORT:
-        vm->exception_frame_word_count = 4u;
-        break;
-    case AMIVM_FRAME_68020_BUS:
-        vm->exception_frame_word_count = 6u;
-        break;
-    case AMIVM_FRAME_68040_MMU:
-        vm->exception_frame_word_count = 8u;
-        break;
-    default:
-        return -1;
-    }
-    vm->exception_frame_word_count = (vm->exception_frame_format == 2u) ? 8u : 4u;
     {
         const struct amivm_m68k_frame_layout *layout =
             amivm_m68k_frame_layout(vm->exception_frame_format);
@@ -425,11 +411,14 @@ static int amivm_m68k_decode_frame_format(struct amivm_vm *vm, uint16_t fv)
     uint8_t format;
     if (!vm) return -1;
     format = (uint8_t)(fv >> 12);
-    if (format > 2u) return -1;
-    vm->exception_frame_format = format;
-    vm->exception_frame_word_count =
-        (format == 0u) ? 4u : (format == 1u ? 6u : 8u);
-    vm->exception_frame_size = (uint8_t)(vm->exception_frame_word_count * 2u);
+    {
+        const struct amivm_m68k_frame_layout *layout =
+            amivm_m68k_frame_layout(format);
+        if (!layout) return -1;
+        vm->exception_frame_format = format;
+        vm->exception_frame_word_count = layout->words;
+        vm->exception_frame_size = (uint8_t)(layout->words * 2u);
+    }
     vm->exception_frame_vector_offset = (uint16_t)(fv & 0x0fffu);
     return 0;
 }
