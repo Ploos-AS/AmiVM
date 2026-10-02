@@ -69,6 +69,8 @@ void amivm_config_init(struct amivm_config *config)
 {
     config->machine = AMIVM_MACHINE_GENERIC;
     config->ram_size = (size_t)AMIVM_DEFAULT_RAM_MIB * 1024u * 1024u;
+    config->chip_ram_size = 0u;
+    config->fast_ram_size = 0u;
     config->rom_path = NULL;
     memset(config->floppy_images, 0, sizeof config->floppy_images);
     memset(config->hard_drives, 0, sizeof config->hard_drives);
@@ -160,6 +162,10 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->ram_size = config->ram_size;
+    vm->machine = config->machine;
+    vm->chip_ram_size = config->chip_ram_size;
+    vm->fast_ram_size = config->fast_ram_size;
+
     vm->ram_page_count = (config->ram_size + AMIVM_RAM_PAGE_SIZE - 1u) /
                          AMIVM_RAM_PAGE_SIZE;
     vm->ram_page_generation = calloc(vm->ram_page_count, sizeof(*vm->ram_page_generation));
