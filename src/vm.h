@@ -270,6 +270,9 @@ struct amivm_vm {
     bool irq_in_service;
     uint32_t irq_saved_pc;
     uint16_t irq_saved_sr;
+    uint32_t exception_saved_pc;
+    uint16_t exception_saved_sr;
+    bool exception_frame_active;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
@@ -288,6 +291,9 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
+int amivm_m68k_enter_exception(struct amivm_vm *vm,
+                                enum amivm_m68k_exception exception,
+                                uint32_t return_pc);
 int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor);
 bool amivm_m68k_is_supervisor(const struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
