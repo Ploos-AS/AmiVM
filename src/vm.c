@@ -264,6 +264,20 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     return 0;
 }
 
+static uint8_t amivm_m68k_frame_layout_format(uint8_t descriptor)
+{
+    switch (descriptor) {
+    case AMIVM_FRAME_68000_SHORT: return 0x0u;
+    case AMIVM_FRAME_68020_BUS: return 0x2u;
+    case AMIVM_FRAME_68030_COPROC_MID: return 0x9u;
+    case AMIVM_FRAME_68030_SHORT_BUS: return 0xAu;
+    case AMIVM_FRAME_68030_LONG_BUS: return 0xBu;
+    case AMIVM_FRAME_68040_ACCESS: return 0x7u;
+    case AMIVM_FRAME_68060_ACCESS: return 0x4u;
+    default: return 0xFFu;
+    }
+}
+
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
@@ -355,7 +369,8 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
         vm->exception_frame_size !=
             (uint8_t)(vm->exception_frame_word_count * 2u))
         return -1;
-    if (vm->exception_frame_format > 0x0Bu ||
+    if (vm->exception_frame_format !=
+            (uint8_t)amivm_m68k_frame_layout_format(vm->exception_frame_type) ||
         vm->exception_frame_word_count != layout->words ||
         vm->exception_frame_magic != 0x45584632u)
         return -1;
