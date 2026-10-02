@@ -18,6 +18,33 @@ static const struct amivm_device_desc amivm_devices[] = {
     {"zorro", AMIVM_MMIO_BASE + 0x7000u, AMIVM_MMIO_PAGE_SIZE, 9u, AMIVM_DEVF_ZORRO},
 };
 
+static bool amivm_device_present(const struct amivm_vm *vm,
+                                      const struct amivm_device_desc *desc)
+{
+    size_t i;
+    if (!vm || !desc) return false;
+    for (i = 0; i < vm->device_count; ++i)
+        if (vm->devices[i].desc == desc &&
+            vm->devices[i].instantiated &&
+            vm->devices[i].enabled)
+            return true;
+    return false;
+}
+
+static const struct amivm_device_desc *amivm_device_for_address(
+    const struct amivm_vm *vm, uint32_t addr)
+{
+    size_t i;
+    if (!vm) return NULL;
+    for (i = 0; i < vm->device_count; ++i) {
+        const struct amivm_device_desc *d = vm->devices[i].desc;
+        if (vm->devices[i].instantiated && vm->devices[i].enabled &&
+            in_range(addr, d->base, d->size))
+            return d;
+    }
+    return NULL;
+}
+
 static bool in_range(uint32_t addr, uint32_t base, size_t size)
 {
     uint64_t a = addr;
