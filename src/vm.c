@@ -840,8 +840,11 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
     if (vm == NULL || value == NULL) {
         return false;
     }
-    if (amivm_mmu_translate(vm, addr, false, &physical) != 0)
+    if (amivm_mmu_translate(vm, addr, false, &physical) != 0) {
+        vm->m68k.exception = AMIVM_M68K_EXC_BUS_ERROR;
+        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
         return false;
+    }
     addr = physical;
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         *value = vm->ram[(size_t)(addr - AMIVM_RAM_BASE)];
@@ -926,8 +929,11 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     if (vm == NULL) {
         return false;
     }
-    if (amivm_mmu_translate(vm, addr, true, &physical) != 0)
+    if (amivm_mmu_translate(vm, addr, true, &physical) != 0) {
+        vm->m68k.exception = AMIVM_M68K_EXC_BUS_ERROR;
+        (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
         return false;
+    }
     addr = physical;
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         vm->ram[(size_t)(addr - AMIVM_RAM_BASE)] = value;
