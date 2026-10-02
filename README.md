@@ -1,8 +1,12 @@
 # AmiVM
 
-AmiVM is a high-performance 68k Amiga-compatible virtual machine.
+AmiVM is a high-performance Amiga-specific virtual machine for 68k Amiga-compatible systems.
 
 Its goal is not to reproduce every historical Amiga chipset cycle. Instead, AmiVM takes the best lessons from projects such as ARAnyM, UAE-family emulators and modern virtual-machine design to build the fastest practical Amiga-class 68k system for operating systems and productivity workloads.
+
+## Project boundary
+
+AmiVM is intentionally Amiga-specific. Its CPU, exception-frame, MMU, FPU, device and machine-profile work is scoped to the Amiga roadmap. ColdFire, Atari, Macintosh, Sun, X68000 and other non-Amiga m68k systems are out of scope for AmiVM. General-purpose m68k execution technology may later be extracted into a separate mVM project; AmiVM itself does not become that project.
 
 ## CPU profiles and execution speed
 
@@ -39,7 +43,7 @@ The importer maps unambiguous FS-UAE models to AmiVM CPU profiles where possible
 Storage media are now imported into fixed AmiVM profile slots (`floppy_image_0..3` and `hard_drive_0..7`). The importer preserves the configured paths/identifiers; actual device backends remain a separate runtime layer.
 ## Project goal
 
-> Build the fastest practical 68k Amiga-compatible virtual machine while preserving enough Amiga compatibility to run useful Amiga operating systems and software.
+> Build the fastest practical Amiga-specific 68k virtual machine while preserving enough Amiga compatibility to run useful Amiga operating systems and software.
 
 AmiVM is intended for:
 
@@ -58,7 +62,7 @@ AmiVM is **not** primarily intended to replace cycle-accurate Amiga emulators fo
 
 1. **Performance first** — avoid emulating historical bottlenecks that software does not require.
 2. **68k-native guest model** — the guest sees a 68k machine, not a translated non-68k ABI.
-3. **CPU profiles, one fast engine** — expose 68020, 68030, 68040 and 68060 guest contracts from one execution/IR/JIT architecture; MMU/FPU capabilities follow the selected profile.
+3. **CPU profiles, one fast engine** — expose the Amiga-relevant 68020, 68030, 68040 and 68060 guest contracts from one execution/IR/JIT architecture; MMU/FPU capabilities follow the selected profile. General m68k reuse is a future mVM concern, not an AmiVM scope requirement.
 4. **Dynarec/JIT first** — x86-64 and AArch64 are tier-1 host architectures.
 5. **Large memory** — do not impose historical Amiga RAM limits unless a compatibility profile requires them.
 6. **Paravirtual I/O** — provide efficient virtual storage, networking, framebuffer, audio and host integration.
