@@ -373,6 +373,11 @@ int main(void)
                      CHECK(l9->format_offset == 6u);
                      CHECK(l9->internal_state_offset == 8u);
                      CHECK(l9->internal_state_words == 2u);
+                     CHECK((unsigned)l9->internal_state_offset +
+                           (unsigned)l9->internal_state_words * 4u <=
+                           (unsigned)l9->words * 2u);
+                     CHECK(l9->has_fault_address == false);
+                     CHECK(l9->has_fault_status == false);
                      CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68020_BUS)->format_offset == 6u);
                      CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68040_ACCESS)->format_offset == 6u);
                      CHECK(!l9->has_fault_address);
