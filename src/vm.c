@@ -161,6 +161,14 @@ static bool device_zorro_write8(struct amivm_vm *vm, const struct amivm_device_s
     return true;
 }
 
+void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
+{
+    if (!vm) return;
+    memset(&vm->m68k, 0, sizeof vm->m68k);
+    vm->m68k.pc = pc;
+    vm->m68k.sr = sr;
+}
+
 int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
                                 const struct amivm_cpu_backend *backend)
 {
