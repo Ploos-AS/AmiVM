@@ -72,6 +72,29 @@ const struct amivm_machine_profile *amivm_machine_profile_by_name(
     return NULL;
 }
 
+int amivm_config_resolve(const struct amivm_config *config,
+                             struct amivm_resolved_config *resolved)
+{
+    const struct amivm_machine_profile *mp;
+    if (!config || !resolved || !config->cpu_profile) return 1;
+    mp = amivm_machine_profile_by_id(config->machine);
+    if (!mp) return 1;
+    if (config->chip_ram_size > mp->max_chip_ram) return 1;
+    if (config->fast_ram_size > mp->max_fast_ram) return 1;
+    if (config->fast_ram_size > 0u && !config->accelerator_present) return 1;
+    memset(resolved, 0, sizeof *resolved);
+    resolved->machine = config->machine;
+    resolved->machine_profile = mp;
+    resolved->cpu_profile = config->cpu_profile;
+    resolved->accelerator_profile = config->accelerator_profile;
+    resolved->chip_ram_size = config->chip_ram_size;
+    resolved->fast_ram_size = config->fast_ram_size;
+    resolved->total_ram_size = config->chip_ram_size + config->fast_ram_size;
+    resolved->external_mmu = config->external_mmu;
+    resolved->rom_path = config->rom_path;
+    return 0;
+}
+
 void amivm_config_init(struct amivm_config *config)
 {
     config->machine = AMIVM_MACHINE_GENERIC;
