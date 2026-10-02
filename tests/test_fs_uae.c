@@ -352,7 +352,8 @@ int main(void)
                      CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS);
                      CHECK(vm.exception_frame_format == 0x0Au);
                      CHECK(vm.exception_frame_size == 32u);
-                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                     CHECK(vm.exception_frame_format <= 0x0Bu);
+                 CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                      {
                          uint8_t saved = 0u;
                          CHECK(amivm_read8(&vm, vm.exception_frame_sp + 6u, &saved));
