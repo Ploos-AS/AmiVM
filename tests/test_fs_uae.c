@@ -267,6 +267,11 @@ int main(void)
                 CHECK(vm.mmu_exception_sr == vm.m68k.sr);
                 CHECK(vm.exception_fault_address == vm.mmu_fault_address);
                 CHECK(vm.exception_fault_status == vm.mmu_fault_status);
+                vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2000u;
+                CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                CHECK(vm.m68k.a[7] == AMIVM_RAM_BASE + 0x1ff0u);
+                CHECK(vm.exception_frame_sp == vm.m68k.a[7]);
+                CHECK(vm.exception_frame_size == 16u);
             }
             vm.mmu.enabled = false;
         }
