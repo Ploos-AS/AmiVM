@@ -371,6 +371,8 @@ int main(void)
                      CHECK(l9->words == 10u);
                      CHECK(l9->has_format_vector);
                      CHECK(l9->format_offset == 6u);
+                     CHECK(l9->internal_state_offset == 8u);
+                     CHECK(l9->internal_state_words == 2u);
                      CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68020_BUS)->format_offset == 6u);
                      CHECK(amivm_m68k_frame_layout(AMIVM_FRAME_68040_ACCESS)->format_offset == 6u);
                      CHECK(!l9->has_fault_address);
@@ -462,7 +464,15 @@ int main(void)
                      CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
                      CHECK(amivm_write8(&vm, vm.exception_frame_sp + 10u, saved));
                      CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
-                 }
+                     {
+                         uint8_t saved = 0u;
+                         CHECK(amivm_read8(&vm, vm.exception_frame_sp + 8u, &saved));
+                         CHECK(amivm_write8(&vm, vm.exception_frame_sp + 8u,
+                                            (uint8_t)(saved ^ 0x01u)));
+                         CHECK(amivm_m68k_validate_exception_frame(&vm) != 0);
+                         CHECK(amivm_write8(&vm, vm.exception_frame_sp + 8u, saved));
+                         CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                     }
                  {
                      uint32_t access_sp = vm.exception_frame_sp;
                      CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
