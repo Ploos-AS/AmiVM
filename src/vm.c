@@ -18,6 +18,14 @@ static const struct amivm_device_desc amivm_devices[] = {
     {"zorro", AMIVM_MMIO_BASE + 0x7000u, AMIVM_MMIO_PAGE_SIZE, 9u, AMIVM_DEVF_ZORRO},
 };
 
+static bool in_range(uint32_t addr, uint32_t base, size_t size)
+{
+    uint64_t a = addr;
+    uint64_t b = base;
+    uint64_t e = b + size;
+    return a >= b && a < e;
+}
+
 static bool amivm_device_present(const struct amivm_vm *vm,
                                       const struct amivm_device_desc *desc)
 {
@@ -43,14 +51,6 @@ static const struct amivm_device_desc *amivm_device_for_address(
             return d;
     }
     return NULL;
-}
-
-static bool in_range(uint32_t addr, uint32_t base, size_t size)
-{
-    uint64_t a = addr;
-    uint64_t b = base;
-    uint64_t e = b + size;
-    return a >= b && a < e;
 }
 
 static void bump_write_generation(struct amivm_vm *vm, uint32_t addr)
@@ -388,7 +388,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         *value = vm->rom[(size_t)(addr - AMIVM_ROM_BASE)];
         return true;
     }
-    if (addr == AMIVM_VMSERIAL_BASE) {
+    if (amivm_device_for_address(vm, addr) &&
+        addr == AMIVM_VMSERIAL_BASE) {
         *value = 0;
         return true;
     }
@@ -400,7 +401,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         *value = (uint8_t)(vm->timer_ticks & 0xffu);
         return true;
     }
-    if (in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_IRQ_BASE;
         switch (o) {
         case 0u: *value = (uint8_t)(vm->irq.pending & 0xffu); return true;
@@ -409,7 +411,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         default: return false;
         }
     }
-    if (in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TIMER_BASE;
         switch (o) {
         case 0u: *value = (uint8_t)vm->timer.counter; return true;
@@ -431,7 +434,8 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
         default: return false;
         }
     }
-    if (in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_TRACKDISK_BASE;
         switch (o) {
         case 0u: *value = (uint8_t)(vm->trackdisk.dma_address >> 24); return true;
@@ -465,12 +469,14 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     if (in_range(addr, AMIVM_ROM_BASE, AMIVM_ROM_SIZE)) {
         return false;
     }
-    if (addr == AMIVM_VMSERIAL_BASE) {
+    if (amivm_device_for_address(vm, addr) &&
+        addr == AMIVM_VMSERIAL_BASE) {
         fputc((int)value, stdout);
         fflush(stdout);
         return true;
     }
-    if (in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
+    if (amivm_device_for_address(vm, addr) &&
+        in_range(addr, AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE)) {
         uint32_t o = addr - AMIVM_IRQ_BASE;
         switch (o) {
         case 0u: return false;
