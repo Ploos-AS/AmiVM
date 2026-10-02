@@ -158,6 +158,12 @@ struct amivm_device_desc {
     unsigned required_machine_flags;
 };
 
+struct amivm_device_state {
+    const struct amivm_device_desc *desc;
+    bool instantiated;
+    bool enabled;
+};
+
 struct amivm_vm {
     uint8_t *ram;
     size_t ram_size;
@@ -176,6 +182,8 @@ struct amivm_vm {
     struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
     struct amivm_trackdisk trackdisk;
     struct amivm_timer timer;
+    struct amivm_device_state devices[16];
+    size_t device_count;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
