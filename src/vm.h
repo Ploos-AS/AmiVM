@@ -333,6 +333,7 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm);
+int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
 int amivm_m68k_enter_exception(struct amivm_vm *vm,
                                 enum amivm_m68k_exception exception,
