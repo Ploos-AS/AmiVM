@@ -228,6 +228,12 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->machine = resolved.machine;
     vm->chip_ram_size = resolved.chip_ram_size;
     vm->fast_ram_size = resolved.fast_ram_size;
+    vm->device_count = resolved.device_count;
+    for (size_t i = 0; i < resolved.device_count; ++i) {
+        vm->devices[i].desc = resolved.devices[i];
+        vm->devices[i].instantiated = true;
+        vm->devices[i].enabled = true;
+    }
 
     vm->ram_page_count = (resolved.total_ram_size + AMIVM_RAM_PAGE_SIZE - 1u) /
                          AMIVM_RAM_PAGE_SIZE;
