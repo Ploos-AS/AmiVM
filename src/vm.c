@@ -235,6 +235,29 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
     vm->m68k.sr = sr;
 }
 
+uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
+{
+    uint8_t b0, b1, b2, b3;
+    if (!ok || !amivm_read8(vm, addr, &b0) ||
+        !amivm_read8(vm, addr + 1u, &b1) ||
+        !amivm_read8(vm, addr + 2u, &b2) ||
+        !amivm_read8(vm, addr + 3u, &b3)) {
+        if (ok) *ok = false;
+        return 0u;
+    }
+    *ok = true;
+    return ((uint32_t)b0 << 24) | ((uint32_t)b1 << 16) |
+           ((uint32_t)b2 << 8) | b3;
+}
+
+bool amivm_m68k_write_u32(struct amivm_vm *vm, uint32_t addr, uint32_t value)
+{
+    return amivm_write8(vm, addr, (uint8_t)(value >> 24)) &&
+           amivm_write8(vm, addr + 1u, (uint8_t)(value >> 16)) &&
+           amivm_write8(vm, addr + 2u, (uint8_t)(value >> 8)) &&
+           amivm_write8(vm, addr + 3u, (uint8_t)value);
+}
+
 static bool m68k_fetch_word(struct amivm_vm *vm, uint32_t addr, uint16_t *word)
 {
     uint8_t hi, lo;
