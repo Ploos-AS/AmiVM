@@ -4,12 +4,12 @@
 #include <string.h>
 
 static const struct amivm_cpu_profile profiles[] = {
-    { AMIVM_CPU_68020, "68020", 20u, false, false, AMIVM_MMU_NONE,  AMIVM_MMU_MATURITY_NONE,      AMIVM_FPU_NONE,  false, false },
-    { AMIVM_CPU_68030, "68030", 30u, true,  false, AMIVM_MMU_68030, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_NONE,  false, false },
-    { AMIVM_CPU_68040, "68040", 40u, true,  true,  AMIVM_MMU_68040, AMIVM_MMU_MATURITY_QUALIFIED, AMIVM_FPU_68040, true,  false },
-    { AMIVM_CPU_68060, "68060", 60u, true,  true,  AMIVM_MMU_68060, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_68060, true,  false },
-    { AMIVM_CPU_HYPER040, "hyper040", 40u, true, true, AMIVM_MMU_68040, AMIVM_MMU_MATURITY_QUALIFIED, AMIVM_FPU_68040, true, true },
-    { AMIVM_CPU_HYPER060, "hyper060", 60u, true, true, AMIVM_MMU_68060, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_68060, true, true },
+    { AMIVM_CPU_68020, "68020", 20u, false, false, AMIVM_MMU_NONE,  AMIVM_MMU_MATURITY_NONE,      AMIVM_FPU_NONE,  false, false, 0u },
+    { AMIVM_CPU_68030, "68030", 30u, true,  false, AMIVM_MMU_68030, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_NONE,  false, false, 0u },
+    { AMIVM_CPU_68040, "68040", 40u, true,  true,  AMIVM_MMU_68040, AMIVM_MMU_MATURITY_QUALIFIED, AMIVM_FPU_68040, true,  false, 2u },
+    { AMIVM_CPU_68060, "68060", 60u, true,  true,  AMIVM_MMU_68060, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_68060, true,  false, 2u },
+    { AMIVM_CPU_HYPER040, "hyper040", 40u, true, true, AMIVM_MMU_68040, AMIVM_MMU_MATURITY_QUALIFIED, AMIVM_FPU_68040, true, true, 2u },
+    { AMIVM_CPU_HYPER060, "hyper060", 60u, true, true, AMIVM_MMU_68060, AMIVM_MMU_MATURITY_SCAFFOLD,  AMIVM_FPU_68060, true, true, 2u },
 };
 
 const struct amivm_cpu_profile *amivm_cpu_profile_default(void)
