@@ -42,6 +42,14 @@ struct amivm_media {
     char *path;
     uint8_t *data;
     size_t size;
+    unsigned tracks;
+    unsigned heads;
+    unsigned sectors_per_track;
+    unsigned sector_size;
+    unsigned current_track;
+    unsigned current_head;
+    bool write_protected;
+    bool disk_changed;
 };
 
 struct amivm_device_desc {
@@ -73,6 +81,11 @@ void amivm_vm_destroy(struct amivm_vm *vm);
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path);
 int amivm_media_read(const struct amivm_media *media, size_t offset,
                      void *buffer, size_t size);
+int amivm_media_seek(struct amivm_media *media, unsigned track, unsigned head);
+int amivm_media_read_sector(struct amivm_media *media, unsigned sector,
+                            void *buffer, size_t size);
+int amivm_media_write_sector(struct amivm_media *media, unsigned sector,
+                             const void *buffer, size_t size);
 
 size_t amivm_device_count(void);
 const struct amivm_device_desc *amivm_device_at(size_t index);
