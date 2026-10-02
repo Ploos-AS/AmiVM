@@ -818,9 +818,13 @@ const struct amivm_device_desc *amivm_find_device(const char *name)
 
 bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
 {
+    uint32_t physical;
     if (vm == NULL || value == NULL) {
         return false;
     }
+    if (amivm_mmu_translate(vm, addr, false, &physical) != 0)
+        return false;
+    addr = physical;
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         *value = vm->ram[(size_t)(addr - AMIVM_RAM_BASE)];
         return true;
@@ -900,9 +904,13 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
 
 bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
 {
+    uint32_t physical;
     if (vm == NULL) {
         return false;
     }
+    if (amivm_mmu_translate(vm, addr, true, &physical) != 0)
+        return false;
+    addr = physical;
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         vm->ram[(size_t)(addr - AMIVM_RAM_BASE)] = value;
         bump_write_generation(vm, addr);
