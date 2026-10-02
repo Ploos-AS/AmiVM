@@ -1097,6 +1097,7 @@ bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value)
     if (amivm_mmu_translate(vm, addr, false, &physical) != 0) {
         vm->m68k.exception = AMIVM_M68K_EXC_MMU_FAULT;
         (void)amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_MMU_FAULT);
+        (void)amivm_m68k_enter_exception(vm, (uint8_t)AMIVM_M68K_EXC_MMU_FAULT);
         if (vm->exception_vector_base != 0u)
             (void)amivm_m68k_enter_mmu_exception(vm);
         if (vm->exception_vector_base != 0u) {
