@@ -179,7 +179,8 @@ enum amivm_m68k_frame_descriptor {
     AMIVM_FRAME_68030_SHORT_BUS = 4,
     AMIVM_FRAME_68030_LONG_BUS = 5,
     AMIVM_FRAME_68060_ACCESS = 6,
-    AMIVM_FRAME_68040_ACCESS = 7
+    AMIVM_FRAME_68040_ACCESS = 7,
+    AMIVM_FRAME_INVALID = 0xFF
 };
 
 enum amivm_m68k_exception {
