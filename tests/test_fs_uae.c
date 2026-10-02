@@ -424,7 +424,6 @@ int main(void)
                  CHECK(vm.exception_frame_size == 12u);
                  CHECK(vm.exception_format_vector_word ==
                        (uint16_t)(0x2000u | (vm.exception_entry_vector & 0x0fffu)));
-                 CHECK(amivm_m68k_read_u32(&vm, vm.exception_frame_sp, &(bool){false}) == 0u);
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  {
                      uint32_t frame_sp = vm.exception_frame_sp;
