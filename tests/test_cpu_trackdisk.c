@@ -111,7 +111,7 @@ int main(void)
     vm.timer.enabled = true;
     vm.timer.irq_enable = true;
     vm.timer.periodic = true;
-    for (unsigned i = 0; i < 9u; ++i)
+    for (unsigned i = 0; i < 2u; ++i)
         CHECK(amivm_cpu_step(&cpu, &vm, backend) > 0);
     CHECK(!amivm_irq_is_pending(&vm, 6u));
     CHECK(amivm_cpu_step(&cpu, &vm, backend) > 0);
@@ -121,13 +121,13 @@ int main(void)
     amivm_clear_irq(&vm, 6u);
     vm.timer.periodic = false;
     vm.timer.counter = 0u;
-    for (unsigned i = 0; i < 10u; ++i)
+    for (unsigned i = 0; i < 3u; ++i)
         CHECK(amivm_cpu_step(&cpu, &vm, backend) > 0);
     CHECK(amivm_irq_is_pending(&vm, 6u));
     CHECK(!vm.timer.enabled);
 
     amivm_vm_destroy(&vm);
     remove("m2_150.adf");
-    puts("AmiVM M2.156 CPU-driven timer tick qualification qualification: PASS");
+    puts("AmiVM M2.157 CPU cycle-driven timer qualification qualification: PASS");
     return 0;
 }
