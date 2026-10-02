@@ -347,60 +347,74 @@ int amivm_m68k_enter_exception_handler(struct amivm_vm *vm, uint8_t vector)
 
 int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 {
+    const struct amivm_m68k_frame_layout *layout;
     uint32_t sp;
+    uint8_t frame_size;
+
     if (!vm) return -1;
+
+    layout = amivm_m68k_frame_layout(vm->exception_frame_class);
+    if (!layout) return -1;
+    frame_size = (uint8_t)(layout->words * 2u);
+
     sp = vm->m68k.a[7];
     vm->exception_stack_fault = false;
-    if (sp < 16u) {
+    if (sp < frame_size) {
         vm->exception_stack_fault = true;
         return -1;
     }
-    sp -= 16u;
+    sp -= frame_size;
+
     if (!amivm_m68k_write_u32(vm, sp, vm->mmu_exception_pc) ||
-        !amivm_write8(vm, sp + 6u, (uint8_t)(vm->exception_format_vector_word >> 8)) ||
-        !amivm_write8(vm, sp + 7u, (uint8_t)vm->exception_format_vector_word) ||
         !amivm_write8(vm, sp + 4u, (uint8_t)(vm->mmu_exception_sr >> 8)) ||
-        !amivm_write8(vm, sp + 5u, (uint8_t)vm->mmu_exception_sr) ||
-        !amivm_m68k_write_u32(vm, sp + 8u, vm->exception_fault_address) ||
-        !amivm_m68k_write_u32(vm, sp + 12u, vm->exception_fault_status)) {
+        !amivm_write8(vm, sp + 5u, (uint8_t)vm->mmu_exception_sr)) {
         vm->exception_stack_fault = true;
         return -1;
     }
+
     vm->m68k.a[7] = sp;
     vm->exception_frame_sp = sp;
-    vm->exception_frame_format = 2u;
-    {
-        const struct amivm_m68k_frame_layout *layout =
-            amivm_m68k_frame_layout(vm->exception_frame_format);
-        if (!layout) return -1;
-        vm->exception_frame_word_count = layout->words;
-        vm->exception_frame_size = (uint8_t)(layout->words * 2u);
-    }
     vm->exception_frame_format = vm->exception_frame_class;
-    {
-        const struct amivm_m68k_frame_layout *layout =
-            amivm_m68k_frame_layout(vm->exception_frame_format);
-        if (!layout) return -1;
-        vm->exception_frame_word_count = layout->words;
-        vm->exception_frame_size = (uint8_t)(layout->words * 2u);
-    }
+    vm->exception_frame_word_count = layout->words;
+    vm->exception_frame_size = frame_size;
     vm->exception_frame_magic = 0x45584632u;
-    vm->exception_frame_vector_offset = (uint16_t)(vm->exception_entry_vector * 4u);
+    vm->exception_frame_vector_offset =
+        (uint16_t)(vm->exception_entry_vector * 4u);
     vm->exception_format_vector_word =
         (uint16_t)(((uint16_t)vm->exception_frame_format << 12) |
                    (vm->exception_entry_vector & 0x0fffu));
-    vm->exception_fault_stage = (vm->exception_frame_type == 2u) ? 1u : 0u;
-    if (amivm_m68k_decode_frame_format(vm, vm->exception_format_vector_word) != 0)
-        return -1;
-    if (vm->exception_frame_type == 0u) {
-        vm->exception_frame_size = 8u;
-        vm->exception_frame_format = 0u;
-        vm->exception_frame_word_count = 4u;
-    } else if (vm->exception_frame_type == 1u) {
-        vm->exception_frame_size = 12u;
-        vm->exception_frame_format = 1u;
-        vm->exception_frame_word_count = 6u;
+    vm->exception_fault_stage =
+        (vm->exception_frame_type == 2u) ? 1u : 0u;
+
+    if (layout->has_format_vector) {
+        if (!amivm_write8(vm, sp + 6u,
+                          (uint8_t)(vm->exception_format_vector_word >> 8)) ||
+            !amivm_write8(vm, sp + 7u,
+                          (uint8_t)vm->exception_format_vector_word)) {
+            vm->exception_stack_fault = true;
+            return -1;
+        }
     }
+
+    if (layout->has_fault_address && layout->has_fault_status) {
+        if (!amivm_m68k_write_u32(vm, sp + 8u,
+                                  vm->exception_fault_address) ||
+            !amivm_m68k_write_u32(vm, sp + 12u,
+                                  vm->exception_fault_status)) {
+            vm->exception_stack_fault = true;
+            return -1;
+        }
+    }
+
+    if (amivm_m68k_decode_frame_format(vm,
+                                       vm->exception_format_vector_word) != 0)
+        return -1;
+
+    if (vm->exception_frame_type == 0u ||
+        vm->exception_frame_type == 1u) {
+        vm->exception_fault_stage = 0u;
+    }
+
     if (vm->exception_depth < 255u)
         vm->exception_depth++;
     return 0;
