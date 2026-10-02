@@ -190,13 +190,15 @@ int main(void)
         {
             uint32_t physical = 0u;
             bool ok = true;
+            uint8_t value = 0u;
             vm.mmu.enabled = true;
             CHECK(amivm_mmu_translate(&vm, AMIVM_RAM_BASE + 0x100u, false, &physical) == 0);
             CHECK(physical == AMIVM_RAM_BASE + 0x100u);
             CHECK(vm.mmu.last_logical == AMIVM_RAM_BASE + 0x100u);
             CHECK(vm.mmu.last_physical == physical);
             CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x100u, 0x5au));
-            CHECK(amivm_read8(&vm, AMIVM_RAM_BASE + 0x100u, (uint8_t *)&ok));
+            CHECK(amivm_read8(&vm, AMIVM_RAM_BASE + 0x100u, &value));
+            CHECK(value == 0x5au);
             vm.mmu.enabled = false;
         }
                 CHECK(vm.m68k.sr == 0x2000u);
