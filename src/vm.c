@@ -272,6 +272,27 @@ int amivm_m68k_raise_exception(struct amivm_vm *vm,
     return (int)exception;
 }
 
+int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
+                        bool write, uint32_t *physical)
+{
+    if (!vm || !physical) return -1;
+    vm->mmu.last_logical = logical;
+    vm->mmu.last_write = write;
+    vm->mmu.last_fault = AMIVM_MMU_FAULT_NONE;
+
+    if (!vm->mmu.enabled) {
+        *physical = logical;
+        vm->mmu.last_physical = logical;
+        return 0;
+    }
+
+    /* M2.199 contract-only baseline: translation is identity until
+       page-table walking is implemented. */
+    *physical = logical;
+    vm->mmu.last_physical = logical;
+    return 0;
+}
+
 void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
 {
     if (!vm) return;
@@ -279,6 +300,7 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
     vm->m68k.pc = pc;
     vm->m68k.sr = sr;
     vm->m68k.supervisor = (sr & 0x2000u) != 0u;
+    memset(&vm->mmu, 0, sizeof vm->mmu);
 }
 
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
