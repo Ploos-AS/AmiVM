@@ -306,6 +306,12 @@ int main(void)
                 CHECK(vm.exception_frame_format == 0x0Au);
                 CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_SHORT_BUS);
                 CHECK(vm.exception_frame_size == 32u);
+                vm.exception_bus_fault_in_progress = true;
+                CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                CHECK(vm.exception_frame_type == AMIVM_FRAME_68030_LONG_BUS);
+                CHECK(vm.exception_frame_format == 0x0Bu);
+                CHECK(vm.exception_frame_size == 92u);
+                vm.exception_bus_fault_in_progress = false;
                 CHECK(amivm_m68k_set_cpu_profile(&vm, 3u, 0u) == 0);
                 CHECK(vm.exception_frame_class == 1u);
                 CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
