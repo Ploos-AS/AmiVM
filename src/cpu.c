@@ -1495,7 +1495,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
 
     if ((opcode & 0xf1ffu) == 0x23c0u) {
         unsigned reg = (unsigned)((opcode >> 9u) & 7u);
-        uint32_t address, value;
+        uint32_t address;
         if (fetch32(cpu, vm, next_pc, &address) != 0 ||
             !cpu_write32(cpu, vm, address, is_supervisor(cpu), cpu->d[reg]))
             return deliver_fault(cpu, vm, instruction_pc);
