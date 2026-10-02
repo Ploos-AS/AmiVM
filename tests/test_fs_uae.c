@@ -113,6 +113,15 @@ int main(void)
             amivm_vm_advance_cycles(&vm, 1u);
             CHECK(vm.irq_pending);
             CHECK(vm.irq_level == 3u);
+            {
+                uint8_t vector = 0u;
+                CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+                CHECK(vector == 27u);
+                CHECK(!vm.irq_pending);
+                CHECK(vm.irq_in_service);
+                CHECK(((vm.m68k.sr >> 8) & 7u) == 3u);
+                CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 0);
+            }
         }
         amivm_vm_destroy(&vm);
         CHECK(amivm_config_resolve(&config, &resolved) == 0);
