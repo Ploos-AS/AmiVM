@@ -203,6 +203,15 @@ int main(void)
             CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x100u, 0x5au));
             CHECK(amivm_read8(&vm, AMIVM_RAM_BASE + 0x100u, &value));
             CHECK(value == 0x5au);
+            CHECK(vm.mmu.enabled);
+            vm.mmu.tt0 = 0u;
+            vm.m68k.exception = AMIVM_M68K_EXC_NONE;
+            {
+                uint8_t value = 0u;
+                CHECK(!amivm_read8(&vm, AMIVM_RAM_BASE + 0x200u, &value));
+                CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_INVALID);
+                CHECK(vm.m68k.exception == AMIVM_M68K_EXC_BUS_ERROR);
+            }
             vm.mmu.enabled = false;
         }
                 CHECK(vm.m68k.sr == 0x2000u);
