@@ -27,8 +27,6 @@ struct amivm_config {
     const char *rom_path;
     const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
     const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
-    const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
-    const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
     const struct amivm_cpu_profile *cpu_profile;
     enum amivm_mmu_model external_mmu;
 };
@@ -42,6 +40,7 @@ enum amivm_media_type {
 struct amivm_media {
     enum amivm_media_type type;
     char *path;
+    uint8_t *data;
     size_t size;
 };
 
@@ -72,6 +71,8 @@ bool amivm_parse_size_mib(const char *text, size_t *bytes_out);
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config);
 void amivm_vm_destroy(struct amivm_vm *vm);
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path);
+int amivm_media_read(const struct amivm_media *media, size_t offset,
+                     void *buffer, size_t size);
 
 size_t amivm_device_count(void);
 const struct amivm_device_desc *amivm_device_at(size_t index);
