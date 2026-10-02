@@ -8,6 +8,7 @@ static const struct amivm_device_desc amivm_devices[] = {
     {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u},
     {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 2u},
     {"irq", AMIVM_IRQ_BASE, AMIVM_MMIO_PAGE_SIZE, 0u},
+    {"trackdisk", AMIVM_TRACKDISK_BASE, AMIVM_MMIO_PAGE_SIZE, 3u},
 };
 
 static bool in_range(uint32_t addr, uint32_t base, size_t size)
@@ -134,6 +135,7 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->memory_write_generation = 1u;
+    amivm_trackdisk_reset(vm);
     for (size_t i = 0; i < AMIVM_MAX_FLOPPY_IMAGES; ++i)
         if (config->floppy_images[i] &&
             probe_media(config->floppy_images[i], AMIVM_MEDIA_ADF,
@@ -344,6 +346,74 @@ int amivm_media_write_sector(struct amivm_media *media, unsigned sector,
         return -1;
     memcpy(media->data + offset, buffer, size);
     return 0;
+}
+
+void amivm_trackdisk_reset(struct amivm_vm *vm)
+{
+    if (!vm) return;
+    memset(&vm->trackdisk, 0, sizeof vm->trackdisk);
+    vm->trackdisk.command = AMIVM_TRACKDISK_NOP;
+    vm->trackdisk.status = 0u;
+    vm->trackdisk.error = 0u;
+}
+
+static int trackdisk_dma(struct amivm_vm *vm, uint32_t addr,
+                         const void *src, void *dst, size_t size, bool write)
+{
+    if (!vm || addr < AMIVM_RAM_BASE ||
+        !in_range(addr, AMIVM_RAM_BASE, vm->ram_size) ||
+        size > vm->ram_size - (size_t)(addr - AMIVM_RAM_BASE))
+        return -1;
+    if (write)
+        memcpy(vm->ram + (addr - AMIVM_RAM_BASE), src, size);
+    else
+        memcpy(dst, vm->ram + (addr - AMIVM_RAM_BASE), size);
+    return 0;
+}
+
+int amivm_trackdisk_command(struct amivm_vm *vm,
+                            enum amivm_trackdisk_command command)
+{
+    uint8_t sector[512];
+    struct amivm_media *media;
+    if (!vm || command == AMIVM_TRACKDISK_NOP) return -1;
+    media = &vm->floppy[0];
+    if (media->type != AMIVM_MEDIA_ADF) {
+        vm->trackdisk.error = 1u;
+        return -1;
+    }
+    vm->trackdisk.command = command;
+    vm->trackdisk.busy = true;
+    vm->trackdisk.error = 0u;
+    if (command == AMIVM_TRACKDISK_SEEK) {
+        if (amivm_media_seek(media, vm->trackdisk.track,
+                             vm->trackdisk.head) != 0)
+            vm->trackdisk.error = 2u;
+    } else if (command == AMIVM_TRACKDISK_READ_SECTOR) {
+        if (amivm_media_seek(media, vm->trackdisk.track,
+                             vm->trackdisk.head) != 0 ||
+            amivm_media_read_sector(media, vm->trackdisk.sector,
+                                    sector, sizeof sector) != 0 ||
+            trackdisk_dma(vm, vm->trackdisk.dma_address, sector, NULL,
+                          sizeof sector, true) != 0)
+            vm->trackdisk.error = 3u;
+    } else if (command == AMIVM_TRACKDISK_WRITE_SECTOR) {
+        if (media->write_protected ||
+            trackdisk_dma(vm, vm->trackdisk.dma_address, NULL, sector,
+                          sizeof sector, false) != 0 ||
+            amivm_media_seek(media, vm->trackdisk.track,
+                             vm->trackdisk.head) != 0 ||
+            amivm_media_write_sector(media, vm->trackdisk.sector,
+                                     sector, sizeof sector) != 0)
+            vm->trackdisk.error = 4u;
+    } else {
+        vm->trackdisk.error = 5u;
+    }
+    vm->trackdisk.busy = false;
+    vm->trackdisk.status = vm->trackdisk.error ? 0x80u : 0x01u;
+    if (vm->trackdisk.irq_enable)
+        amivm_raise_irq(vm, 3u);
+    return vm->trackdisk.error ? -1 : 0;
 }
 
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line)
