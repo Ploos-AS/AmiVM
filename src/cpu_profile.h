@@ -43,6 +43,7 @@ struct amivm_cpu_profile {
     enum amivm_fpu_model fpu_model;
     bool has_master_stack;
     bool hyper;
+    unsigned default_exception_frame_class;
 };
 
 const struct amivm_cpu_profile *amivm_cpu_profile_default(void);
