@@ -354,19 +354,27 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
 {
     uint32_t sp, pc, fault_addr, fault_status;
-    uint8_t b0, b1, s0, s1;
+    uint8_t b0, b1;
     bool ok;
     if (!vm || vm->exception_frame_size < 8u) return -1;
     sp = vm->m68k.a[7];
-    if (!amivm_m68k_read_u32(vm, sp, &ok) || !ok) return -1;
-    pc = vm->m68k.d[7];
-    (void)pc;
-    if (!amivm_read8(vm, sp + 4u, &b0) || !amivm_read8(vm, sp + 5u, &b1) ||
-        !amivm_m68k_read_u32(vm, sp + 8u, &ok) ||
-        !amivm_m68k_read_u32(vm, sp + 12u, &ok))
+    pc = amivm_m68k_read_u32(vm, sp, &ok);
+    if (!ok) return -1;
+    if (!amivm_read8(vm, sp + 4u, &b0) ||
+        !amivm_read8(vm, sp + 5u, &b1))
         return -1;
-    (void)s0; (void)s1; (void)fault_addr; (void)fault_status;
-    (void)b0; (void)b1;
+    if (vm->exception_frame_size >= 16u) {
+        fault_addr = amivm_m68k_read_u32(vm, sp + 8u, &ok);
+        if (!ok) return -1;
+        fault_status = amivm_m68k_read_u32(vm, sp + 12u, &ok);
+        if (!ok) return -1;
+        if (fault_addr != vm->exception_fault_address ||
+            fault_status != vm->exception_fault_status)
+            return -1;
+    }
+    if (pc != vm->mmu_exception_pc ||
+        ((uint16_t)b0 << 8 | b1) != vm->mmu_exception_sr)
+        return -1;
     return 0;
 }
 
@@ -374,7 +382,8 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
 {
     if (!vm) return -1;
     if (vm->exception_frame_active &&
-        amivm_m68k_validate_exception_frame(vm) != 0) {
+        (amivm_m68k_validate_exception_frame(vm) != 0 ||
+         amivm_m68k_validate_stacked_frame(vm) != 0)) {
         vm->m68k.stopped = true;
         return -1;
     }
