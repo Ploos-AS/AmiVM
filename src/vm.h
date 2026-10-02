@@ -56,6 +56,8 @@ struct amivm_machine_profile {
 struct amivm_config {
     enum amivm_machine_model machine;
     size_t ram_size;
+    size_t chip_ram_size;
+    size_t fast_ram_size;
     const char *rom_path;
     const char *floppy_images[AMIVM_MAX_FLOPPY_IMAGES];
     const char *hard_drives[AMIVM_MAX_HARD_DRIVES];
@@ -131,6 +133,8 @@ struct amivm_vm {
     uint64_t memory_write_generation;
     enum amivm_machine_model machine;
     struct amivm_cpu_profile cpu_profile;
+    size_t chip_ram_size;
+    size_t fast_ram_size;
     struct amivm_media floppy[AMIVM_MAX_FLOPPY_IMAGES];
     struct amivm_media hard_drive[AMIVM_MAX_HARD_DRIVES];
     struct amivm_trackdisk trackdisk;
