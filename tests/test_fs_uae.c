@@ -36,6 +36,8 @@ int main(void)
     CHECK(strcmp(config.cpu_profile->name, "68040") == 0);
     CHECK(config.external_mmu == AMIVM_MMU_68851);
     CHECK(config.ram_size == 34u * 1024u * 1024u);
+    CHECK(config.chip_ram_size == 2u * 1024u * 1024u);
+    CHECK(config.fast_ram_size == 32u * 1024u * 1024u);
     CHECK(report.ignored_speed == 2u);
     CHECK(report.ignored_host == 1u);
     CHECK(report.unsupported == 1u);
