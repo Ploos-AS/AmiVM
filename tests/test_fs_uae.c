@@ -280,6 +280,15 @@ int main(void)
                 CHECK(vm.m68k.a[7] == AMIVM_RAM_BASE + 0x2000u);
                 CHECK(vm.exception_frame_size == 0u);
                 CHECK(vm.m68k.exception == AMIVM_M68K_EXC_NONE);
+                vm.exception_vector_base = AMIVM_RAM_BASE + 0x1000u;
+                vm.m68k.pc = AMIVM_RAM_BASE + 0x2200u;
+                vm.m68k.sr = 0x0000u;
+                CHECK(amivm_m68k_write_u32(&vm, vm.exception_vector_base + 56u * 4u,
+                                           AMIVM_RAM_BASE + 0x9000u));
+                CHECK(amivm_m68k_exception_enter(&vm, 56u) == 0);
+                CHECK(vm.m68k.pc == AMIVM_RAM_BASE + 0x9000u);
+                CHECK((vm.m68k.sr & 0x2000u) != 0u);
+                CHECK(vm.pending_exception_vector == 56u);
             }
             vm.mmu.enabled = false;
         }
