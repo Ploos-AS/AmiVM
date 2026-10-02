@@ -424,6 +424,17 @@ int main(void)
                  CHECK(vm.exception_frame_size == 12u);
                  CHECK(vm.exception_format_vector_word ==
                        (uint16_t)(0x2000u | (vm.exception_entry_vector & 0x0fffu)));
+                 {
+                     const struct amivm_m68k_frame_layout *l20 =
+                         amivm_m68k_frame_layout(AMIVM_FRAME_68020_BUS);
+                     CHECK(l20 != NULL);
+                     CHECK(l20->words == 6u);
+                     CHECK(l20->has_format_vector);
+                     CHECK(l20->format_offset == 6u);
+                     CHECK(!l20->has_fault_address);
+                     CHECK(!l20->has_fault_status);
+                     CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+                 }
                  CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
                  {
                      uint32_t frame_sp = vm.exception_frame_sp;
