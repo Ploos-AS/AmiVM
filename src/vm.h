@@ -83,6 +83,8 @@ struct amivm_resolved_config {
     size_t total_ram_size;
     enum amivm_mmu_model external_mmu;
     const char *rom_path;
+    size_t device_count;
+    const struct amivm_device_desc *devices[16];
 };
 
 struct amivm_config {
