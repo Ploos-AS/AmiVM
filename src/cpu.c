@@ -1361,16 +1361,29 @@ illegal:
     return deliver_fault(cpu, vm, instruction_pc);
 }
 
-static uint32_t reference_cycle_cost(uint16_t opcode)
+static uint32_t reference_cycle_cost(const struct amivm_cpu_profile *profile,
+                                         uint16_t opcode)
 {
+    unsigned base;
     switch (opcode >> 12u) {
-    case 0x6u: return 10u; /* branches */
-    case 0x7u: return 4u;  /* MOVEQ */
-    case 0x4u: return 8u;  /* system/control */
-    case 0x5u: return 8u;  /* quick/addq/subq */
+    case 0x6u: base = 10u; break; /* branches */
+    case 0x7u: base = 4u;  break; /* MOVEQ */
+    case 0x4u: base = 8u;  break; /* system/control */
+    case 0x5u: base = 8u;  break; /* quick/addq/subq */
     case 0x2u:
-    case 0x3u: return 8u;  /* MOVE */
-    default: return 4u;    /* deterministic baseline */
+    case 0x3u: base = 8u;  break; /* MOVE */
+    default: base = 4u; break;
+    }
+    if (profile == NULL)
+        return base;
+    switch (profile->id) {
+    case AMIVM_CPU_68020: return base * 2u;
+    case AMIVM_CPU_68030: return base * 3u / 2u;
+    case AMIVM_CPU_68040: return base;
+    case AMIVM_CPU_68060: return (base + 1u) / 2u;
+    case AMIVM_CPU_HYPER040: return base / 2u ? base / 2u : 1u;
+    case AMIVM_CPU_HYPER060: return (base + 2u) / 3u ? (base + 2u) / 3u : 1u;
+    default: return base;
     }
 }
 
@@ -1394,7 +1407,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     if (fetch16(cpu, vm, cpu->pc, &opcode) != 0)
         return deliver_fault(cpu, vm, instruction_pc);
     next_pc = cpu->pc + 2u;
-    cpu->last_step_cycles = reference_cycle_cost(opcode);
+    cpu->last_step_cycles = reference_cycle_cost(active_profile(cpu), opcode);
 
     if (opcode == OP_NOP) { cpu->pc = next_pc; return 1; }
     if ((opcode & 0xffc0u) == OP_PMMU_BASE)
