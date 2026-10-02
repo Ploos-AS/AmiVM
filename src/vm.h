@@ -157,6 +157,9 @@ struct amivm_m68k_frame_layout {
     bool has_format_vector;
     bool has_fault_address;
     bool has_fault_status;
+    uint8_t format_offset;
+    uint8_t fault_address_offset;
+    uint8_t fault_status_offset;
 };
 
 enum amivm_m68k_frame_descriptor {
