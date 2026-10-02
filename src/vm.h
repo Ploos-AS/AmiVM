@@ -218,6 +218,8 @@ struct amivm_vm {
     struct amivm_ide_state ide;
     struct amivm_zorro_state zorro;
     size_t device_count;
+    uint64_t cpu_cycles;
+    uint64_t chipset_cycles;
 };
 
 const struct amivm_machine_profile *amivm_machine_profile_by_id(
@@ -226,6 +228,8 @@ const struct amivm_machine_profile *amivm_machine_profile_by_name(
     const char *name);
 
 void amivm_aga_advance_beam(struct amivm_vm *vm, unsigned cycles);
+void amivm_vm_advance_cycles(struct amivm_vm *vm, unsigned cycles);
+
 
 int amivm_config_resolve(const struct amivm_config *config,
                              struct amivm_resolved_config *resolved);
