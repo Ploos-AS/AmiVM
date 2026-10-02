@@ -235,6 +235,45 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
     vm->m68k.sr = sr;
 }
 
+static bool m68k_fetch_word(struct amivm_vm *vm, uint32_t addr, uint16_t *word)
+{
+    uint8_t hi, lo;
+    if (!amivm_read8(vm, addr, &hi) || !amivm_read8(vm, addr + 1u, &lo))
+        return false;
+    *word = (uint16_t)(((uint16_t)hi << 8) | lo);
+    return true;
+}
+
+int amivm_m68k_execute_one(struct amivm_vm *vm)
+{
+    uint16_t op;
+    if (!vm || vm->m68k.stopped) return -1;
+    vm->m68k.exception = AMIVM_M68K_EXC_NONE;
+    if (!m68k_fetch_word(vm, vm->m68k.pc, &op)) {
+        vm->m68k.exception = AMIVM_M68K_EXC_BUS_ERROR;
+        return amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_BUS_ERROR);
+    }
+
+    if (op == 0x4e71u) {
+        vm->m68k.pc += 2u;
+        amivm_vm_account_instruction(vm, 4u);
+        return 0;
+    }
+    if (op == 0x4e72u) {
+        vm->m68k.pc += 2u;
+        vm->m68k.stopped = true;
+        amivm_vm_account_instruction(vm, 4u);
+        return 0;
+    }
+    if (op == 0x4e73u) {
+        vm->m68k.pc += 2u;
+        return amivm_m68k_return_from_interrupt(vm);
+    }
+
+    vm->m68k.exception = AMIVM_M68K_EXC_ILLEGAL;
+    return amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_ILLEGAL);
+}
+
 int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
                                 const struct amivm_cpu_backend *backend)
 {
