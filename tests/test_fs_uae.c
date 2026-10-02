@@ -718,7 +718,9 @@ int main(void)
                          if (ql->has_format_vector) {
                              CHECK((unsigned)ql->format_offset + 2u <=
                                    (unsigned)ql->words * 2u);
-                             if (ql->internal_state_words)
+                             if (ql->preserves_internal_state)
+                              CHECK(ql->internal_state_words != 0u);
+                          if (ql->internal_state_words)
                                  CHECK((unsigned)ql->format_offset + 2u <=
                                        (unsigned)ql->internal_state_offset ||
                                        (unsigned)ql->internal_state_offset +
