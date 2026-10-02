@@ -174,6 +174,7 @@ struct amivm_m68k_registers {
     uint16_t sr;
     bool stopped;
     uint8_t exception;
+    bool supervisor;
 };
 
 struct amivm_m68k_step_result {
@@ -287,6 +288,8 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
+int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor);
+bool amivm_m68k_is_supervisor(const struct amivm_vm *vm);
 int amivm_m68k_execute_one(struct amivm_vm *vm);
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok);
 bool amivm_m68k_write_u32(struct amivm_vm *vm, uint32_t addr, uint32_t value);
