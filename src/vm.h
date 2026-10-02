@@ -305,6 +305,8 @@ struct amivm_vm {
     uint16_t mmu_exception_sr;
     uint32_t exception_fault_address;
     uint32_t exception_fault_status;
+    uint32_t exception_frame_sp;
+    uint8_t exception_frame_size;
     uint8_t irq_level;
     bool irq_pending;
     bool irq_in_service;
@@ -330,6 +332,7 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr);
 void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level);
 int amivm_m68k_service_irq(struct amivm_vm *vm);
 int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector);
+int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm);
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm);
 int amivm_m68k_enter_exception(struct amivm_vm *vm,
                                 enum amivm_m68k_exception exception,
