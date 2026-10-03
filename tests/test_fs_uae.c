@@ -1031,6 +1031,11 @@ int main(void)
                             uint8_t saved_type = vm.exception_frame_type;
                             vm.exception_context_stack[0].frame_magic = 0u;
                             CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                            vm.exception_context_stack[0].frame_magic = 0x45584632u;
+                            vm.exception_context_stack[0].frame_sp |= 1u;
+                            CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                            vm.exception_context_stack[0].frame_sp &= ~1u;
+                            CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
                             CHECK(vm.exception_frame_sp == saved_sp);
                             CHECK(vm.exception_depth == saved_depth);
                             CHECK(vm.exception_frame_type == saved_type);
