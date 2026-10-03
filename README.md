@@ -180,7 +180,7 @@ M2 has advanced beyond the initial CPU-backend bring-up. The implementation now 
 
 M2 is deliberately not marked complete until its full execution contract is qualified, including the 68040-class CPU path, exception/interrupt behavior, supervisor/user transitions, the MMU requirements needed by Linux/m68k, and the FPU baseline.
 
-**Next proof point:** close the remaining M2 exit criteria and begin **M3 — Linux/m68k guest OS bring-up**, with serial/early-console output as the first visible boot milestone.
+**Next proof point:** close the remaining M2 exit criteria and begin **M3 — 68k guest OS bring-up**. Linux/m68k is the first visible boot milestone, but the machine contract must remain OS-neutral for AmigaOS 3.x, AROS/m68k, NetBSD/m68k and compatible older OpenBSD/m68k guests.
 
 See [ROADMAP.md](ROADMAP.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
