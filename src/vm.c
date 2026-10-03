@@ -1571,8 +1571,6 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         }
         *physical = (pte & ~page_mask) | (logical & page_mask);
         vm->mmu.last_physical = *physical;
-        vm->mmu.translation_cache_logical_page = logical >> shift;
-        vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         amivm_mmu_translation_cache_insert(
             vm, logical, *physical, (pte & 2u) == 0u, (pte & 4u) != 0u);
         vm->mmu.last_translation_valid = true;
