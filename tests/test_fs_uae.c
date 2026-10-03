@@ -995,11 +995,18 @@ int main(void)
                     vm.m68k.a[7] = AMIVM_RAM_BASE + 0x2400u;
                     vm.mmu_fault_address = AMIVM_RAM_BASE + 0x2345u;
                     vm.mmu_fault_status = 0x12u;
-                    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
-                    CHECK(vm.exception_depth == 2u);
+                    {
+                        uint32_t outer_sp = vm.exception_frame_sp;
+                        uint8_t outer_type = vm.exception_frame_type;
+                        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+                        CHECK(vm.exception_depth == 2u);
+                        CHECK(vm.exception_frame_sp != outer_sp);
+                        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                        CHECK(vm.exception_depth == 1u);
+                        CHECK(vm.exception_frame_sp == outer_sp);
+                        CHECK(vm.exception_frame_type == outer_type);
+                    }
                     CHECK(vm.m68k.a[7] == AMIVM_RAM_BASE + 0x23f0u);
-                    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
-                    CHECK(vm.exception_depth == 1u);
                 }
                 vm.mmu.enabled = false;
             }
