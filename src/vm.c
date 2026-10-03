@@ -217,6 +217,20 @@ static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
         return -1;
     layout = amivm_m68k_frame_layout(ctx->frame_type);
     if (!layout || !layout->implemented ||
+        ((vm->cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68020 &&
+          ctx->frame_format != 0x2u) ||
+         (vm->cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68030 &&
+          ctx->frame_format != 0x9u && ctx->frame_format != 0xAu &&
+          ctx->frame_format != 0xBu) ||
+         (vm->cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68040 &&
+          ctx->frame_format != 0x7u) ||
+         (vm->cpu_profile.exception_frame_family == AMIVM_FRAME_FAMILY_68060 &&
+          ctx->frame_format != 0x4u) ||
+         (vm->cpu_profile.exception_frame_family != AMIVM_FRAME_FAMILY_68020 &&
+          vm->cpu_profile.exception_frame_family != AMIVM_FRAME_FAMILY_68030 &&
+          vm->cpu_profile.exception_frame_family != AMIVM_FRAME_FAMILY_68040 &&
+          vm->cpu_profile.exception_frame_family != AMIVM_FRAME_FAMILY_68060 &&
+          ctx->frame_format != 0x0u)) ||
         ctx->frame_size != (uint8_t)(layout->words * 2u) ||
         ctx->frame_word_count != layout->words ||
         ctx->frame_format != (uint8_t)amivm_m68k_frame_layout_format(ctx->frame_type) ||
