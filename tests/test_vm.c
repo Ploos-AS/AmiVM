@@ -3259,6 +3259,29 @@ static int test_mmu_reset_preserves_profile_geometry(void)
 }
 
 
+static int test_mmu_cache_policy_helper(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    amivm_mmu_translation_cache_reconfigure(&vm, 1u, 13u);
+    CHECK(vm.mmu.translation_cache_entry_count == 1u);
+    amivm_m68k_reset(&vm, 0u, 0x2000u);
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3311,6 +3334,7 @@ int main(void)
         test_mmu_translation_cache_reset_rebuild() != 0 ||
         test_mmu_translation_cache_reset_cycles() != 0 ||
         test_mmu_reset_preserves_profile_geometry() != 0 ||
+        test_mmu_cache_policy_helper() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
