@@ -534,6 +534,36 @@ static uint8_t amivm_m68k_exception_frame_descriptor(const struct amivm_vm *vm)
     }
 }
 
+static int amivm_m68k_validate_cpu_profile_layouts(
+    const struct amivm_cpu_profile *profile)
+{
+    uint8_t descriptors[2];
+    size_t count = 0u;
+    if (!profile) return -1;
+    switch (profile->exception_frame_family) {
+    case AMIVM_FRAME_FAMILY_68020:
+        descriptors[count++] = AMIVM_FRAME_68020_BUS;
+        break;
+    case AMIVM_FRAME_FAMILY_68030:
+        descriptors[count++] = AMIVM_FRAME_68030_SHORT_BUS;
+        descriptors[count++] = AMIVM_FRAME_68030_LONG_BUS;
+        break;
+    case AMIVM_FRAME_FAMILY_68040:
+        descriptors[count++] = AMIVM_FRAME_68040_ACCESS;
+        break;
+    case AMIVM_FRAME_FAMILY_68060:
+        descriptors[count++] = AMIVM_FRAME_68060_ACCESS;
+        break;
+    default:
+        return -1;
+    }
+    for (size_t i = 0u; i < count; ++i) {
+        if (!amivm_m68k_frame_layout(descriptors[i]))
+            return -1;
+    }
+    return 0;
+}
+
 int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submodel)
 {
     const struct amivm_cpu_profile *profile;
@@ -549,7 +579,8 @@ int amivm_m68k_set_cpu_profile(struct amivm_vm *vm, uint8_t model, uint8_t submo
     profile = amivm_cpu_profile_by_id((enum amivm_cpu_profile_id)model);
     if (!profile ||
         profile->exception_frame_family > AMIVM_FRAME_FAMILY_68060 ||
-        profile->default_exception_frame_class > 2u)
+        profile->default_exception_frame_class > 2u ||
+        amivm_m68k_validate_cpu_profile_layouts(profile) != 0)
         return -1;
 
     vm->cpu_model = model;
