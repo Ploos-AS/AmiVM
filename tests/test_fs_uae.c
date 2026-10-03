@@ -998,6 +998,8 @@ int main(void)
                     {
                         uint32_t outer_sp = vm.exception_frame_sp;
                         uint8_t outer_type = vm.exception_frame_type;
+                        uint32_t outer_state0 = vm.exception_internal_state[0];
+                        uint32_t outer_state1 = vm.exception_internal_state[1];
                         CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                         CHECK(vm.exception_depth == 2u);
                         CHECK(vm.exception_frame_sp != outer_sp);
@@ -1005,6 +1007,8 @@ int main(void)
                         CHECK(vm.exception_depth == 1u);
                         CHECK(vm.exception_frame_sp == outer_sp);
                         CHECK(vm.exception_frame_type == outer_type);
+                        CHECK(vm.exception_internal_state[0] == outer_state0);
+                        CHECK(vm.exception_internal_state[1] == outer_state1);
                     }
                     CHECK(vm.m68k.a[7] == AMIVM_RAM_BASE + 0x23f0u);
                 }
