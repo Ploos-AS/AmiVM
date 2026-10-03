@@ -3521,6 +3521,54 @@ static int test_mmu_translation_cache_lifecycle(void)
 }
 
 
+static int test_68040_tlb_qualification_group(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    /* Qualified profile must use the fixed qualified TLB geometry. */
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00123000u, AMIVM_RAM_BASE + 0x2000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00123000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x2000u);
+
+    /* Logical page changes must never hit the previous physical mapping. */
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00124000u, false, &physical));
+
+    /* Write-protect state is architectural permission state, not cache state. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00125000u, AMIVM_RAM_BASE + 0x3000u, false, true);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00125000u, true, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+    /* Full invalidation must make every qualified translation disappear. */
+    amivm_mmu_translation_cache_invalidate(&vm);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00123000u, false, &physical));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3580,6 +3628,7 @@ int main(void)
         test_mmu_cache_slot_invalidation_path() != 0 ||
         test_mmu_cache_entry_state_write_sites() != 0 ||
         test_mmu_translation_cache_lifecycle() != 0 ||
+        test_68040_tlb_qualification_group() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
