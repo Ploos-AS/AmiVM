@@ -1469,9 +1469,19 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
        the memory-bus contract. */
     if (vm->mmu.root_index_bits != 0u && vm->mmu.leaf_index_bits != 0u) {
         uint32_t page_mask = amivm_mmu_page_mask(shift);
-        uint32_t leaf_mask = (1u << vm->mmu.leaf_index_bits) - 1u;
-        uint32_t root_mask = (1u << vm->mmu.root_index_bits) - 1u;
-        uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + shift)) & root_mask;
+        uint8_t leaf_bits = vm->mmu.leaf_index_bits;
+        uint8_t root_bits = vm->mmu.root_index_bits;
+        uint32_t leaf_mask;
+        uint32_t root_mask;
+        uint32_t root_shift;
+        uint32_t root_index;
+        if (leaf_bits > 31u) leaf_bits = 31u;
+        if (root_bits > 31u) root_bits = 31u;
+        leaf_mask = amivm_mmu_page_mask(leaf_bits);
+        root_mask = amivm_mmu_page_mask(root_bits);
+        root_shift = (uint32_t)leaf_bits + shift;
+        if (root_shift > 31u) root_shift = 31u;
+        root_index = (logical >> root_shift) & root_mask;
         uint32_t leaf_index = (logical >> shift) & leaf_mask;
         uint32_t root_pte_addr = vm->mmu.root_table_base + root_index * 4u;
         vm->mmu.root_table_page = vm->mmu.root_table_base & ~page_mask;
@@ -1521,6 +1531,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
 
     if (vm->mmu.page_table_entries != 0u) {
         uint8_t page_shift = vm->mmu.page_shift;
+        if (vm->mmu.page_table_entries > UINT32_MAX) return -1;
         uint32_t page_mask;
         if (page_shift > 31u) page_shift = 31u;
         page_mask = amivm_mmu_page_mask(page_shift);
