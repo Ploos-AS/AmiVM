@@ -34,6 +34,17 @@ int main(void)
     CHECK(amivm_cpu_profile_by_name("unknown") == NULL);
     CHECK(amivm_cpu_profile_by_name(NULL) == NULL);
 
-    puts("AmiVM M2.81 CPU profile capability tests: PASS");
+    for (int id = AMIVM_CPU_68020; id <= AMIVM_CPU_HYPER060; ++id) {
+        p = amivm_cpu_profile_by_id((enum amivm_cpu_profile_id)id);
+        CHECK(p != NULL);
+        CHECK((p->id <= AMIVM_CPU_68030) ? p->default_exception_frame_class == 0u : p->default_exception_frame_class == 2u);
+        CHECK(p->exception_frame_family ==
+              ((p->id == AMIVM_CPU_68020) ? AMIVM_FRAME_FAMILY_68020 :
+               (p->id == AMIVM_CPU_68030) ? AMIVM_FRAME_FAMILY_68030 :
+               (p->id == AMIVM_CPU_68040 || p->id == AMIVM_CPU_HYPER040) ? AMIVM_FRAME_FAMILY_68040 :
+               AMIVM_FRAME_FAMILY_68060));
+    }
+
+    puts("AmiVM M2.82 CPU profile frame-family invariants: PASS");
     return 0;
 }
