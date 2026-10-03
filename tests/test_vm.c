@@ -3789,6 +3789,65 @@ static int test_68040_tlb_all_slots(void)
 }
 
 
+static int test_68040_tlb_mixed_permissions_all_slots(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+    const uint32_t pages[] = {
+        0x00700000u, 0x00701000u, 0x00702000u, 0x00703000u
+    };
+    const bool writes[] = { true, false, true, false };
+    const bool supervisors[] = { false, true, false, true };
+    size_t i;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    for (i = 0u; i < 4u; ++i) {
+        amivm_mmu_translation_cache_insert(
+            &vm, pages[i], AMIVM_RAM_BASE + 0x10000u + (uint32_t)i * 0x1000u,
+            writes[i], supervisors[i]);
+    }
+
+    /* Validate every slot from both privilege levels. */
+    for (i = 0u; i < 4u; ++i) {
+        vm.m68k.sr = 0x2000u;
+        CHECK(amivm_mmu_translation_cache_lookup(
+            &vm, pages[i], false, &physical));
+        CHECK(physical ==
+              AMIVM_RAM_BASE + 0x10000u + (uint32_t)i * 0x1000u);
+
+        if (!writes[i]) {
+            CHECK(!amivm_mmu_translation_cache_lookup(
+                &vm, pages[i], true, &physical));
+            CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+        }
+
+        vm.m68k.sr = 0u;
+        if (supervisors[i]) {
+            CHECK(!amivm_mmu_translation_cache_lookup(
+                &vm, pages[i], false, &physical));
+            CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+        } else {
+            CHECK(amivm_mmu_translation_cache_lookup(
+                &vm, pages[i], false, &physical));
+        }
+    }
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3853,6 +3912,7 @@ int main(void)
         test_68040_tlb_lifecycle() != 0 ||
         test_68040_tlb_collision_metadata() != 0 ||
         test_68040_tlb_all_slots() != 0 ||
+        test_68040_tlb_mixed_permissions_all_slots() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
