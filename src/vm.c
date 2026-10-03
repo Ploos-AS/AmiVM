@@ -2159,6 +2159,13 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     if (in_range(addr, AMIVM_RAM_BASE, vm->ram_size)) {
         vm->ram[(size_t)(addr - AMIVM_RAM_BASE)] = value;
         bump_write_generation(vm, addr);
+        /*
+         * A RAM write may be a page-table update.  Until the MMU has
+         * address-aware page-table metadata, conservatively invalidate the
+         * translation cache on every RAM write when MMU is enabled.
+         */
+        if (vm->mmu.enabled)
+            amivm_mmu_translation_cache_invalidate(vm);
         return true;
     }
     if (in_range(addr, AMIVM_ROM_BASE, AMIVM_ROM_SIZE)) {
