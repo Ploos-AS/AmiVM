@@ -302,6 +302,19 @@ struct amivm_device_state {
     bool enabled;
 };
 
+struct amivm_exception_context {
+    uint32_t frame_sp;
+    uint8_t frame_size;
+    uint8_t frame_type;
+    uint8_t frame_format;
+    uint16_t frame_word_count;
+    uint16_t vector_offset;
+    uint16_t format_vector_word;
+    uint32_t fault_stage;
+    uint8_t entry_vector;
+    uint32_t internal_state[34];
+};
+
 struct amivm_vm {
     uint8_t *ram;
     size_t ram_size;
@@ -361,6 +374,7 @@ struct amivm_vm {
     uint32_t exception_internal_state[34];
     uint32_t exception_frame_magic;
     uint8_t exception_depth;
+    struct amivm_exception_context exception_context_stack[8];
     bool exception_stack_fault;
     bool exception_double_fault;
     bool exception_halted;
