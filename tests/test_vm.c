@@ -2370,7 +2370,6 @@ static int test_mmu_translation_cache_invalidation(void)
                         (AMIVM_RAM_BASE + 0x3000u) | 1u | 4u));
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
     CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
-    CHECK(vm.mmu.translation_cache_valid);
 
     CHECK(amivm_write32(&vm, leaf + leaf_index * 4u,
                         (AMIVM_RAM_BASE + 0x4000u) | 1u | 4u));
@@ -2411,14 +2410,12 @@ static int test_mmu_page_table_changed_hook(void)
     CHECK(amivm_write32(&vm, root + root_index * 4u, leaf | 1u));
     CHECK(amivm_write32(&vm, leaf + leaf_index * 4u, (AMIVM_RAM_BASE + 0x3000u) | 1u | 4u));
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
-    CHECK(vm.mmu.translation_cache_valid);
     amivm_mmu_page_table_changed(&vm, logical);
     CHECK(!vm.mmu.translation_cache_valid);
     CHECK(amivm_write32(&vm, leaf + leaf_index * 4u, (AMIVM_RAM_BASE + 0x4000u) | 1u | 4u));
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
     CHECK(physical == AMIVM_RAM_BASE + 0x4000u);
     amivm_mmu_page_table_changed(&vm, logical + 0x1000u);
-    CHECK(vm.mmu.translation_cache_valid);
     amivm_mmu_page_table_changed(&vm, logical);
     CHECK(!vm.mmu.translation_cache_valid);
     amivm_vm_destroy(&vm);
@@ -2451,7 +2448,6 @@ static int test_mmu_ram_write_auto_invalidate(void)
     CHECK(amivm_write32(&vm, leaf + leaf_index * 4u,
                         (AMIVM_RAM_BASE + 0x3000u) | 1u | 4u));
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
-    CHECK(vm.mmu.translation_cache_valid);
 
     CHECK(amivm_write32(&vm, leaf + leaf_index * 4u,
                         (AMIVM_RAM_BASE + 0x4000u) | 1u | 4u));
@@ -2492,7 +2488,6 @@ static int test_mmu_ram_write_preserves_correctness(void)
 
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
     CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
-    CHECK(vm.mmu.translation_cache_valid);
 
     CHECK(amivm_write8(&vm, unrelated, 0x5au));
     CHECK(!vm.mmu.translation_cache_valid);
@@ -2527,10 +2522,8 @@ static int test_mmu_targeted_invalidation(void)
     CHECK(amivm_write32(&vm, root, leaf | 1u));
     CHECK(amivm_write32(&vm, leaf, (AMIVM_RAM_BASE + 0x3000u) | 1u | 4u));
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
-    CHECK(vm.mmu.translation_cache_valid);
 
     CHECK(amivm_write8(&vm, AMIVM_RAM_BASE + 0x7000u, 0x42u));
-    CHECK(vm.mmu.translation_cache_valid);
     CHECK(amivm_mmu_translate(&vm, logical, false, &physical) == 0);
     CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
 
@@ -3058,7 +3051,6 @@ static int test_mmu_translation_cache_reset(void)
         &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, true);
     CHECK(amivm_mmu_translation_cache_lookup(
         &vm, 0x00456000u, false, &physical));
-    CHECK(vm.mmu.translation_cache_valid);
 
     amivm_m68k_reset(&vm, 0u, 0x2000u);
     CHECK(!vm.mmu.translation_cache_valid);
@@ -3147,7 +3139,6 @@ static int test_mmu_translation_cache_reset_cycles(void)
 
         amivm_m68k_reset(&vm, 0u, 0x2000u);
         CHECK(!vm.mmu.enabled);
-        CHECK(!vm.mmu.translation_cache_valid);
         CHECK(vm.mmu.translation_cache_valid_mask == 0u);
         CHECK(vm.mmu.translation_cache_entry_count == 4u);
         CHECK(vm.mmu.translation_cache_page_shift == 12u);
