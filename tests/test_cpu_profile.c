@@ -1,4 +1,5 @@
 #include "cpu_profile.h"
+#include "vm.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -45,6 +46,24 @@ int main(void)
                AMIVM_FRAME_FAMILY_68060));
     }
 
-    puts("AmiVM M2.82 CPU profile frame-family invariants: PASS");
+    {
+        const uint8_t expected_frames[][3] = {
+            { AMIVM_FRAME_68020_BUS, 0x2u, 6u },
+            { AMIVM_FRAME_68030_COPROC_MID, 0x9u, 10u },
+            { AMIVM_FRAME_68030_SHORT_BUS, 0xAu, 16u },
+            { AMIVM_FRAME_68030_LONG_BUS, 0xBu, 46u },
+            { AMIVM_FRAME_68040_ACCESS, 0x7u, 30u },
+            { AMIVM_FRAME_68060_ACCESS, 0x4u, 8u }
+        };
+        for (size_t i = 0; i < sizeof expected_frames / sizeof expected_frames[0]; ++i) {
+            const struct amivm_m68k_frame_layout *layout =
+                amivm_m68k_frame_layout(expected_frames[i][0]);
+            CHECK(layout != NULL && layout->implemented);
+            CHECK(amivm_m68k_frame_layout_format(expected_frames[i][0]) == expected_frames[i][1]);
+            CHECK(layout->words == expected_frames[i][2]);
+        }
+    }
+
+    puts("AmiVM M2.83 exception frame family/layout invariants: PASS");
     return 0;
 }
