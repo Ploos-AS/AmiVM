@@ -1374,6 +1374,16 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
     return 1;
 }
 
+static void amivm_mmu_apply_cache_policy(struct amivm_vm *vm)
+{
+    if (!vm)
+        return;
+    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile))
+        amivm_mmu_translation_cache_reconfigure(vm, 4u, 12u);
+    else
+        amivm_mmu_translation_cache_reconfigure(vm, 0u, 0u);
+}
+
 static uint8_t amivm_mmu_cache_page_shift(const struct amivm_vm *vm)
 {
     uint8_t shift;
@@ -1632,10 +1642,7 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
      * only the profile-qualified cache geometry; the cache itself remains
      * empty until a fresh translation is inserted.
      */
-    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile))
-        amivm_mmu_translation_cache_reconfigure(&vm, 4u, 12u);
-    else
-        amivm_mmu_translation_cache_reconfigure(&vm, 0u, 0u);
+    amivm_mmu_apply_cache_policy(vm);
 }
 
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
@@ -2061,10 +2068,7 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
      * remains available as scaffolding, but only qualified 68040-family
      * profiles enable it by default.
      */
-    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile))
-        amivm_mmu_translation_cache_reconfigure(&vm, 4u, 12u);
-    else
-        amivm_mmu_translation_cache_reconfigure(&vm, 0u, 0u);
+    amivm_mmu_apply_cache_policy(vm);
         vm->device_count = resolved.device_count;
     memset(&vm->aga, 0, sizeof vm->aga);
     vm->aga.beam_h = 0u;
