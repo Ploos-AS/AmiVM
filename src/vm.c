@@ -1408,6 +1408,17 @@ void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
     vm->mmu.translation_cache_valid_mask = 0u;
     vm->mmu.last_translation_valid = false;
 }
+
+void amivm_mmu_translation_cache_reconfigure(struct amivm_vm *vm,
+                                             uint8_t entry_count,
+                                             uint8_t page_shift)
+{
+    if (!vm)
+        return;
+    amivm_mmu_translation_cache_invalidate(vm);
+    vm->mmu.translation_cache_entry_count = entry_count;
+    vm->mmu.translation_cache_page_shift = page_shift;
+}
 bool amivm_mmu_translation_cache_lookup(struct amivm_vm *vm,
                                         uint32_t logical, bool write,
                                         uint32_t *physical)
