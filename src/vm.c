@@ -1386,15 +1386,9 @@ static void amivm_mmu_apply_cache_policy(struct amivm_vm *vm)
 
 static uint8_t amivm_mmu_cache_page_shift(const struct amivm_vm *vm)
 {
-    uint8_t shift;
     if (!vm || vm->mmu.translation_cache_page_shift == 0u)
-        return 12u;
-    shift = vm->mmu.translation_cache_page_shift;
-    if (shift < 12u)
-        return 12u;
-    if (shift > 31u)
-        return 31u;
-    return shift;
+        return 0u;
+    return vm->mmu.translation_cache_page_shift;
 }
 
 static uint32_t amivm_mmu_page_mask(uint8_t shift)
