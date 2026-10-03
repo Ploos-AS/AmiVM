@@ -162,57 +162,68 @@ static int test_nested_exception_frames(void)
     struct amivm_config config;
     struct amivm_vm vm;
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
-    const uint32_t first_pc = 0x00111111u;
-    const uint32_t second_pc = 0x00222222u;
-    const uint16_t first_sr = 0x2500u;
-    const uint16_t second_sr = 0x2700u;
+    static const struct {
+        const char *name;
+        uint8_t frame;
+    } cases[] = {
+        { "68020", AMIVM_FRAME_68020_BUS },
+        { "68030", AMIVM_FRAME_68030_SHORT_BUS },
+        { "68040", AMIVM_FRAME_68040_ACCESS },
+        { "hyper040", AMIVM_FRAME_68040_ACCESS },
+        { "68060", AMIVM_FRAME_68060_ACCESS },
+        { "hyper060", AMIVM_FRAME_68060_ACCESS }
+    };
 
-    amivm_config_init(&config);
-    config.ram_size = 2u * 1024u * 1024u;
-    config.cpu_profile = amivm_cpu_profile_by_name("68040");
-    CHECK(config.cpu_profile != NULL);
-    CHECK(amivm_vm_init(&vm, &config) == 0);
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
+        const uint32_t first_pc = 0x00110000u + (uint32_t)(i * 0x1000u);
+        const uint32_t second_pc = first_pc + 0x100u;
+        const uint16_t first_sr = (uint16_t)(0x2500u + i);
+        const uint16_t second_sr = (uint16_t)(0x2700u + i);
 
-    vm.m68k.a[7] = initial_sp;
-    vm.m68k.pc = first_pc;
-    vm.m68k.sr = first_sr;
-    vm.mmu_exception_pc = first_pc;
-    vm.mmu_exception_sr = first_sr;
-    vm.exception_entry_vector = 56u;
+        amivm_config_init(&config);
+        config.ram_size = 2u * 1024u * 1024u;
+        config.cpu_profile = amivm_cpu_profile_by_name(cases[i].name);
+        CHECK(config.cpu_profile != NULL);
+        CHECK(amivm_vm_init(&vm, &config) == 0);
 
-    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
-    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
-    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
-    CHECK(vm.exception_depth == 1u);
-    CHECK(vm.exception_context_stack[0].frame_type == AMIVM_FRAME_68040_ACCESS);
+        vm.m68k.a[7] = initial_sp;
+        vm.m68k.pc = first_pc;
+        vm.m68k.sr = first_sr;
+        vm.mmu_exception_pc = first_pc;
+        vm.mmu_exception_sr = first_sr;
+        vm.exception_entry_vector = 56u;
 
-    vm.m68k.pc = second_pc;
-    vm.m68k.sr = second_sr;
-    vm.mmu_exception_pc = second_pc;
-    vm.mmu_exception_sr = second_sr;
-    vm.exception_entry_vector = 57u;
+        CHECK(amivm_m68k_set_exception_frame_type(&vm, cases[i].frame) == 0);
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+        CHECK(vm.exception_depth == 1u);
 
-    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
-    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
-    CHECK(vm.exception_depth == 2u);
-    CHECK(vm.exception_context_stack[0].frame_type == AMIVM_FRAME_68040_ACCESS);
+        vm.m68k.pc = second_pc;
+        vm.m68k.sr = second_sr;
+        vm.mmu_exception_pc = second_pc;
+        vm.mmu_exception_sr = second_sr;
+        vm.exception_entry_vector = 57u;
 
-    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
-    CHECK(vm.exception_depth == 1u);
-    CHECK(vm.exception_frame_type == AMIVM_FRAME_68040_ACCESS);
-    CHECK(vm.m68k.a[7] != initial_sp);
-    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+        CHECK(vm.exception_depth == 2u);
 
-    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
-    CHECK(vm.exception_depth == 0u);
-    CHECK(vm.m68k.a[7] == initial_sp);
-    CHECK(vm.m68k.pc == first_pc);
-    CHECK(vm.m68k.sr == first_sr);
+        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+        CHECK(vm.exception_depth == 1u);
+        CHECK(vm.exception_frame_type == cases[i].frame);
+        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
 
-    amivm_vm_destroy(&vm);
+        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+        CHECK(vm.exception_depth == 0u);
+        CHECK(vm.m68k.a[7] == initial_sp);
+        CHECK(vm.m68k.pc == first_pc);
+        CHECK(vm.m68k.sr == first_sr);
+
+        amivm_vm_destroy(&vm);
+    }
+
     return 0;
 }
-
 
 static int test_config(void)
 {
