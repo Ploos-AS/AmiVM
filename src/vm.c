@@ -1421,21 +1421,9 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     vm->mmu_fault_address = logical;
     vm->mmu_fault_status = (write ? 2u : 0u) |
                             (vm->mmu.mmu_supervisor ? 1u : 0u);
-
-    {
-        const uint32_t slot = (logical >> 12u) & 3u;
-        if ((vm->mmu.translation_cache_valid_mask & (uint8_t)(1u << slot)) != 0u &&
-            vm->mmu.translation_cache_entries[slot] == (logical >> 12u)) {
-            *physical = vm->mmu.translation_cache_physical_pages[slot] |
-                        (logical & 0xfffu);
-            vm->mmu.last_physical = *physical;
-            vm->mmu.last_translation_valid = true;
-            return 0;
-        }
-    }
+    const uint8_t shift = amivm_mmu_cache_page_shift(vm);
 
     if (vm->mmu.enabled) {
-        const uint8_t shift = amivm_mmu_cache_page_shift(vm);
         const uint32_t page = logical >> shift;
         const uint32_t count = amivm_mmu_cache_entry_count(vm);
         const uint32_t slot = page % count;
@@ -1451,7 +1439,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                 return -1;
             }
             *physical = vm->mmu.translation_cache_physical_pages[slot] |
-                        (logical & 0xfffu);
+                        (logical & ((1u << shift) - 1u));
             vm->mmu.last_physical = *physical;
             vm->mmu.last_translation_valid = true;
             return 0;
@@ -1469,11 +1457,11 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
        table walker will replace this test mapping without changing
        the memory-bus contract. */
     if (vm->mmu.root_index_bits != 0u && vm->mmu.leaf_index_bits != 0u) {
-        uint32_t page_mask = 0xfffu;
+        uint32_t page_mask = (1u << shift) - 1u;
         uint32_t leaf_mask = (1u << vm->mmu.leaf_index_bits) - 1u;
         uint32_t root_mask = (1u << vm->mmu.root_index_bits) - 1u;
-        uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + 12u)) & root_mask;
-        uint32_t leaf_index = (logical >> 12u) & leaf_mask;
+        uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + shift)) & root_mask;
+        uint32_t leaf_index = (logical >> shift) & leaf_mask;
         uint32_t root_pte_addr = vm->mmu.root_table_base + root_index * 4u;
         vm->mmu.root_table_page = vm->mmu.root_table_base & ~page_mask;
         uint32_t leaf_base, pte, pte_addr;
@@ -1504,7 +1492,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         *physical = (pte & ~page_mask) | (logical & page_mask);
         vm->mmu.last_physical = *physical;
         vm->mmu.translation_cache_valid = true;
-        vm->mmu.translation_cache_logical_page = logical >> 12u;
+        vm->mmu.translation_cache_logical_page = logical >> shift;
         vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         {
             const uint32_t count = amivm_mmu_cache_entry_count(vm);
