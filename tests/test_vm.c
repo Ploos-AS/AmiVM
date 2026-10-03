@@ -2754,6 +2754,36 @@ static int test_mmu_page_shift_edges(void)
 }
 
 
+static int test_mmu_index_bit_edges(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.mmu.root_index_bits = 32u;
+    vm.mmu.leaf_index_bits = 32u;
+    vm.mmu.root_table_base = AMIVM_RAM_BASE + 0x1000u;
+
+    CHECK(amivm_mmu_translate(&vm, 0x1000u, false, &physical) != 0);
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_INVALID ||
+          vm.mmu.last_fault == AMIVM_MMU_FAULT_BUS);
+
+    vm.mmu.root_index_bits = 1u;
+    vm.mmu.leaf_index_bits = 1u;
+    CHECK(amivm_mmu_translate(&vm, 0x1000u, false, &physical) != 0);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2796,6 +2826,7 @@ int main(void)
         test_mmu_multiple_cached_translations() != 0 ||
         test_mmu_cache_page_shift() != 0 ||
         test_mmu_page_shift_edges() != 0 ||
+        test_mmu_index_bit_edges() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
