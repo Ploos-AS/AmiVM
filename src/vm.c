@@ -1621,10 +1621,19 @@ int amivm_vm_attach_cpu_backend(struct amivm_vm *vm,
 int amivm_vm_step(struct amivm_vm *vm)
 {
     uint32_t cycles;
+    int irq_rc;
+
     if (!vm || !vm->cpu_backend.step) return -1;
+
+    /* Execute exactly one architectural instruction first. */
     cycles = vm->cpu_backend.step(vm, vm->cpu_backend.state);
     if (cycles == 0u) return -1;
     amivm_vm_account_instruction(vm, cycles);
+
+    /* Deliver a pending IRQ only at the completed instruction boundary. */
+    irq_rc = amivm_m68k_service_irq(vm);
+    if (irq_rc < 0) return -1;
+
     return 0;
 }
 
