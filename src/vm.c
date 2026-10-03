@@ -763,8 +763,23 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
     uint8_t old_frame[92];
     uint8_t old_byte;
     uint8_t i;
+    uint8_t old_frame_type, old_frame_format, old_frame_size, old_frame_words;
+    uint16_t old_frame_vector_offset, old_format_vector_word;
+    uint32_t old_frame_sp, old_frame_magic;
+    uint8_t old_fault_stage, old_depth;
 
     if (!vm) return -1;
+
+    old_frame_type = vm->exception_frame_type;
+    old_frame_format = vm->exception_frame_format;
+    old_frame_size = vm->exception_frame_size;
+    old_frame_words = vm->exception_frame_word_count;
+    old_frame_vector_offset = vm->exception_frame_vector_offset;
+    old_format_vector_word = vm->exception_format_vector_word;
+    old_frame_sp = vm->exception_frame_sp;
+    old_frame_magic = vm->exception_frame_magic;
+    old_fault_stage = vm->exception_fault_stage;
+    old_depth = vm->exception_depth;
 
     vm->exception_frame_type = amivm_m68k_exception_frame_descriptor(vm);
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
@@ -904,6 +919,16 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
 stack_fail:
     for (i = 0u; i < frame_size; ++i)
         (void)amivm_write8(vm, sp + i, old_frame[i]);
+    vm->exception_frame_type = old_frame_type;
+    vm->exception_frame_format = old_frame_format;
+    vm->exception_frame_size = old_frame_size;
+    vm->exception_frame_word_count = old_frame_words;
+    vm->exception_frame_vector_offset = old_frame_vector_offset;
+    vm->exception_format_vector_word = old_format_vector_word;
+    vm->exception_frame_sp = old_frame_sp;
+    vm->exception_frame_magic = old_frame_magic;
+    vm->exception_fault_stage = old_fault_stage;
+    vm->exception_depth = old_depth;
     vm->exception_stack_fault = true;
     return -1;
 }
