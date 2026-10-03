@@ -1440,6 +1440,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + 12u)) & root_mask;
         uint32_t leaf_index = (logical >> 12u) & leaf_mask;
         uint32_t root_pte_addr = vm->mmu.root_table_base + root_index * 4u;
+        vm->mmu.root_table_page = vm->mmu.root_table_base & ~page_mask;
         uint32_t leaf_base, pte, pte_addr;
         bool ok;
         leaf_base = amivm_m68k_read_u32(vm, root_pte_addr, &ok);
@@ -1448,6 +1449,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
             vm->mmu_fault_status |= 16u;
             return -1;
         }
+        vm->mmu.leaf_table_page = leaf_base & ~page_mask;
         pte_addr = (leaf_base & ~page_mask) + leaf_index * 4u;
         pte = amivm_m68k_read_u32(vm, pte_addr, &ok);
         if (!ok || (pte & 1u) == 0u) {
@@ -2164,8 +2166,12 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
          * address-aware page-table metadata, conservatively invalidate the
          * translation cache on every RAM write when MMU is enabled.
          */
-        if (vm->mmu.enabled)
-            amivm_mmu_translation_cache_invalidate(vm);
+        if (vm->mmu.enabled) {
+            const uint32_t page = addr & ~0xfffu;
+            if (page == vm->mmu.root_table_page ||
+                page == vm->mmu.leaf_table_page)
+                amivm_mmu_translation_cache_invalidate(vm);
+        }
         return true;
     }
     if (in_range(addr, AMIVM_ROM_BASE, AMIVM_ROM_SIZE)) {
