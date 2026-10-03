@@ -1104,6 +1104,17 @@ int main(void)
                                                         CHECK(vm.exception_depth == saved_depth);
                                                         ((struct amivm_m68k_frame_layout *)layout)->internal_state_offset =
                                                             saved_offset2;
+                                                        if (layout->has_fault_status &&
+                                                            layout->internal_state_words != 0u) {
+                                                            uint8_t saved_is = layout->internal_state_offset;
+                                                            uint8_t saved_fs = layout->fault_status_offset;
+                                                            ((struct amivm_m68k_frame_layout *)layout)->internal_state_offset =
+                                                                saved_fs;
+                                                            CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                                                            CHECK(vm.exception_depth == saved_depth);
+                                                            ((struct amivm_m68k_frame_layout *)layout)->internal_state_offset =
+                                                                saved_is;
+                                                        }
                                                     }
                                                 }
                                                 }
