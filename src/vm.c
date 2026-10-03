@@ -1374,6 +1374,14 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
     return 1;
 }
 
+static uint8_t amivm_mmu_cache_entry_count(const struct amivm_vm *vm)
+{
+    if (!vm || vm->mmu.translation_cache_entry_count == 0u)
+        return 4u;
+    return vm->mmu.translation_cache_entry_count > 4u ? 4u :
+           vm->mmu.translation_cache_entry_count;
+}
+
 void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
 {
     if (!vm)
@@ -1421,7 +1429,8 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
 
     if (vm->mmu.enabled) {
         const uint32_t page = logical >> 12u;
-        const uint32_t slot = page & 3u;
+        const uint32_t count = amivm_mmu_cache_entry_count(vm);
+        const uint32_t slot = page % count;
         if ((vm->mmu.translation_cache_valid_mask & (uint8_t)(1u << slot)) != 0u &&
             vm->mmu.translation_cache_entries[slot] == page) {
             if (!vm->mmu.mmu_supervisor &&
@@ -1490,7 +1499,8 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         vm->mmu.translation_cache_logical_page = logical >> 12u;
         vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         {
-            const uint32_t slot = (logical >> 12u) & 3u;
+            const uint32_t count = amivm_mmu_cache_entry_count(vm);
+            const uint32_t slot = (logical >> 12u) % count;
             vm->mmu.translation_cache_entries[slot] = logical >> 12u;
             vm->mmu.translation_cache_physical_pages[slot] =
                 *physical & ~page_mask;
@@ -2196,7 +2206,8 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
             if (page == vm->mmu.root_table_page) {
                 amivm_mmu_translation_cache_invalidate(vm);
             } else if (page == vm->mmu.leaf_table_page) {
-                const uint32_t slot = ((addr - page) / 4u) & 3u;
+                const uint32_t count = amivm_mmu_cache_entry_count(vm);
+                const uint32_t slot = ((addr - page) / 4u) % count;
                 vm->mmu.translation_cache_valid_mask &=
                     (uint8_t)~(1u << slot);
                 vm->mmu.translation_cache_valid =
