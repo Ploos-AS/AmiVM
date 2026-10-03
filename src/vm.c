@@ -1813,6 +1813,17 @@ int amivm_config_resolve(const struct amivm_config *config,
     if (config->chip_ram_size > mp->max_chip_ram) return 1;
     if (config->fast_ram_size > mp->max_fast_ram) return 1;
     if (config->fast_ram_size > 0u && !config->accelerator_present) return 1;
+    /*
+     * External MMU policy is resolved before any VM allocation.  Only a
+     * 68020 paired with a 68851 is currently supported; integrated MMUs
+     * must come from the selected CPU profile.
+     */
+    if (config->external_mmu != AMIVM_MMU_NONE) {
+        if (config->external_mmu != AMIVM_MMU_68851 ||
+            config->cpu_profile->id != AMIVM_CPU_68020 ||
+            config->cpu_profile->has_mmu)
+            return 1;
+    }
     memset(resolved, 0, sizeof *resolved);
     resolved->machine = config->machine;
     resolved->machine_profile = mp;
