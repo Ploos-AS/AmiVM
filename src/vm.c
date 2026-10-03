@@ -1398,11 +1398,7 @@ static uint32_t amivm_mmu_page_mask(uint8_t shift)
 
 static uint8_t amivm_mmu_cache_entry_count(const struct amivm_vm *vm)
 {
-    if (!vm)
-        return 0u;
-    if (vm->mmu.translation_cache_entry_count > 4u)
-        return 4u;
-    return vm->mmu.translation_cache_entry_count;
+    return vm ? vm->mmu.translation_cache_entry_count : 0u;
 }
 
 static bool amivm_mmu_translation_cache_enabled(const struct amivm_vm *vm)
