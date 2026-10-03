@@ -1201,17 +1201,39 @@ int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector)
     if (!vm || !vector || !vm->irq_pending) return -1;
     if (vm->irq_level <= (uint8_t)((vm->m68k.sr >> 8) & 7u)) return 0;
     v = (uint8_t)(24u + vm->irq_level);
-    vm->irq_saved_pc = vm->m68k.pc;
-    vm->irq_saved_sr = vm->m68k.sr;
-    vm->m68k.sr = (uint16_t)((vm->m68k.sr & ~0x0700u) |
-                             ((uint16_t)vm->irq_level << 8) | 0x2000u);
-    vm->irq_in_service = true;
-    vm->irq_pending = false;
-    vm->pending_exception = AMIVM_M68K_EXC_NONE;
-    vm->pending_exception_vector = v;
-    *vector = v;
-    if (amivm_m68k_enter_exception(vm, v) != 0)
-        return -1;
+    {
+        const uint32_t saved_pc = vm->irq_saved_pc;
+        const uint16_t saved_sr = vm->irq_saved_sr;
+        const uint16_t current_sr = vm->m68k.sr;
+        const bool old_in_service = vm->irq_in_service;
+        const bool old_pending = vm->irq_pending;
+        const enum amivm_m68k_exception old_exception = vm->pending_exception;
+        const uint8_t old_vector = vm->pending_exception_vector;
+        const uint32_t old_pc = vm->m68k.pc;
+        const bool old_supervisor = vm->m68k.supervisor;
+
+        vm->irq_saved_pc = vm->m68k.pc;
+        vm->irq_saved_sr = vm->m68k.sr;
+        vm->m68k.sr = (uint16_t)((vm->m68k.sr & ~0x0700u) |
+                                 ((uint16_t)vm->irq_level << 8) | 0x2000u);
+        vm->irq_in_service = true;
+        vm->irq_pending = false;
+        vm->pending_exception = AMIVM_M68K_EXC_NONE;
+        vm->pending_exception_vector = v;
+        if (amivm_m68k_enter_exception(vm, v) != 0) {
+            vm->irq_saved_pc = saved_pc;
+            vm->irq_saved_sr = saved_sr;
+            vm->m68k.sr = current_sr;
+            vm->irq_in_service = old_in_service;
+            vm->irq_pending = old_pending;
+            vm->pending_exception = old_exception;
+            vm->pending_exception_vector = old_vector;
+            vm->m68k.pc = old_pc;
+            vm->m68k.supervisor = old_supervisor;
+            return -1;
+        }
+        *vector = v;
+    }
     return 1;
 }
 
