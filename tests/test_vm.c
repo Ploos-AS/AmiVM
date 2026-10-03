@@ -881,6 +881,46 @@ static int test_nested_interrupt_roundtrip(void)
 }
 
 
+static int test_interrupt_vector_failure_atomicity(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint8_t vector = 0xa5u;
+    const uint32_t pc = 0x00100000u;
+    const uint16_t sr = 0x0000u;
+    const uint32_t sp = AMIVM_RAM_BASE + 0x00100000u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = sp;
+    vm.m68k.pc = pc;
+    vm.m68k.sr = sr;
+    vm.m68k.supervisor = false;
+    amivm_m68k_request_irq(&vm, 7u);
+
+    /*
+     * Keep the vector entry inaccessible by moving the vector base outside
+     * the VM address space. Acceptance must not leave a half-entered IRQ.
+     */
+    vm.exception_vector_base = vm.ram_size + 0x1000u;
+
+    CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) < 0);
+    CHECK(vector == 0xa5u);
+    CHECK(vm.irq_pending);
+    CHECK(!vm.irq_in_service);
+    CHECK(vm.m68k.pc == pc);
+    CHECK(vm.m68k.sr == sr);
+    CHECK(!vm.m68k.supervisor);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -906,7 +946,7 @@ int main(void)
         test_privilege_violation_atomicity() != 0 || test_interrupt_request_priority() != 0 ||
         test_interrupt_acceptance_and_mask() != 0 || test_interrupt_level_matrix() != 0 ||
         test_nested_interrupt_priority() != 0 || test_nested_interrupt_roundtrip() != 0 ||
-        test_config() != 0) {
+        test_interrupt_vector_failure_atomicity() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.108 nested IRQ round-trip tests: PASS");
