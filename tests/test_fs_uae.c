@@ -1005,6 +1005,21 @@ int main(void)
                         CHECK(vm.exception_frame_sp != outer_sp);
                         vm.exception_internal_state[0] = 0xAABBCCDDu;
                         vm.exception_internal_state[1] = 0xEEFF0011u;
+                        {
+                            uint32_t inner_sp = vm.exception_frame_sp;
+                            uint8_t inner_type = vm.exception_frame_type;
+                            uint8_t inner_depth = vm.exception_depth;
+                            uint32_t inner_state0 = vm.exception_internal_state[0];
+                            uint32_t inner_state1 = vm.exception_internal_state[1];
+                            vm.m68k.a[7] = inner_sp + 1u;
+                            CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                            CHECK(vm.exception_frame_sp == inner_sp);
+                            CHECK(vm.exception_frame_type == inner_type);
+                            CHECK(vm.exception_depth == inner_depth);
+                            CHECK(vm.exception_internal_state[0] == inner_state0);
+                            CHECK(vm.exception_internal_state[1] == inner_state1);
+                            vm.m68k.a[7] = inner_sp;
+                        }
                         CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                         CHECK(vm.exception_depth == 1u);
                         CHECK(vm.exception_frame_sp == outer_sp);
