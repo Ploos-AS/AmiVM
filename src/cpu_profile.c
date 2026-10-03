@@ -35,6 +35,14 @@ const struct amivm_cpu_profile *amivm_cpu_profile_by_name(const char *name)
 }
 
 
+bool amivm_cpu_profile_mmu_cache_qualified(const struct amivm_cpu_profile *profile)
+{
+    if (profile == NULL)
+        return false;
+    return profile->mmu_model == AMIVM_MMU_68040 &&
+           profile->mmu_maturity == AMIVM_MMU_MATURITY_QUALIFIED;
+}
+
 bool amivm_cpu_profile_attach_mmu(struct amivm_cpu_profile *out,
                                   const struct amivm_cpu_profile *base,
                                   enum amivm_mmu_model mmu_model)
