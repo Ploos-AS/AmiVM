@@ -561,6 +561,14 @@ static int amivm_m68k_validate_cpu_profile_layouts(
         if (!amivm_m68k_frame_layout(descriptors[i]))
             return -1;
     }
+    if ((profile->exception_frame_family == AMIVM_FRAME_FAMILY_68020 ||
+         profile->exception_frame_family == AMIVM_FRAME_FAMILY_68030) &&
+        profile->default_exception_frame_class != 0u)
+        return -1;
+    if ((profile->exception_frame_family == AMIVM_FRAME_FAMILY_68040 ||
+         profile->exception_frame_family == AMIVM_FRAME_FAMILY_68060) &&
+        profile->default_exception_frame_class != 2u)
+        return -1;
     return 0;
 }
 
