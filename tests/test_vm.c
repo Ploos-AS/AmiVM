@@ -3408,6 +3408,46 @@ static int test_mmu_cache_slot_invalidation_path(void)
 }
 
 
+static int test_mmu_cache_entry_state_write_sites(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    amivm_mmu_translation_cache_reconfigure(&vm, 2u, 12u);
+    vm.m68k.sr = 0x2000u;
+
+    /* Insert is the only supported operation that establishes entry state. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, false, true);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, true, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+    /* Reinsert must replace all entry metadata atomically from the API's
+     * point of view: address, write permission and supervisor permission. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x5000u, true, false);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, true, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x5000u);
+
+    vm.m68k.sr = 0u;
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3465,6 +3505,7 @@ int main(void)
         test_mmu_cache_reconfigure_validation() != 0 ||
         test_mmu_cache_geometry_invariant() != 0 ||
         test_mmu_cache_slot_invalidation_path() != 0 ||
+        test_mmu_cache_entry_state_write_sites() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
