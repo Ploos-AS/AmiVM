@@ -1571,7 +1571,6 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         }
         *physical = (pte & ~page_mask) | (logical & page_mask);
         vm->mmu.last_physical = *physical;
-        vm->mmu.translation_cache_valid = true;
         vm->mmu.translation_cache_logical_page = logical >> shift;
         vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         amivm_mmu_translation_cache_insert(
@@ -2316,8 +2315,6 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
                 const uint32_t slot = ((addr - page) / 4u) % count;
                 vm->mmu.translation_cache_valid_mask &=
                     (uint8_t)~(1u << slot);
-                vm->mmu.translation_cache_valid =
-                    vm->mmu.translation_cache_valid_mask != 0u;
             }
         }
         return true;
