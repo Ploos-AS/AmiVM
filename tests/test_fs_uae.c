@@ -1063,6 +1063,14 @@ int main(void)
                                             CHECK(vm.exception_depth == saved_depth);
                                             vm.exception_context_stack[0].fault_status = saved_status;
                                             vm.exception_context_stack[0].fault_stage = saved_stage;
+                                            {
+                                                uint32_t saved_state0 =
+                                                    vm.exception_context_stack[0].internal_state[0];
+                                                vm.exception_context_stack[0].internal_state[0] = 0xDEADBEEFu;
+                                                CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                                                CHECK(vm.exception_depth == saved_depth);
+                                                vm.exception_context_stack[0].internal_state[0] = saved_state0;
+                                            }
                                         }
                                     }
                                 }
