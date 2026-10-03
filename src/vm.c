@@ -1408,6 +1408,56 @@ void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
     vm->mmu.translation_cache_valid_mask = 0u;
     vm->mmu.last_translation_valid = false;
 }
+bool amivm_mmu_translation_cache_lookup(struct amivm_vm *vm,
+                                        uint32_t logical, bool write,
+                                        uint32_t *physical)
+{
+    const uint8_t shift = amivm_mmu_cache_page_shift(vm);
+    const uint32_t page = logical >> shift;
+    const uint32_t count = amivm_mmu_cache_entry_count(vm);
+    const uint32_t slot = page % count;
+
+    if (!vm || !physical || !vm->mmu.enabled)
+        return false;
+    if ((vm->mmu.translation_cache_valid_mask & (uint8_t)(1u << slot)) == 0u ||
+        vm->mmu.translation_cache_entries[slot] != page)
+        return false;
+    if (!vm->mmu.mmu_supervisor &&
+        !vm->mmu.translation_cache_supervisors[slot]) {
+        vm->mmu.last_fault = AMIVM_MMU_FAULT_SUPERVISOR;
+        return false;
+    }
+    if (write && !vm->mmu.translation_cache_writes[slot]) {
+        vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+        return false;
+    }
+    *physical = vm->mmu.translation_cache_physical_pages[slot] |
+                (logical & amivm_mmu_page_mask(shift));
+    vm->mmu.last_physical = *physical;
+    vm->mmu.last_translation_valid = true;
+    return true;
+}
+
+void amivm_mmu_translation_cache_insert(struct amivm_vm *vm,
+                                        uint32_t logical, uint32_t physical,
+                                        bool write, bool supervisor)
+{
+    const uint8_t shift = amivm_mmu_cache_page_shift(vm);
+    const uint32_t page = logical >> shift;
+    const uint32_t count = amivm_mmu_cache_entry_count(vm);
+    const uint32_t slot = page % count;
+
+    if (!vm)
+        return;
+    vm->mmu.translation_cache_entries[slot] = page;
+    vm->mmu.translation_cache_physical_pages[slot] =
+        physical & ~amivm_mmu_page_mask(shift);
+    vm->mmu.translation_cache_writes[slot] = write;
+    vm->mmu.translation_cache_supervisors[slot] = supervisor;
+    vm->mmu.translation_cache_valid_mask |= (uint8_t)(1u << slot);
+    vm->mmu.translation_cache_valid = true;
+}
+
 
 void amivm_mmu_page_table_changed(struct amivm_vm *vm, uint32_t logical)
 {
