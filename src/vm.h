@@ -453,6 +453,9 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical);
 void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm);
+void amivm_mmu_translation_cache_reconfigure(struct amivm_vm *vm,
+                                             uint8_t entry_count,
+                                             uint8_t page_shift);
 bool amivm_mmu_translation_cache_lookup(struct amivm_vm *vm, uint32_t logical,
                                         bool write, uint32_t *physical);
 void amivm_mmu_translation_cache_insert(struct amivm_vm *vm, uint32_t logical,
