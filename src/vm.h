@@ -232,6 +232,11 @@ struct amivm_mmu_state {
     uint32_t last_physical;
     bool last_write;
     bool last_translation_valid;
+    bool translation_cache_valid;
+    uint32_t translation_cache_logical_page;
+    uint32_t translation_cache_physical_page;
+    bool translation_cache_write;
+    bool translation_cache_supervisor;
     enum amivm_m68k_mmu_fault last_fault;
 };
 
@@ -440,6 +445,7 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
                               uint32_t logical, bool write);
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical);
+void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm);
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok);
 bool amivm_m68k_write_u32(struct amivm_vm *vm, uint32_t addr, uint32_t value);
 int amivm_m68k_raise_exception(struct amivm_vm *vm,
