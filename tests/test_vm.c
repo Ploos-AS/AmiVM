@@ -2576,6 +2576,33 @@ static int test_mmu_cache_page_shift(void)
 }
 
 
+static int test_cpu_mmu_cache_policy(void)
+{
+    const struct amivm_cpu_profile *p020 =
+        amivm_cpu_profile_by_name("68020");
+    const struct amivm_cpu_profile *p030 =
+        amivm_cpu_profile_by_name("68030");
+    const struct amivm_cpu_profile *p040 =
+        amivm_cpu_profile_by_name("68040");
+    const struct amivm_cpu_profile *p060 =
+        amivm_cpu_profile_by_name("68060");
+    const struct amivm_cpu_profile *ph040 =
+        amivm_cpu_profile_by_name("hyper040");
+    const struct amivm_cpu_profile *ph060 =
+        amivm_cpu_profile_by_name("hyper060");
+
+    CHECK(p020 != NULL && p030 != NULL && p040 != NULL &&
+          p060 != NULL && ph040 != NULL && ph060 != NULL);
+    CHECK(!amivm_cpu_profile_mmu_cache_qualified(p020));
+    CHECK(!amivm_cpu_profile_mmu_cache_qualified(p030));
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(p040));
+    CHECK(!amivm_cpu_profile_mmu_cache_qualified(p060));
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(ph040));
+    CHECK(!amivm_cpu_profile_mmu_cache_qualified(ph060));
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2617,6 +2644,7 @@ int main(void)
         test_mmu_page_table_changed_hook() != 0 || test_mmu_ram_write_auto_invalidate() != 0 ||
         test_mmu_multiple_cached_translations() != 0 ||
         test_mmu_cache_page_shift() != 0 ||
+        test_cpu_mmu_cache_policy() != 0 ||
         test_mmu_cache_entry_permissions() != 0 ||
         test_mmu_cache_entry_count() != 0 ||
         test_mmu_ram_write_preserves_correctness() != 0 || test_mmu_targeted_invalidation() != 0 ||
