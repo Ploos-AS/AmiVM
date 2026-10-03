@@ -1367,6 +1367,51 @@ static int test_vm_step_backend_irq_boundary(void)
 }
 
 
+static int test_vm_step_backend_pending_irq_sequence(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    struct amivm_cpu_backend backend;
+    uint32_t steps = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    backend.step = test_cpu_backend_one_instruction;
+    backend.state = &steps;
+    CHECK(amivm_vm_attach_cpu_backend(&vm, &backend) == 0);
+
+    vm.m68k.pc = 0x00100000u;
+    vm.m68k.sr = 0x0000u;
+    vm.m68k.supervisor = false;
+    vm.m68k.a[7] = AMIVM_RAM_BASE + 0x00100000u;
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 25u * 4u,
+                        0x00129000u));
+
+    amivm_m68k_request_irq(&vm, 1u);
+
+    CHECK(amivm_vm_step(&vm) == 0);
+    CHECK(steps == 1u);
+    CHECK(vm.m68k.pc == 0x00129000u);
+    CHECK(vm.irq_in_service);
+
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.m68k.pc == 0x00100002u);
+    CHECK(!vm.m68k.supervisor);
+
+    CHECK(amivm_vm_step(&vm) == 0);
+    CHECK(steps == 2u);
+    CHECK(vm.m68k.pc == 0x00100004u);
+    CHECK(!vm.irq_pending);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -1397,7 +1442,7 @@ int main(void)
         test_irq_state_machine_integrity() != 0 || test_irq_invalid_transitions() != 0 ||
         test_instruction_irq_boundary() != 0 || test_instruction_state_commit_before_irq() != 0 ||
         test_pending_irq_across_instruction_sequence() != 0 || test_vm_step_backend_irq_boundary() != 0 ||
-        test_config() != 0) {
+        test_vm_step_backend_pending_irq_sequence() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.108 nested IRQ round-trip tests: PASS");
