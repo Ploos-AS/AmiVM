@@ -3954,6 +3954,65 @@ static int test_68040_tlb_refill_after_targeted_invalidation(void)
 }
 
 
+static int test_68040_tlb_full_refill(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+    const uint32_t pages[] = {
+        0x00a00000u, 0x00a01000u, 0x00a02000u, 0x00a03000u
+    };
+    const uint32_t refill_pages[] = {
+        0x00a04000u, 0x00a05000u, 0x00a06000u, 0x00a07000u
+    };
+    const bool writes[] = { true, false, true, false };
+    const bool supervisors[] = { false, true, false, true };
+    size_t i;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    for (i = 0u; i < 4u; ++i) {
+        amivm_mmu_translation_cache_insert(
+            &vm, pages[i],
+            AMIVM_RAM_BASE + 0x30000u + (uint32_t)i * 0x1000u,
+            writes[i], supervisors[i]);
+    }
+
+    amivm_mmu_translation_cache_invalidate(&vm);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    for (i = 0u; i < 4u; ++i) {
+        CHECK(!amivm_mmu_translation_cache_lookup(
+            &vm, pages[i], false, &physical));
+    }
+
+    for (i = 0u; i < 4u; ++i) {
+        amivm_mmu_translation_cache_insert(
+            &vm, refill_pages[i],
+            AMIVM_RAM_BASE + 0x34000u + (uint32_t)i * 0x1000u,
+            !writes[i], !supervisors[i]);
+    }
+
+    for (i = 0u; i < 4u; ++i) {
+        CHECK(amivm_mmu_translation_cache_lookup(
+            &vm, refill_pages[i], false, &physical));
+        CHECK(physical ==
+              AMIVM_RAM_BASE + 0x34000u + (uint32_t)i * 0x1000u);
+    }
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4021,6 +4080,7 @@ int main(void)
         test_68040_tlb_mixed_permissions_all_slots() != 0 ||
         test_68040_tlb_targeted_invalidation_mixed() != 0 ||
         test_68040_tlb_refill_after_targeted_invalidation() != 0 ||
+        test_68040_tlb_full_refill() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
