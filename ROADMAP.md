@@ -70,7 +70,7 @@ Performance work must measure these contracts directly. Cycle accuracy and histo
 
 ## M3 — 68k guest OS bring-up
 
-Linux/m68k is the first bring-up guest, but the machine and device contracts must remain OS-neutral so BSD and Amiga-family guests can follow without redesigning Hyper/040.
+Linux/m68k is the first bring-up guest, but the machine and device contracts must remain OS-neutral so AmigaOS 3.x, AROS/m68k, NetBSD/m68k and older OpenBSD/m68k guests can follow without redesigning Hyper/040.
 
 - Define an OS-neutral Hyper/040 machine and boot contract.
 - Linux/m68k kernel command line and initrd handoff.
@@ -83,14 +83,14 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Provide Hyper/040 and later Hyper/060 builder profiles for maximum native package-build throughput.
 - Qualify native m68k GCC/binutils/make builds inside Linux/m68k and record a reproducible build-performance baseline.
 - Bring up NetBSD/m68k on Hyper/040 and add native AmiVM device support where required.
-- Bring up OpenBSD/m68k where the maintained port and machine requirements permit a practical AmiVM target.
+- Bring up OpenBSD/m68k, including older OpenBSD releases that target supported 68k hardware, where their machine requirements can be represented by AmiVM.
 - Bring up AROS/m68k using the Hyper machine where possible and Amiga-compatible bindings where required.
 - Establish the AmigaOS 3.x bootstrap/device contract for the Compatibility profile.
 
 ### M3 target matrix
 
 - **Tier 1:** Linux/m68k, NetBSD/m68k, AROS/m68k, AmigaOS 3.x.
-- **Supported/qualified where practical:** OpenBSD/m68k, subject to the maintained port and its machine requirements.
+- **Supported/qualified:** OpenBSD/m68k, with explicit qualification for older releases where their 68k machine requirements are compatible with AmiVM.
 - Guest-specific boot mechanisms and drivers must not force unrelated historical hardware into the Hyper profile.
 
 ## M4 — High-performance virtual I/O
