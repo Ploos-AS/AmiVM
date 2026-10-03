@@ -534,6 +534,33 @@ static int test_nested_context_stack_rollback(void)
 }
 
 
+static int test_supervisor_user_transition(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    CHECK(amivm_m68k_set_supervisor(&vm, true) == 0);
+    CHECK(amivm_m68k_is_supervisor(&vm));
+    CHECK((vm.m68k.sr & 0x2000u) != 0u);
+
+    CHECK(amivm_m68k_set_supervisor(&vm, false) == 0);
+    CHECK(!amivm_m68k_is_supervisor(&vm));
+    CHECK((vm.m68k.sr & 0x2000u) == 0u);
+
+    CHECK(amivm_m68k_set_supervisor(&vm, true) == 0);
+    CHECK(amivm_m68k_is_supervisor(&vm));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -555,7 +582,7 @@ int main(void)
         test_nested_exception_frames() != 0 || test_nested_exception_negative_cases() != 0 ||
         test_exception_depth_boundary() != 0 || test_exception_stack_atomicity() != 0 ||
         test_nested_exception_atomicity() != 0 || test_nested_context_stack_rollback() != 0 ||
-        test_config() != 0) {
+        test_supervisor_user_transition() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
