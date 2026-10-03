@@ -1374,6 +1374,14 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
     return 1;
 }
 
+void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
+{
+    if (!vm)
+        return;
+    vm->mmu.translation_cache_valid = false;
+    vm->mmu.last_translation_valid = false;
+}
+
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical)
 {
