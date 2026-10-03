@@ -1408,6 +1408,20 @@ static bool amivm_mmu_translation_cache_enabled(const struct amivm_vm *vm)
            vm->mmu.translation_cache_page_shift != 0u;
 }
 
+static void amivm_mmu_translation_cache_invalidate_slot(struct amivm_vm *vm,
+                                                   uint32_t slot)
+{
+    uint8_t count;
+    if (!vm)
+        return;
+    count = amivm_mmu_cache_entry_count(vm);
+    if (count == 0u || slot >= count)
+        return;
+    vm->mmu.translation_cache_valid_mask &=
+        (uint8_t)~(1u << slot);
+    vm->mmu.last_translation_valid = false;
+}
+
 void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
 {
     if (!vm)
@@ -1515,9 +1529,7 @@ void amivm_mmu_page_table_changed(struct amivm_vm *vm, uint32_t logical)
     if ((vm->mmu.translation_cache_valid_mask &
          (uint8_t)(1u << slot)) != 0u &&
         vm->mmu.translation_cache_entries[slot] == page) {
-        vm->mmu.translation_cache_valid_mask &=
-            (uint8_t)~(1u << slot);
-        vm->mmu.last_translation_valid = false;
+        amivm_mmu_translation_cache_invalidate_slot(vm, slot);
     }
 }
 
@@ -2336,8 +2348,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
             } else if (page == vm->mmu.leaf_table_page) {
                 const uint32_t count = amivm_mmu_cache_entry_count(vm);
                 const uint32_t slot = ((addr - page) / 4u) % count;
-                vm->mmu.translation_cache_valid_mask &=
-                    (uint8_t)~(1u << slot);
+                amivm_mmu_translation_cache_invalidate_slot(vm, slot);
             }
         }
         return true;
