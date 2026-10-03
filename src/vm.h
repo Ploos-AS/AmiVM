@@ -314,6 +314,7 @@ struct amivm_exception_context {
     uint32_t fault_address;
     uint32_t fault_status;
     uint32_t fslw;
+    uint32_t frame_magic;
     uint8_t entry_vector;
     uint32_t internal_state[34];
 };
