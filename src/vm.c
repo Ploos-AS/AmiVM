@@ -293,6 +293,7 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
             vm->mmu_fault_address = ctx->fault_address;
             vm->mmu_fault_status = ctx->fault_status;
             vm->exception_fslw = ctx->fslw;
+            vm->exception_frame_magic = ctx->frame_magic;
             for (uint8_t i = 0u; i < 34u; ++i)
                 vm->exception_internal_state[i] = ctx->internal_state[i];
         }
@@ -659,6 +660,7 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         vm->exception_context_stack[d].fault_address = vm->mmu_fault_address;
         vm->exception_context_stack[d].fault_status = vm->mmu_fault_status;
         vm->exception_context_stack[d].fslw = vm->exception_fslw;
+        vm->exception_context_stack[d].frame_magic = vm->exception_frame_magic;
         vm->exception_context_stack[d].entry_vector = vm->exception_entry_vector;
         for (uint8_t i = 0u; i < 34u; ++i)
             vm->exception_context_stack[d].internal_state[i] = vm->exception_internal_state[i];
