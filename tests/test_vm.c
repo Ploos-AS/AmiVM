@@ -2681,6 +2681,49 @@ static int test_config_resolve_external_mmu_policy(void)
 }
 
 
+static int test_mmu_policy_matrix(void)
+{
+    struct amivm_config config;
+    struct amivm_resolved_config resolved;
+    const char *profiles[] = { "68020", "68030", "68040", "68060" };
+    size_t i;
+
+    amivm_config_init(&config);
+    for (i = 0; i < sizeof profiles / sizeof profiles[0]; ++i) {
+        config.cpu_profile = amivm_cpu_profile_by_name(profiles[i]);
+        CHECK(config.cpu_profile != NULL);
+        config.external_mmu = AMIVM_MMU_NONE;
+        CHECK(amivm_config_resolve(&config, &resolved) == 0);
+        if (strcmp(profiles[i], "68040") == 0)
+            CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+        else
+            CHECK(!amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    }
+
+    config.cpu_profile = amivm_cpu_profile_by_name("68020");
+    CHECK(config.cpu_profile != NULL);
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(amivm_config_resolve(&config, &resolved) == 0);
+
+    config.cpu_profile = amivm_cpu_profile_by_name("68030");
+    CHECK(config.cpu_profile != NULL);
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(amivm_config_resolve(&config, &resolved) != 0);
+
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(amivm_config_resolve(&config, &resolved) != 0);
+
+    config.cpu_profile = amivm_cpu_profile_by_name("68060");
+    CHECK(config.cpu_profile != NULL);
+    config.external_mmu = AMIVM_MMU_68851;
+    CHECK(amivm_config_resolve(&config, &resolved) != 0);
+
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2726,6 +2769,7 @@ int main(void)
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
         test_config_resolve_external_mmu_policy() != 0 ||
+        test_mmu_policy_matrix() != 0 ||
         test_mmu_cache_entry_permissions() != 0 ||
         test_mmu_cache_entry_count() != 0 ||
         test_mmu_ram_write_preserves_correctness() != 0 || test_mmu_targeted_invalidation() != 0 ||
