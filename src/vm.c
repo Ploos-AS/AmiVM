@@ -346,7 +346,9 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
     uint8_t hi, lo;
     if (!vm) return -1;
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
-    if (!layout || vm->exception_frame_size != (uint8_t)(layout->words * 2u))
+    if (!layout ||
+        !amivm_m68k_frame_compatible_with_cpu(&vm->cpu_profile, vm->exception_frame_type) ||
+        vm->exception_frame_size != (uint8_t)(layout->words * 2u))
         return -1;
     sp = vm->m68k.a[7];
     if (vm->exception_frame_sp != 0u && sp != vm->exception_frame_sp)
@@ -632,6 +634,7 @@ int amivm_m68k_validate_exception_frame(struct amivm_vm *vm)
     if (!vm) return -1;
     layout = amivm_m68k_frame_layout(vm->exception_frame_type);
     if (!layout || !layout->implemented ||
+        !amivm_m68k_frame_compatible_with_cpu(&vm->cpu_profile, vm->exception_frame_type) ||
         vm->exception_frame_size == 0u ||
         vm->exception_frame_word_count == 0u ||
         vm->exception_frame_word_count != layout->words ||
@@ -655,7 +658,9 @@ int amivm_m68k_set_exception_frame_type(struct amivm_vm *vm, uint8_t type)
 
     if (!vm || type == AMIVM_FRAME_INVALID) return -1;
     layout = amivm_m68k_frame_layout(type);
-    if (!layout || !layout->implemented) return -1;
+    if (!layout || !layout->implemented ||
+        !amivm_m68k_frame_compatible_with_cpu(&vm->cpu_profile, type))
+        return -1;
 
     switch (vm->cpu_profile.exception_frame_family) {
     case AMIVM_FRAME_FAMILY_68020:
