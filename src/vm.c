@@ -1632,10 +1632,10 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
      * only the profile-qualified cache geometry; the cache itself remains
      * empty until a fresh translation is inserted.
      */
-    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile)) {
-        vm->mmu.translation_cache_entry_count = 4u;
-        vm->mmu.translation_cache_page_shift = 12u;
-    }
+    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile))
+        amivm_mmu_translation_cache_reconfigure(&vm, 4u, 12u);
+    else
+        amivm_mmu_translation_cache_reconfigure(&vm, 0u, 0u);
 }
 
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
