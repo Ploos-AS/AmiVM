@@ -173,6 +173,19 @@ void amivm_m68k_request_irq(struct amivm_vm *vm, uint8_t level)
     vm->irq_pending = true;
 }
 
+static int amivm_m68k_validate_irq_state(const struct amivm_vm *vm)
+{
+    if (!vm)
+        return -1;
+    if (vm->irq_pending && (vm->irq_level < 1u || vm->irq_level > 7u))
+        return -1;
+    if (!vm->irq_in_service && vm->exception_depth != 0u)
+        return 0;
+    if (vm->irq_in_service && vm->exception_depth == 0u)
+        return -1;
+    return 0;
+}
+
 static int amivm_m68k_enter_mmu_exception(struct amivm_vm *vm)
 {
     uint32_t handler;
