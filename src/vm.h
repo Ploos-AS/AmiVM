@@ -241,6 +241,7 @@ struct amivm_mmu_state {
     bool translation_cache_supervisors[4];
     uint8_t translation_cache_valid_mask;
     uint8_t translation_cache_entry_count;
+    uint8_t translation_cache_page_shift;
     uint32_t root_table_page;
     uint32_t leaf_table_page;
     enum amivm_m68k_mmu_fault last_fault;
