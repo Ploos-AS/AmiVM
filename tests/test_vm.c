@@ -3907,6 +3907,53 @@ static int test_68040_tlb_targeted_invalidation_mixed(void)
 }
 
 
+static int test_68040_tlb_refill_after_targeted_invalidation(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00900000u, AMIVM_RAM_BASE + 0x20000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00900000u, true, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x20000u);
+
+    amivm_mmu_page_table_changed(&vm, 0x00900000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00900000u, false, &physical));
+
+    /* Refill with a different physical mapping and stricter permissions. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00900000u, AMIVM_RAM_BASE + 0x24000u, false, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00900000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x24000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00900000u, true, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+    /* User mode must reject the refilled supervisor-only translation. */
+    vm.m68k.sr = 0u;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00900000u, false, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3973,6 +4020,7 @@ int main(void)
         test_68040_tlb_all_slots() != 0 ||
         test_68040_tlb_mixed_permissions_all_slots() != 0 ||
         test_68040_tlb_targeted_invalidation_mixed() != 0 ||
+        test_68040_tlb_refill_after_targeted_invalidation() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
