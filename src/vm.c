@@ -1432,6 +1432,24 @@ void amivm_mmu_translation_cache_reconfigure(struct amivm_vm *vm,
 {
     if (!vm)
         return;
+
+    /*
+     * The cache has four physical slots in the current implementation.
+     * Zero disables it. Page sizes below 4 KiB are not supported by this
+     * translation-cache path; values above 31 are clamped to 31 to keep
+     * all 32-bit shifts defined.
+     */
+    if (entry_count > 4u)
+        entry_count = 4u;
+    if (entry_count == 0u || page_shift == 0u) {
+        entry_count = 0u;
+        page_shift = 0u;
+    } else if (page_shift < 12u) {
+        page_shift = 12u;
+    } else if (page_shift > 31u) {
+        page_shift = 31u;
+    }
+
     amivm_mmu_translation_cache_invalidate(vm);
     vm->mmu.translation_cache_entry_count = entry_count;
     vm->mmu.translation_cache_page_shift = page_shift;
