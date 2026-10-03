@@ -2818,6 +2818,67 @@ static int test_mmu_translation_cache_api(void)
 }
 
 
+static int test_mmu_translation_cache_api_matrix(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.mmu.translation_cache_entry_count = 4u;
+    vm.mmu.translation_cache_page_shift = 12u;
+
+    /* User read against user-readable mapping: hit. */
+    vm.m68k.sr = 0u;
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, false);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
+
+    /* User write against read-only mapping: miss/fault. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00457000u, AMIVM_RAM_BASE + 0x4000u, false, false);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, true, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+    /* User access against supervisor-only mapping: fault. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00458000u, AMIVM_RAM_BASE + 0x5000u, true, true);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+
+    /* Supervisor read/write against supervisor mapping: hits. */
+    vm.m68k.sr = 0x2000u;
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, true, &physical));
+
+    /* Explicit invalidation removes the entry. */
+    amivm_mmu_page_table_changed(&vm, 0x00458000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+
+    /* Missing entry is a cache miss, not an MMU permission fault. */
+    vm.mmu.last_fault = AMIVM_MMU_FAULT_NONE;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00459000u, false, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_NONE);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2862,6 +2923,7 @@ int main(void)
         test_mmu_page_shift_edges() != 0 ||
         test_mmu_index_bit_edges() != 0 ||
         test_mmu_translation_cache_api() != 0 ||
+        test_mmu_translation_cache_api_matrix() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
