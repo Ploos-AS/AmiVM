@@ -112,36 +112,48 @@ static int test_exception_frame_lifecycle(void)
     struct amivm_config config;
     struct amivm_vm vm;
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
+    static const struct {
+        const char *name;
+        uint8_t frame;
+    } cases[] = {
+        { "68020", AMIVM_FRAME_68020_BUS },
+        { "68030", AMIVM_FRAME_68030_SHORT_BUS },
+        { "68040", AMIVM_FRAME_68040_ACCESS },
+        { "68060", AMIVM_FRAME_68060_ACCESS }
+    };
 
-    amivm_config_init(&config);
-    config.ram_size = 2u * 1024u * 1024u;
-    config.cpu_profile = amivm_cpu_profile_by_name("68040");
-    CHECK(config.cpu_profile != NULL);
-    CHECK(amivm_vm_init(&vm, &config) == 0);
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
+        uint32_t pc = 0x00123456u + (uint32_t)(i * 0x100u);
+        uint16_t sr = (uint16_t)(0x2700u + i);
 
-    vm.m68k.a[7] = initial_sp;
-    vm.m68k.pc = 0x00123456u;
-    vm.m68k.sr = 0x2700u;
-    vm.mmu_exception_pc = vm.m68k.pc;
-    vm.mmu_exception_sr = vm.m68k.sr;
-    vm.exception_entry_vector = 56u;
-    vm.exception_frame_type = AMIVM_FRAME_68040_ACCESS;
+        amivm_config_init(&config);
+        config.ram_size = 2u * 1024u * 1024u;
+        config.cpu_profile = amivm_cpu_profile_by_name(cases[i].name);
+        CHECK(config.cpu_profile != NULL);
+        CHECK(amivm_vm_init(&vm, &config) == 0);
 
-    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
-    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
-    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
-    CHECK(vm.exception_frame_type == AMIVM_FRAME_68040_ACCESS);
-    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
-    CHECK(vm.m68k.a[7] == initial_sp);
-    CHECK(vm.m68k.pc == 0x00123456u);
-    CHECK(vm.m68k.sr == 0x2700u);
+        vm.m68k.a[7] = initial_sp;
+        vm.m68k.pc = pc;
+        vm.m68k.sr = sr;
+        vm.mmu_exception_pc = pc;
+        vm.mmu_exception_sr = sr;
+        vm.exception_entry_vector = 56u;
 
-    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68020_BUS) != 0);
-    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68060_ACCESS) != 0);
+        CHECK(amivm_m68k_set_exception_frame_type(&vm, cases[i].frame) == 0);
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+        CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+        CHECK(vm.exception_frame_type == cases[i].frame);
+        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+        CHECK(vm.m68k.a[7] == initial_sp);
+        CHECK(vm.m68k.pc == pc);
+        CHECK(vm.m68k.sr == sr);
 
-    amivm_vm_destroy(&vm);
+        amivm_vm_destroy(&vm);
+    }
+
     return 0;
 }
+
 
 static int test_config(void)
 {
