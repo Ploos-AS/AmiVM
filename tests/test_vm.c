@@ -2993,6 +2993,50 @@ static int test_mmu_translation_cache_permission_state(void)
 }
 
 
+static int test_mmu_translation_cache_enable_disable(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.translation_cache_entry_count = 4u;
+    vm.mmu.translation_cache_page_shift = 12u;
+    vm.m68k.sr = 0x2000u;
+
+    vm.mmu.enabled = true;
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+
+    vm.mmu.enabled = false;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+
+    /* Disabling MMU must not leave a usable cached translation behind. */
+    amivm_mmu_translation_cache_invalidate(&vm);
+    vm.mmu.enabled = true;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+
+    /* A fresh translation may be inserted after re-enabling. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x5000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x5000u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3040,6 +3084,7 @@ int main(void)
         test_mmu_translation_cache_api_matrix() != 0 ||
         test_mmu_translation_cache_eviction() != 0 ||
         test_mmu_translation_cache_permission_state() != 0 ||
+        test_mmu_translation_cache_enable_disable() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
