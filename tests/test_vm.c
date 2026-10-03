@@ -3448,6 +3448,79 @@ static int test_mmu_cache_entry_state_write_sites(void)
 }
 
 
+static int test_mmu_translation_cache_lifecycle(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    /* Configure. */
+    amivm_mmu_translation_cache_reconfigure(&vm, 2u, 12u);
+    CHECK(vm.mmu.translation_cache_entry_count == 2u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    /* Insert and lookup. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
+
+    /* Permission check. */
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, true, &physical));
+
+    /* Fill second entry and evict first by aliasing its slot. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00457000u, AMIVM_RAM_BASE + 0x4000u, true, true);
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00458000u, AMIVM_RAM_BASE + 0x5000u, true, true);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+
+    /* Targeted invalidation. */
+    amivm_mmu_page_table_changed(&vm, 0x00458000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+
+    /* Reconfigure invalidates everything. */
+    amivm_mmu_translation_cache_reconfigure(&vm, 4u, 13u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+
+    /* Fresh entry after reconfigure. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00457000u, AMIVM_RAM_BASE + 0x6000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x6000u);
+
+    /* CPU reset clears translations and restores profile geometry. */
+    amivm_m68k_reset(&vm, 0u, 0x2000u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3506,6 +3579,7 @@ int main(void)
         test_mmu_cache_geometry_invariant() != 0 ||
         test_mmu_cache_slot_invalidation_path() != 0 ||
         test_mmu_cache_entry_state_write_sites() != 0 ||
+        test_mmu_translation_cache_lifecycle() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
