@@ -209,6 +209,27 @@ int amivm_m68k_exception_enter(struct amivm_vm *vm, uint8_t vector)
     return 0;
 }
 
+static bool amivm_m68k_frame_compatible_with_cpu(
+    const struct amivm_cpu_profile *profile, uint8_t frame_type)
+{
+    if (!profile)
+        return false;
+    switch (profile->exception_frame_family) {
+    case AMIVM_FRAME_FAMILY_68020:
+        return frame_type == AMIVM_FRAME_68020_BUS;
+    case AMIVM_FRAME_FAMILY_68030:
+        return frame_type == AMIVM_FRAME_68030_COPROC_MID ||
+               frame_type == AMIVM_FRAME_68030_SHORT_BUS ||
+               frame_type == AMIVM_FRAME_68030_LONG_BUS;
+    case AMIVM_FRAME_FAMILY_68040:
+        return frame_type == AMIVM_FRAME_68040_ACCESS;
+    case AMIVM_FRAME_FAMILY_68060:
+        return frame_type == AMIVM_FRAME_68060_ACCESS;
+    default:
+        return false;
+    }
+}
+
 static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
                                                      const struct amivm_exception_context *ctx)
 {
