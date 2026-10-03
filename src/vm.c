@@ -1937,7 +1937,17 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
 
     memset(vm, 0, sizeof(*vm));
     if (resolved.cpu_profile == NULL) return -1;
+
+    /*
+     * External MMUs are only valid for CPUs without an integrated MMU.
+     * The current attach API intentionally supports 68020 + 68851.
+     * Integrated 68030/040/060 MMUs must come from the CPU profile itself.
+     */
     if (config->external_mmu != AMIVM_MMU_NONE) {
+        if (resolved.cpu_profile->has_mmu ||
+            resolved.external_mmu != AMIVM_MMU_68851 ||
+            resolved.cpu_profile->id != AMIVM_CPU_68020)
+            return -1;
         if (!amivm_cpu_profile_attach_mmu(&vm->cpu_profile,
                                           resolved.cpu_profile,
                                           resolved.external_mmu))
