@@ -279,6 +279,55 @@ static int test_nested_exception_negative_cases(void)
 }
 
 
+static int test_exception_depth_boundary(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00180000u;
+    const uint8_t max_depth = 8u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = 0x00100000u;
+    vm.m68k.sr = 0x2700u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 56u;
+
+    for (uint8_t depth = 0u; depth < max_depth; ++depth) {
+        vm.mmu_exception_pc += 0x100u;
+        vm.mmu_exception_sr = (uint16_t)(0x2700u + depth);
+        vm.exception_entry_vector = (uint8_t)(56u + depth);
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+        CHECK(vm.exception_depth == (uint8_t)(depth + 1u));
+    }
+
+    {
+        const uint32_t sp_before = vm.m68k.a[7];
+        const uint8_t depth_before = vm.exception_depth;
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
+        CHECK(vm.exception_depth == depth_before);
+        CHECK(vm.m68k.a[7] == sp_before);
+    }
+
+    for (uint8_t depth = max_depth; depth > 0u; --depth) {
+        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+        CHECK(vm.exception_depth == (uint8_t)(depth - 1u));
+    }
+
+    CHECK(vm.exception_depth == 0u);
+    CHECK(vm.m68k.a[7] == initial_sp);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -298,7 +347,7 @@ int main(void)
     if (test_memory_map() != 0 || test_devices() != 0 ||
         test_machine_dump_profile() != 0 || test_exception_frame_lifecycle() != 0 ||
         test_nested_exception_frames() != 0 || test_nested_exception_negative_cases() != 0 ||
-        test_config() != 0) {
+        test_exception_depth_boundary() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
