@@ -231,6 +231,7 @@ struct amivm_mmu_state {
     uint32_t last_logical;
     uint32_t last_physical;
     bool last_write;
+    bool last_translation_valid;
     enum amivm_m68k_mmu_fault last_fault;
 };
 
