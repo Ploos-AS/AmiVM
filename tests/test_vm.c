@@ -1064,6 +1064,66 @@ static int test_irq_api_equivalence(void)
 }
 
 
+static int test_irq_state_machine_integrity(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint8_t vector = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    /* IDLE */
+    CHECK(!vm.irq_pending);
+    CHECK(!vm.irq_in_service);
+
+    /* IDLE -> PENDING */
+    amivm_m68k_request_irq(&vm, 3u);
+    CHECK(vm.irq_pending);
+    CHECK(vm.irq_level == 3u);
+    CHECK(!vm.irq_in_service);
+
+    /* PENDING -> IN_SERVICE */
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 27u * 4u,
+                        0x00124000u));
+    vm.m68k.pc = 0x00100000u;
+    vm.m68k.sr = 0x0000u;
+    vm.m68k.supervisor = false;
+    CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+    CHECK(vector == 27u);
+    CHECK(!vm.irq_pending);
+    CHECK(vm.irq_in_service);
+
+    /* IN_SERVICE -> NESTED */
+    amivm_m68k_request_irq(&vm, 6u);
+    CHECK(vm.irq_pending);
+    CHECK(vm.irq_level == 6u);
+    CHECK(vm.irq_in_service);
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 30u * 4u,
+                        0x00126000u));
+    CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+    CHECK(vector == 30u);
+    CHECK(!vm.irq_pending);
+    CHECK(vm.irq_in_service);
+
+    /* NESTED -> IN_SERVICE */
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.irq_in_service);
+    CHECK(vm.m68k.pc == 0x00124000u);
+
+    /* IN_SERVICE -> IDLE */
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(!vm.irq_in_service);
+    CHECK(!vm.irq_pending);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -1090,7 +1150,8 @@ int main(void)
         test_interrupt_acceptance_and_mask() != 0 || test_interrupt_level_matrix() != 0 ||
         test_nested_interrupt_priority() != 0 || test_nested_interrupt_roundtrip() != 0 ||
         test_interrupt_vector_failure_atomicity() != 0 || test_interrupt_vector_failure_full_rollback() != 0 ||
-        test_service_irq_rollback() != 0 || test_irq_api_equivalence() != 0 || test_config() != 0) {
+        test_service_irq_rollback() != 0 || test_irq_api_equivalence() != 0 ||
+        test_irq_state_machine_integrity() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.108 nested IRQ round-trip tests: PASS");
