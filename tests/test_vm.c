@@ -3113,6 +3113,51 @@ static int test_mmu_translation_cache_reset_rebuild(void)
 }
 
 
+static int test_mmu_translation_cache_reset_cycles(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+    const uint32_t mappings[] = {
+        AMIVM_RAM_BASE + 0x3000u,
+        AMIVM_RAM_BASE + 0x5000u,
+        AMIVM_RAM_BASE + 0x7000u,
+        AMIVM_RAM_BASE + 0x9000u
+    };
+    const uint8_t counts[] = { 1u, 2u, 4u, 2u };
+    size_t i;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+    vm.m68k.sr = 0x2000u;
+
+    for (i = 0; i < sizeof counts / sizeof counts[0]; ++i) {
+        vm.mmu.enabled = true;
+        vm.mmu.translation_cache_entry_count = counts[i];
+        vm.mmu.translation_cache_page_shift = 12u;
+
+        amivm_mmu_translation_cache_insert(
+            &vm, 0x00456000u, mappings[i], true, true);
+        CHECK(amivm_mmu_translation_cache_lookup(
+            &vm, 0x00456000u, false, &physical));
+        CHECK(physical == mappings[i]);
+
+        amivm_m68k_reset(&vm, 0u, 0x2000u);
+        CHECK(!vm.mmu.enabled);
+        CHECK(!vm.mmu.translation_cache_valid);
+        CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+        CHECK(!amivm_mmu_translation_cache_lookup(
+            &vm, 0x00456000u, false, &physical));
+    }
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3163,6 +3208,7 @@ int main(void)
         test_mmu_translation_cache_enable_disable() != 0 ||
         test_mmu_translation_cache_reset() != 0 ||
         test_mmu_translation_cache_reset_rebuild() != 0 ||
+        test_mmu_translation_cache_reset_cycles() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
