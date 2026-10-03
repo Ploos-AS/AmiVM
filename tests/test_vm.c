@@ -731,6 +731,53 @@ static int test_interrupt_acceptance_and_mask(void)
 }
 
 
+static int test_interrupt_level_matrix(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t base_pc = 0x00100000u;
+    const uint32_t sp = AMIVM_RAM_BASE + 0x00100000u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    for (uint8_t level = 1u; level <= 7u; ++level) {
+        uint8_t vector = 0u;
+        const uint32_t handler = 0x00120000u + ((uint32_t)level * 0x100u);
+
+        vm.m68k.a[7] = sp;
+        vm.m68k.pc = base_pc + ((uint32_t)level * 0x10u);
+        vm.m68k.sr = 0x0000u;
+        vm.m68k.supervisor = false;
+        vm.irq_pending = false;
+        vm.irq_in_service = false;
+
+        CHECK(amivm_write32(&vm, vm.exception_vector_base +
+                            ((uint32_t)(24u + level) * 4u), handler));
+        amivm_m68k_request_irq(&vm, level);
+
+        CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+        CHECK(vector == (uint8_t)(24u + level));
+        CHECK(vm.pending_exception_vector == vector);
+        CHECK(vm.m68k.pc == handler);
+        CHECK(vm.m68k.supervisor);
+        CHECK(((vm.m68k.sr >> 8) & 7u) == level);
+
+        CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+        CHECK(!vm.irq_in_service);
+        CHECK(vm.m68k.pc == base_pc + ((uint32_t)level * 0x10u));
+        CHECK(vm.m68k.sr == 0x0000u);
+        CHECK(!vm.m68k.supervisor);
+    }
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -754,7 +801,8 @@ int main(void)
         test_nested_exception_atomicity() != 0 || test_nested_context_stack_rollback() != 0 ||
         test_supervisor_user_transition() != 0 || test_privilege_violation_rte() != 0 ||
         test_privilege_violation_atomicity() != 0 || test_interrupt_request_priority() != 0 ||
-        test_interrupt_acceptance_and_mask() != 0 || test_config() != 0) {
+        test_interrupt_acceptance_and_mask() != 0 || test_interrupt_level_matrix() != 0 ||
+        test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
