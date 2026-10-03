@@ -278,6 +278,24 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
         vm->exception_frame_format = 0u;
         vm->exception_frame_word_count = 0u;
         vm->exception_depth = next_depth;
+        if (next_depth != 0u) {
+            struct amivm_exception_context *ctx =
+                &vm->exception_context_stack[next_depth - 1u];
+            vm->exception_frame_sp = ctx->frame_sp;
+            vm->exception_frame_size = ctx->frame_size;
+            vm->exception_frame_type = ctx->frame_type;
+            vm->exception_frame_format = ctx->frame_format;
+            vm->exception_frame_word_count = ctx->frame_word_count;
+            vm->exception_frame_vector_offset = ctx->vector_offset;
+            vm->exception_format_vector_word = ctx->format_vector_word;
+            vm->exception_fault_stage = ctx->fault_stage;
+            vm->exception_entry_vector = ctx->entry_vector;
+            vm->mmu_fault_address = ctx->fault_address;
+            vm->mmu_fault_status = ctx->fault_status;
+            vm->exception_fslw = ctx->fslw;
+            for (uint8_t i = 0u; i < 34u; ++i)
+                vm->exception_internal_state[i] = ctx->internal_state[i];
+        }
         vm->pending_exception = AMIVM_M68K_EXC_NONE;
         vm->m68k.exception = AMIVM_M68K_EXC_NONE;
     }
@@ -635,6 +653,9 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         vm->exception_context_stack[d].vector_offset = vm->exception_frame_vector_offset;
         vm->exception_context_stack[d].format_vector_word = vm->exception_format_vector_word;
         vm->exception_context_stack[d].fault_stage = vm->exception_fault_stage;
+        vm->exception_context_stack[d].fault_address = vm->mmu_fault_address;
+        vm->exception_context_stack[d].fault_status = vm->mmu_fault_status;
+        vm->exception_context_stack[d].fslw = vm->exception_fslw;
         vm->exception_context_stack[d].entry_vector = vm->exception_entry_vector;
         for (uint8_t i = 0u; i < 34u; ++i)
             vm->exception_context_stack[d].internal_state[i] = vm->exception_internal_state[i];
