@@ -2544,6 +2544,38 @@ static int test_mmu_targeted_invalidation(void)
 }
 
 
+static int test_mmu_cache_page_shift(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.mmu.page_table_entries = 4u;
+    vm.mmu.page_shift = 13u;
+    vm.mmu.page_table_base = AMIVM_RAM_BASE + 0x1000u;
+    vm.mmu.page_table_mask = 0xffffe000u;
+
+    CHECK(amivm_write32(&vm, vm.mmu.page_table_base,
+                        (AMIVM_RAM_BASE + 0x4000u) | 1u));
+    CHECK(amivm_mmu_translate(&vm, 0x00000020u, false, &physical) == 0);
+    CHECK(physical == AMIVM_RAM_BASE + 0x4020u);
+
+    CHECK(amivm_mmu_translate(&vm, 0x00001020u, false, &physical) == 0);
+    CHECK(physical == AMIVM_RAM_BASE + 0x5020u ||
+          physical == AMIVM_RAM_BASE + 0x4020u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2584,6 +2616,7 @@ int main(void)
         test_vm_step_mmu_recovery_pending_irq() != 0 || test_mmu_translation_cache_invalidation() != 0 ||
         test_mmu_page_table_changed_hook() != 0 || test_mmu_ram_write_auto_invalidate() != 0 ||
         test_mmu_multiple_cached_translations() != 0 ||
+        test_mmu_cache_page_shift() != 0 ||
         test_mmu_cache_entry_permissions() != 0 ||
         test_mmu_cache_entry_count() != 0 ||
         test_mmu_ram_write_preserves_correctness() != 0 || test_mmu_targeted_invalidation() != 0 ||
