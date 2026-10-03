@@ -3732,6 +3732,63 @@ static int test_68040_tlb_collision_metadata(void)
 }
 
 
+static int test_68040_tlb_all_slots(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+    const uint32_t pages[] = {
+        0x00600000u, 0x00601000u, 0x00602000u, 0x00603000u
+    };
+    const uint32_t replacements[] = {
+        0x00604000u, 0x00605000u, 0x00606000u, 0x00607000u
+    };
+    size_t i;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    for (i = 0u; i < 4u; ++i) {
+        amivm_mmu_translation_cache_insert(
+            &vm, pages[i], AMIVM_RAM_BASE + 0x2000u + (uint32_t)i * 0x1000u,
+            true, true);
+    }
+
+    for (i = 0u; i < 4u; ++i) {
+        CHECK(amivm_mmu_translation_cache_lookup(
+            &vm, pages[i], false, &physical));
+        CHECK(physical ==
+              AMIVM_RAM_BASE + 0x2000u + (uint32_t)i * 0x1000u);
+    }
+
+    /* Each replacement aliases one of the four slots. */
+    for (i = 0u; i < 4u; ++i) {
+        amivm_mmu_translation_cache_insert(
+            &vm, replacements[i],
+            AMIVM_RAM_BASE + 0x8000u + (uint32_t)i * 0x1000u,
+            true, true);
+        CHECK(!amivm_mmu_translation_cache_lookup(
+            &vm, pages[i], false, &physical));
+        CHECK(amivm_mmu_translation_cache_lookup(
+            &vm, replacements[i], false, &physical));
+        CHECK(physical ==
+              AMIVM_RAM_BASE + 0x8000u + (uint32_t)i * 0x1000u);
+    }
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3795,6 +3852,7 @@ int main(void)
         test_68040_tlb_privilege_invalidation() != 0 ||
         test_68040_tlb_lifecycle() != 0 ||
         test_68040_tlb_collision_metadata() != 0 ||
+        test_68040_tlb_all_slots() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
