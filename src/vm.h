@@ -235,6 +235,7 @@ struct amivm_mmu_state {
     bool translation_cache_valid;
     uint32_t translation_cache_logical_page;
     uint32_t translation_cache_physical_page;
+    uint32_t translation_cache_generation;
     bool translation_cache_write;
     bool translation_cache_supervisor;
     uint32_t root_table_page;
