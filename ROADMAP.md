@@ -37,7 +37,7 @@ M1 is complete when the host can instantiate the Hyper/040 machine model without
 
 ## M2 — 68k execution — IN PROGRESS
 
-Implementation has progressed through the internal M2.79 development sequence. JIT/dynarec host qualification is active on both tier-1 host architectures. In particular, AArch64 executable-cache coherency and persistent JIT mapping synchronization are implemented and qualified, native x86-64/AArch64 CI paths have been introduced, and recent fixes have hardened JIT helper integration.
+The exception subsystem has now reached an explicit M2.100 integrity gate: CPU/frame compatibility, normal and nested exception round-trips, negative validation, depth bounds, stack atomicity, nested atomicity and context-stack rollback are covered by qualification tests.\n\nImplementation has progressed through the internal M2.79 development sequence. JIT/dynarec host qualification is active on both tier-1 host architectures. In particular, AArch64 executable-cache coherency and persistent JIT mapping synchronization are implemented and qualified, native x86-64/AArch64 CI paths have been introduced, and recent fixes have hardened JIT helper integration.
 
 Completed or substantially implemented work must still be treated separately from the M2 exit contract below; M2 remains open until the complete 68040-class execution path required for guest OS bring-up is qualified.
 
@@ -45,7 +45,7 @@ Completed or substantially implemented work must still be treated separately fro
 - Define the internal CPU-backend API independently from the chosen implementation.
 - Reset vector and first-instruction execution from the bootstrap region.
 - Supervisor/user state transitions.
-- Exceptions and interrupt injection.
+- Exceptions and interrupt injection. **Exception integrity gate M2.100:** CPU/frame compatibility, nested exception handling, rollback/atomicity, depth bounds and context-stack integrity are qualified; remaining work is full CPU-backend exception/interrupt semantics required by the M2 exit contract.
 - MMU support required for Linux/m68k.
 - CPU-profile/MMU dispatch: 68040/Hyper040 is the qualified M2 baseline; 68030 and 68060 MMU backends remain scaffolded until their model-specific table-walk, status and exception semantics are qualified. The external 68851 path now has an independent descriptor walker and fault/protection qualification, but remains scaffolded until the configurable PMMU table geometry, root-pointer formats and PMMU instruction/control-register contract are implemented.
 - FPU baseline.
