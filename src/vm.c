@@ -1414,7 +1414,6 @@ void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
 {
     if (!vm)
         return;
-    vm->mmu.translation_cache_valid = false;
     vm->mmu.translation_cache_valid_mask = 0u;
     vm->mmu.last_translation_valid = false;
 }
@@ -1476,7 +1475,6 @@ void amivm_mmu_translation_cache_insert(struct amivm_vm *vm,
     vm->mmu.translation_cache_writes[slot] = write;
     vm->mmu.translation_cache_supervisors[slot] = supervisor;
     vm->mmu.translation_cache_valid_mask |= (uint8_t)(1u << slot);
-    vm->mmu.translation_cache_valid = true;
 }
 
 
@@ -1494,8 +1492,6 @@ void amivm_mmu_page_table_changed(struct amivm_vm *vm, uint32_t logical)
         vm->mmu.translation_cache_entries[slot] == page) {
         vm->mmu.translation_cache_valid_mask &=
             (uint8_t)~(1u << slot);
-        vm->mmu.translation_cache_valid =
-            vm->mmu.translation_cache_valid_mask != 0u;
         vm->mmu.last_translation_valid = false;
     }
 }
