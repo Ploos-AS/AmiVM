@@ -3370,6 +3370,44 @@ static int test_mmu_cache_geometry_invariant(void)
 }
 
 
+static int test_mmu_cache_slot_invalidation_path(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    amivm_mmu_translation_cache_reconfigure(&vm, 2u, 12u);
+    vm.m68k.sr = 0x2000u;
+
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, true);
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00457000u, AMIVM_RAM_BASE + 0x4000u, true, true);
+
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+
+    /* Page-table mutation must invalidate only the affected cache slot. */
+    amivm_mmu_page_table_changed(&vm, 0x00456000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3426,6 +3464,7 @@ int main(void)
         test_mmu_cache_disabled_invariant() != 0 ||
         test_mmu_cache_reconfigure_validation() != 0 ||
         test_mmu_cache_geometry_invariant() != 0 ||
+        test_mmu_cache_slot_invalidation_path() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
