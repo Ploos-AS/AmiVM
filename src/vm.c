@@ -225,7 +225,10 @@ static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
             (uint16_t)(((uint16_t)ctx->frame_format << 12) |
                        (ctx->entry_vector & 0x0fffu)))
         return -1;
-    if (ctx->frame_sp > vm->ram_size ||
+    if ((ctx->frame_sp & 1u) != 0u ||
+        ctx->frame_size == 0u ||
+        (ctx->frame_size & 1u) != 0u ||
+        ctx->frame_sp > vm->ram_size ||
         (size_t)ctx->frame_sp + ctx->frame_size > vm->ram_size)
         return -1;
     return 0;
