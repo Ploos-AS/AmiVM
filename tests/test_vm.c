@@ -3569,6 +3569,58 @@ static int test_68040_tlb_qualification_group(void)
 }
 
 
+static int test_68040_tlb_privilege_invalidation(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+
+    /* Supervisor-only translation is accepted in supervisor mode. */
+    vm.m68k.sr = 0x2000u;
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00234000u, AMIVM_RAM_BASE + 0x6000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00234000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x6000u);
+
+    /* The same cached translation must fault in user mode. */
+    vm.m68k.sr = 0u;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00234000u, false, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+
+    /* User-accessible translation works after replacing the entry. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00234000u, AMIVM_RAM_BASE + 0x7000u, true, false);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00234000u, true, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x7000u);
+
+    /* Page-table mutation invalidates the affected translation. */
+    amivm_mmu_page_table_changed(&vm, 0x00234000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00234000u, false, &physical));
+
+    /* A different cached page remains independently valid. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00235000u, AMIVM_RAM_BASE + 0x8000u, true, false);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00235000u, false, &physical));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3629,6 +3681,7 @@ int main(void)
         test_mmu_cache_entry_state_write_sites() != 0 ||
         test_mmu_translation_cache_lifecycle() != 0 ||
         test_68040_tlb_qualification_group() != 0 ||
+        test_68040_tlb_privilege_invalidation() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
