@@ -711,6 +711,7 @@ int main(void)
                              CHECK(ql->fault_address_offset == 8u);
                              CHECK(ql->fault_status_offset == 12u);
                              CHECK(ql->fault_status_bytes == 4u);
+                     CHECK(amivm_m68k_frame_layout((uint8_t)qualification_frames[qi]) != NULL);
                          }
                          CHECK((unsigned)ql->fault_address_offset < (unsigned)ql->words * 2u || !ql->has_fault_address);
                          if (ql->has_fault_status)
