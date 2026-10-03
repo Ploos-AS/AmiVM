@@ -1011,6 +1011,9 @@ int main(void)
                         CHECK(vm.exception_frame_type == outer_type);
                         CHECK(vm.exception_internal_state[0] == outer_state0);
                         CHECK(vm.exception_internal_state[1] == outer_state1);
+                        CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+                        CHECK(vm.exception_depth == 0u);
+                        CHECK(vm.exception_frame_sp == 0u);
                     }
                     CHECK(vm.m68k.a[7] == AMIVM_RAM_BASE + 0x23f0u);
                 }
