@@ -1025,6 +1025,17 @@ int main(void)
                         CHECK(vm.exception_frame_sp == outer_sp);
                         CHECK(vm.exception_frame_type == outer_type);
                         CHECK(vm.exception_frame_magic == 0x45584632u);
+                        {
+                            uint32_t saved_sp = vm.exception_frame_sp;
+                            uint8_t saved_depth = vm.exception_depth;
+                            uint8_t saved_type = vm.exception_frame_type;
+                            vm.exception_context_stack[0].frame_magic = 0u;
+                            CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                            CHECK(vm.exception_frame_sp == saved_sp);
+                            CHECK(vm.exception_depth == saved_depth);
+                            CHECK(vm.exception_frame_type == saved_type);
+                            vm.exception_context_stack[0].frame_magic = 0x45584632u;
+                        }
                         CHECK(vm.exception_internal_state[0] == outer_state0);
                         CHECK(vm.exception_internal_state[1] == outer_state1);
                         CHECK(vm.exception_depth <= 8u);
