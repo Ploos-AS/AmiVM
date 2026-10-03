@@ -21,6 +21,19 @@ Cycle accounting exists only to provide deterministic, software-visible timing s
 Memory/device timing is likewise semantic rather than a host-speed limiter. Cacheability, serialization, MMIO and device-visible latency may contribute to deterministic guest timing when required, while the host executes the VM at full practical speed.
 
 
+## 68040 MMU translation-cache qualification
+
+The current translation-cache implementation has an explicit architectural boundary:
+
+- **68040 MMU:** translation-cache path is qualified and enabled by the profile policy.
+- **68030 MMU:** scaffold only; no qualified translation-cache claim.
+- **68060 MMU:** scaffold only; no qualified translation-cache claim.
+- **68020 + 68851:** scaffold only; the external MMU path is not treated as a qualified translation-cache implementation.
+
+The cache implementation used by the qualified 68040 profile is a deterministic four-entry, 4 KiB-page translation cache. Its lifecycle is controlled by the cache API (`reconfigure`, `lookup`, `insert`, targeted invalidation and full invalidation). The generic API is intentionally reusable, but the qualification claim belongs only to the 68040 profile until the other MMU models have independent architectural tests.
+
+This prevents generic cache infrastructure from being mistaken for completed 68030/68060/68851 MMU emulation.
+
 ## FS-UAE configuration compatibility
 
 AmiVM can import an FS-UAE `.conf` as a machine compatibility description:
