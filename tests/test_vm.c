@@ -2584,6 +2584,7 @@ int main(void)
         test_vm_step_mmu_recovery_pending_irq() != 0 || test_mmu_translation_cache_invalidation() != 0 ||
         test_mmu_page_table_changed_hook() != 0 || test_mmu_ram_write_auto_invalidate() != 0 ||
         test_mmu_multiple_cached_translations() != 0 ||
+        test_mmu_cache_entry_permissions() != 0 ||
         test_mmu_ram_write_preserves_correctness() != 0 || test_mmu_targeted_invalidation() != 0 ||
         test_config() != 0) {
         return 1;
