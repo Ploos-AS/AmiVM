@@ -2052,12 +2052,10 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
      * remains available as scaffolding, but only qualified 68040-family
      * profiles enable it by default.
      */
-    vm->mmu.translation_cache_entry_count = 0u;
-    vm->mmu.translation_cache_page_shift = 0u;
-    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile)) {
-        vm->mmu.translation_cache_entry_count = 4u;
-        vm->mmu.translation_cache_page_shift = 12u;
-    }
+    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile))
+        amivm_mmu_translation_cache_reconfigure(&vm, 4u, 12u);
+    else
+        amivm_mmu_translation_cache_reconfigure(&vm, 0u, 0u);
         vm->device_count = resolved.device_count;
     memset(&vm->aga, 0, sizeof vm->aga);
     vm->aga.beam_h = 0u;
