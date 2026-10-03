@@ -599,6 +599,56 @@ static int test_privilege_violation_rte(void)
 }
 
 
+static int test_privilege_violation_atomicity(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_pc = 0x00100000u;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
+    uint32_t d0, a0;
+    uint16_t sr;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = initial_pc;
+    vm.m68k.sr = 0x0000u;
+    vm.m68k.supervisor = false;
+    vm.m68k.d[0] = 0x12345678u;
+    vm.m68k.a[0] = 0x00abcdefu;
+    d0 = vm.m68k.d[0];
+    a0 = vm.m68k.a[0];
+    sr = vm.m68k.sr;
+
+    CHECK(amivm_write16(&vm, initial_pc, 0x4e73u));
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 8u * 4u,
+                        0x00123400u));
+
+    CHECK(amivm_vm_step_interpreter(&vm) == 0);
+    CHECK(vm.m68k.exception == AMIVM_M68K_EXC_PRIVILEGE);
+    CHECK(vm.pending_exception_vector == 8u);
+    CHECK(vm.m68k.d[0] == d0);
+    CHECK(vm.m68k.a[0] == a0);
+    CHECK(vm.m68k.supervisor);
+    CHECK((vm.m68k.sr & 0x2000u) != 0u);
+    CHECK(vm.exception_saved_pc == initial_pc);
+    CHECK(vm.exception_saved_sr == sr);
+
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.m68k.pc == initial_pc);
+    CHECK(vm.m68k.sr == sr);
+    CHECK(vm.m68k.d[0] == d0);
+    CHECK(vm.m68k.a[0] == a0);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -621,7 +671,7 @@ int main(void)
         test_exception_depth_boundary() != 0 || test_exception_stack_atomicity() != 0 ||
         test_nested_exception_atomicity() != 0 || test_nested_context_stack_rollback() != 0 ||
         test_supervisor_user_transition() != 0 || test_privilege_violation_rte() != 0 ||
-        test_config() != 0) {
+        test_privilege_violation_atomicity() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
