@@ -61,4 +61,7 @@ bool amivm_cpu_profile_attach_mmu(struct amivm_cpu_profile *out,
                                   const struct amivm_cpu_profile *base,
                                   enum amivm_mmu_model mmu_model);
 
+/* Returns true when the profile may use the currently qualified MMU cache path. */
+bool amivm_cpu_profile_mmu_cache_qualified(const struct amivm_cpu_profile *profile);
+
 #endif
