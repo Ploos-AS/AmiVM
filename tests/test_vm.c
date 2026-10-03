@@ -3341,6 +3341,35 @@ static int test_mmu_cache_reconfigure_validation(void)
 }
 
 
+static int test_mmu_cache_geometry_invariant(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    /* Public reconfigure is the only supported way to establish geometry. */
+    amivm_mmu_translation_cache_reconfigure(&vm, 4u, 12u);
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    amivm_mmu_translation_cache_reconfigure(&vm, 4u, 31u);
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 31u);
+
+    amivm_mmu_translation_cache_reconfigure(&vm, 0u, 0u);
+    CHECK(vm.mmu.translation_cache_entry_count == 0u);
+    CHECK(vm.mmu.translation_cache_page_shift == 0u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3396,6 +3425,7 @@ int main(void)
         test_mmu_cache_policy_helper() != 0 ||
         test_mmu_cache_disabled_invariant() != 0 ||
         test_mmu_cache_reconfigure_validation() != 0 ||
+        test_mmu_cache_geometry_invariant() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
