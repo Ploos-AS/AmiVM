@@ -1383,6 +1383,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     vm->mmu.mmu_supervisor = supervisor;
     vm->mmu.last_logical = logical;
     vm->mmu.last_write = write;
+    vm->mmu.last_translation_valid = false;
     vm->mmu.last_fault = AMIVM_MMU_FAULT_NONE;
     vm->mmu_fault_address = logical;
     vm->mmu_fault_status = (write ? 2u : 0u) |
@@ -1391,6 +1392,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     if (!vm->mmu.enabled || amivm_mmu_tt_match(&vm->mmu, logical, write)) {
         *physical = logical;
         vm->mmu.last_physical = logical;
+        vm->mmu.last_translation_valid = true;
         return 0;
     }
 
