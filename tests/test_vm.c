@@ -119,7 +119,9 @@ static int test_exception_frame_lifecycle(void)
         { "68020", AMIVM_FRAME_68020_BUS },
         { "68030", AMIVM_FRAME_68030_SHORT_BUS },
         { "68040", AMIVM_FRAME_68040_ACCESS },
-        { "68060", AMIVM_FRAME_68060_ACCESS }
+        { "hyper040", AMIVM_FRAME_68040_ACCESS },
+        { "68060", AMIVM_FRAME_68060_ACCESS },
+        { "hyper060", AMIVM_FRAME_68060_ACCESS }
     };
 
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
