@@ -3674,6 +3674,64 @@ static int test_68040_tlb_lifecycle(void)
 }
 
 
+static int test_68040_tlb_collision_metadata(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+    CHECK(vm.mmu.translation_cache_entry_count == 4u);
+    CHECK(vm.mmu.translation_cache_page_shift == 12u);
+
+    /* Fill one entry and a colliding page in the same cache slot. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00560000u, AMIVM_RAM_BASE + 0x10000u, false, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00560000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x10000u);
+
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00564000u, AMIVM_RAM_BASE + 0x14000u, true, false);
+
+    /* Old mapping must be gone, with no metadata leaking into the new one. */
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00560000u, false, &physical));
+
+    vm.m68k.sr = 0u;
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00564000u, true, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x14000u);
+
+    /* Reinsert as read-only supervisor mapping and verify all metadata flips. */
+    vm.m68k.sr = 0x2000u;
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00564000u, AMIVM_RAM_BASE + 0x15000u, false, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00564000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x15000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00564000u, true, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+
+    vm.m68k.sr = 0u;
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00564000u, false, &physical));
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -3736,6 +3794,7 @@ int main(void)
         test_68040_tlb_qualification_group() != 0 ||
         test_68040_tlb_privilege_invalidation() != 0 ||
         test_68040_tlb_lifecycle() != 0 ||
+        test_68040_tlb_collision_metadata() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
