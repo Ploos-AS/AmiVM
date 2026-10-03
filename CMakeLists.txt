@@ -33,6 +33,7 @@ add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
 # under one CTest label so CI can prove the CPU execution foundation
 # independently from the full regression suite.
 set_tests_properties(
+  amivm_vm
   amivm_cpu
   amivm_fpu
   amivm_fpu_decode
