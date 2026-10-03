@@ -101,6 +101,46 @@ int main(void)
         }
     }
 
-    puts("AmiVM M2.84 CPU profile to exception-frame compatibility matrix: PASS");
+    {
+        const enum amivm_cpu_profile_id ids[] = {
+            AMIVM_CPU_68020, AMIVM_CPU_68030, AMIVM_CPU_68040,
+            AMIVM_CPU_68060, AMIVM_CPU_HYPER040, AMIVM_CPU_HYPER060
+        };
+        const uint8_t frames[] = {
+            AMIVM_FRAME_68020_BUS, AMIVM_FRAME_68030_COPROC_MID,
+            AMIVM_FRAME_68030_SHORT_BUS, AMIVM_FRAME_68030_LONG_BUS,
+            AMIVM_FRAME_68040_ACCESS, AMIVM_FRAME_68060_ACCESS
+        };
+        for (size_t i = 0; i < sizeof ids / sizeof ids[0]; ++i) {
+            p = amivm_cpu_profile_by_id(ids[i]);
+            CHECK(p != NULL);
+            for (size_t j = 0; j < sizeof frames / sizeof frames[0]; ++j) {
+                bool compatible =
+                    (p->exception_frame_family == AMIVM_FRAME_FAMILY_68020 &&
+                     frames[j] == AMIVM_FRAME_68020_BUS) ||
+                    (p->exception_frame_family == AMIVM_FRAME_FAMILY_68030 &&
+                     (frames[j] == AMIVM_FRAME_68030_COPROC_MID ||
+                      frames[j] == AMIVM_FRAME_68030_SHORT_BUS ||
+                      frames[j] == AMIVM_FRAME_68030_LONG_BUS)) ||
+                    (p->exception_frame_family == AMIVM_FRAME_FAMILY_68040 &&
+                     frames[j] == AMIVM_FRAME_68040_ACCESS) ||
+                    (p->exception_frame_family == AMIVM_FRAME_FAMILY_68060 &&
+                     frames[j] == AMIVM_FRAME_68060_ACCESS);
+                CHECK(compatible ==
+                      ((p->exception_frame_family == AMIVM_FRAME_FAMILY_68020 &&
+                        frames[j] == AMIVM_FRAME_68020_BUS) ||
+                       (p->exception_frame_family == AMIVM_FRAME_FAMILY_68030 &&
+                        (frames[j] == AMIVM_FRAME_68030_COPROC_MID ||
+                         frames[j] == AMIVM_FRAME_68030_SHORT_BUS ||
+                         frames[j] == AMIVM_FRAME_68030_LONG_BUS)) ||
+                       (p->exception_frame_family == AMIVM_FRAME_FAMILY_68040 &&
+                        frames[j] == AMIVM_FRAME_68040_ACCESS) ||
+                       (p->exception_frame_family == AMIVM_FRAME_FAMILY_68060 &&
+                        frames[j] == AMIVM_FRAME_68060_ACCESS)));
+            }
+        }
+    }
+
+    puts("AmiVM M2.85 negative exception-frame compatibility matrix: PASS");
     return 0;
 }
