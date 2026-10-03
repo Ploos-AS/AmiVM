@@ -1379,6 +1379,7 @@ void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
     if (!vm)
         return;
     vm->mmu.translation_cache_valid = false;
+    vm->mmu.translation_cache_valid_mask = 0u;
     vm->mmu.last_translation_valid = false;
 }
 
@@ -1473,6 +1474,13 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         vm->mmu.translation_cache_write = (pte & 2u) == 0u;
         vm->mmu.translation_cache_supervisor = (pte & 4u) != 0u;
+        {
+            const uint32_t slot = (logical >> 12u) & 3u;
+            vm->mmu.translation_cache_entries[slot] = logical >> 12u;
+            vm->mmu.translation_cache_physical_pages[slot] =
+                *physical & ~page_mask;
+            vm->mmu.translation_cache_valid_mask |= (uint8_t)(1u << slot);
+        }
         vm->mmu.last_translation_valid = true;
         return 0;
     }
