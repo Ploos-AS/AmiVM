@@ -1003,6 +1003,8 @@ int main(void)
                         CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
                         CHECK(vm.exception_depth == 2u);
                         CHECK(vm.exception_frame_sp != outer_sp);
+                        vm.exception_internal_state[0] = 0xAABBCCDDu;
+                        vm.exception_internal_state[1] = 0xEEFF0011u;
                         CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
                         CHECK(vm.exception_depth == 1u);
                         CHECK(vm.exception_frame_sp == outer_sp);
