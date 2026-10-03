@@ -107,6 +107,42 @@ static int test_machine_dump_profile(void)
     return 0;
 }
 
+static int test_exception_frame_lifecycle(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = 0x00123456u;
+    vm.m68k.sr = 0x2700u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 56u;
+    vm.exception_frame_type = AMIVM_FRAME_68040_ACCESS;
+
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+    CHECK(vm.exception_frame_type == AMIVM_FRAME_68040_ACCESS);
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+    CHECK(vm.m68k.a[7] == initial_sp);
+    CHECK(vm.m68k.pc == 0x00123456u);
+    CHECK(vm.m68k.sr == 0x2700u);
+
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68020_BUS) != 0);
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68060_ACCESS) != 0);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -124,9 +160,10 @@ static int test_config(void)
 int main(void)
 {
     if (test_memory_map() != 0 || test_devices() != 0 ||
-        test_machine_dump_profile() != 0 || test_config() != 0) {
+        test_machine_dump_profile() != 0 || test_exception_frame_lifecycle() != 0 ||
+        test_config() != 0) {
         return 1;
     }
-    puts("AmiVM M1 VM-core tests: PASS");
+    puts("AmiVM M2.88 exception-frame lifecycle tests: PASS");
     return 0;
 }
