@@ -2194,7 +2194,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
                 const uint32_t slot = ((addr - page) / 4u) & 3u;
                 vm->mmu.translation_cache_valid_mask &=
                     (uint8_t)~(1u << slot);
-                if (vm->mmu.translation_cache_logical_page == slot)
+                if ((vm->mmu.translation_cache_logical_page & 3u) == slot)
                     vm->mmu.translation_cache_valid = false;
             }
         }
