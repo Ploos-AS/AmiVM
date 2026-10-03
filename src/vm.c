@@ -1374,6 +1374,13 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
     return 1;
 }
 
+static uint8_t amivm_mmu_cache_page_shift(const struct amivm_vm *vm)
+{
+    if (!vm || vm->mmu.translation_cache_page_shift == 0u)
+        return 12u;
+    return vm->mmu.translation_cache_page_shift;
+}
+
 static uint8_t amivm_mmu_cache_entry_count(const struct amivm_vm *vm)
 {
     if (!vm || vm->mmu.translation_cache_entry_count == 0u)
@@ -1428,7 +1435,8 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     }
 
     if (vm->mmu.enabled) {
-        const uint32_t page = logical >> 12u;
+        const uint8_t shift = amivm_mmu_cache_page_shift(vm);
+        const uint32_t page = logical >> shift;
         const uint32_t count = amivm_mmu_cache_entry_count(vm);
         const uint32_t slot = page % count;
         if ((vm->mmu.translation_cache_valid_mask & (uint8_t)(1u << slot)) != 0u &&
@@ -1500,8 +1508,8 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         vm->mmu.translation_cache_physical_page = *physical & ~page_mask;
         {
             const uint32_t count = amivm_mmu_cache_entry_count(vm);
-            const uint32_t slot = (logical >> 12u) % count;
-            vm->mmu.translation_cache_entries[slot] = logical >> 12u;
+            const uint32_t slot = (logical >> shift) % count;
+            vm->mmu.translation_cache_entries[slot] = logical >> shift;
             vm->mmu.translation_cache_physical_pages[slot] =
                 *physical & ~page_mask;
             vm->mmu.translation_cache_writes[slot] = (pte & 2u) == 0u;
