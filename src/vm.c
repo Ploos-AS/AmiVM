@@ -240,7 +240,10 @@ static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
                        (ctx->entry_vector & 0x0fffu)) ||
         (ctx->entry_vector & 0x3u) != 0u ||
         ctx->vector_offset != (uint16_t)(ctx->entry_vector * 4u) ||
-        (ctx->vector_offset & 3u) != 0u)
+        (ctx->vector_offset & 3u) != 0u ||
+        ctx->fault_stage > 1u ||
+        (ctx->frame_type == AMIVM_FRAME_68060_ACCESS &&
+         ctx->fault_stage != 1u))
         return -1;
     if ((ctx->frame_sp & 1u) != 0u ||
         ctx->frame_size == 0u ||
