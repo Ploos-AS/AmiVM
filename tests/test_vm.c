@@ -2879,6 +2879,59 @@ static int test_mmu_translation_cache_api_matrix(void)
 }
 
 
+static int test_mmu_translation_cache_eviction(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.mmu.translation_cache_entry_count = 2u;
+    vm.mmu.translation_cache_page_shift = 12u;
+    vm.m68k.sr = 0x2000u;
+
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x3000u, true, true);
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00457000u, AMIVM_RAM_BASE + 0x4000u, true, true);
+
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x3000u);
+
+    /* Page 2 aliases slot 0 and must evict page 0 only. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00458000u, AMIVM_RAM_BASE + 0x5000u, true, true);
+
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00457000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x4000u);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x5000u);
+
+    /* Reinsert page 0; page 2 must then be evicted from the same slot. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x00456000u, AMIVM_RAM_BASE + 0x6000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x00456000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x6000u);
+    CHECK(!amivm_mmu_translation_cache_lookup(
+        &vm, 0x00458000u, false, &physical));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2924,6 +2977,7 @@ int main(void)
         test_mmu_index_bit_edges() != 0 ||
         test_mmu_translation_cache_api() != 0 ||
         test_mmu_translation_cache_api_matrix() != 0 ||
+        test_mmu_translation_cache_eviction() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
         test_vm_profile_mmu_cache_policy() != 0 ||
         test_external_mmu_cpu_policy() != 0 ||
