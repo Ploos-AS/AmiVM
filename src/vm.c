@@ -303,8 +303,10 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
         if (next_depth != 0u) {
             struct amivm_exception_context *ctx =
                 &vm->exception_context_stack[next_depth - 1u];
-            if (amivm_m68k_validate_nested_context(vm, ctx) != 0)
+            if (amivm_m68k_validate_nested_context(vm, ctx) != 0) {
+                vm->exception_stack_fault = true;
                 return -1;
+            }
             vm->exception_frame_sp = ctx->frame_sp;
             vm->exception_frame_size = ctx->frame_size;
             vm->exception_frame_type = ctx->frame_type;
