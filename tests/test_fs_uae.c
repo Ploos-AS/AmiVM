@@ -1024,6 +1024,7 @@ int main(void)
                         CHECK(vm.exception_depth == 1u);
                         CHECK(vm.exception_frame_sp == outer_sp);
                         CHECK(vm.exception_frame_type == outer_type);
+                        CHECK(vm.exception_frame_magic == 0x45584632u);
                         CHECK(vm.exception_internal_state[0] == outer_state0);
                         CHECK(vm.exception_internal_state[1] == outer_state1);
                         CHECK(vm.exception_depth <= 8u);
