@@ -209,6 +209,28 @@ int amivm_m68k_exception_enter(struct amivm_vm *vm, uint8_t vector)
     return 0;
 }
 
+static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
+                                                     const struct amivm_exception_context *ctx)
+{
+    const struct amivm_m68k_frame_layout *layout;
+    if (!vm || !ctx || ctx->frame_magic != 0x45584632u)
+        return -1;
+    layout = amivm_m68k_frame_layout(ctx->frame_type);
+    if (!layout || !layout->implemented ||
+        ctx->frame_size != (uint8_t)(layout->words * 2u) ||
+        ctx->frame_word_count != layout->words ||
+        ctx->frame_format != (uint8_t)amivm_m68k_frame_layout_format(ctx->frame_type) ||
+        ctx->vector_offset != (uint16_t)(ctx->entry_vector * 4u) ||
+        ctx->format_vector_word !=
+            (uint16_t)(((uint16_t)ctx->frame_format << 12) |
+                       (ctx->entry_vector & 0x0fffu)))
+        return -1;
+    if (ctx->frame_sp > vm->ram_size ||
+        (size_t)ctx->frame_sp + ctx->frame_size > vm->ram_size)
+        return -1;
+    return 0;
+}
+
 int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
 {
     const struct amivm_m68k_frame_layout *layout;
@@ -281,6 +303,8 @@ int amivm_m68k_rte_mmu_exception(struct amivm_vm *vm)
         if (next_depth != 0u) {
             struct amivm_exception_context *ctx =
                 &vm->exception_context_stack[next_depth - 1u];
+            if (amivm_m68k_validate_nested_context(vm, ctx) != 0)
+                return -1;
             vm->exception_frame_sp = ctx->frame_sp;
             vm->exception_frame_size = ctx->frame_size;
             vm->exception_frame_type = ctx->frame_type;
