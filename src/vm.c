@@ -269,6 +269,17 @@ static int amivm_m68k_validate_nested_context(const struct amivm_vm *vm,
     if (layout->has_fault_status && layout->fault_status_bytes == 2u &&
         ctx->fault_status > 0xffffu)
         return -1;
+    if (layout->internal_state_words > 34u)
+        return -1;
+    if (layout->internal_state_words != 0u &&
+        ((layout->internal_state_offset & 1u) != 0u ||
+         (uint32_t)layout->internal_state_offset +
+             (uint32_t)layout->internal_state_words * 4u >
+             (uint32_t)layout->words * 2u))
+        return -1;
+    if (layout->preserves_internal_state &&
+        layout->internal_state_words == 0u)
+        return -1;
     if (!layout->preserves_internal_state) {
         for (uint8_t i = 0u; i < 34u; ++i)
             if (ctx->internal_state[i] != 0u)
