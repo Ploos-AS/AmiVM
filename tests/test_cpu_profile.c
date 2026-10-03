@@ -64,6 +64,43 @@ int main(void)
         }
     }
 
-    puts("AmiVM M2.83 exception frame family/layout invariants: PASS");
+    {
+        struct frame_case { enum amivm_cpu_profile_id cpu; uint8_t frame; };
+        static const struct frame_case supported[] = {
+            { AMIVM_CPU_68020, AMIVM_FRAME_68020_BUS },
+            { AMIVM_CPU_68030, AMIVM_FRAME_68030_COPROC_MID },
+            { AMIVM_CPU_68030, AMIVM_FRAME_68030_SHORT_BUS },
+            { AMIVM_CPU_68030, AMIVM_FRAME_68030_LONG_BUS },
+            { AMIVM_CPU_68040, AMIVM_FRAME_68040_ACCESS },
+            { AMIVM_CPU_HYPER040, AMIVM_FRAME_68040_ACCESS },
+            { AMIVM_CPU_68060, AMIVM_FRAME_68060_ACCESS },
+            { AMIVM_CPU_HYPER060, AMIVM_FRAME_68060_ACCESS }
+        };
+        for (size_t i = 0; i < sizeof supported / sizeof supported[0]; ++i) {
+            p = amivm_cpu_profile_by_id(supported[i].cpu);
+            CHECK(p != NULL);
+            CHECK(amivm_m68k_frame_layout(supported[i].frame) != NULL);
+            switch (p->exception_frame_family) {
+            case AMIVM_FRAME_FAMILY_68020:
+                CHECK(supported[i].frame == AMIVM_FRAME_68020_BUS);
+                break;
+            case AMIVM_FRAME_FAMILY_68030:
+                CHECK(supported[i].frame == AMIVM_FRAME_68030_COPROC_MID ||
+                      supported[i].frame == AMIVM_FRAME_68030_SHORT_BUS ||
+                      supported[i].frame == AMIVM_FRAME_68030_LONG_BUS);
+                break;
+            case AMIVM_FRAME_FAMILY_68040:
+                CHECK(supported[i].frame == AMIVM_FRAME_68040_ACCESS);
+                break;
+            case AMIVM_FRAME_FAMILY_68060:
+                CHECK(supported[i].frame == AMIVM_FRAME_68060_ACCESS);
+                break;
+            default:
+                CHECK(0);
+            }
+        }
+    }
+
+    puts("AmiVM M2.84 CPU profile to exception-frame compatibility matrix: PASS");
     return 0;
 }
