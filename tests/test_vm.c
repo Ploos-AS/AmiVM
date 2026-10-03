@@ -225,6 +225,60 @@ static int test_nested_exception_frames(void)
     return 0;
 }
 
+static int test_nested_exception_negative_cases(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = 0x00111111u;
+    vm.m68k.sr = 0x2500u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 56u;
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+    CHECK(vm.exception_depth == 1u);
+
+    vm.m68k.pc = 0x00222222u;
+    vm.m68k.sr = 0x2700u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 57u;
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+    CHECK(vm.exception_depth == 2u);
+
+    vm.exception_context_stack[0].frame_magic ^= 1u;
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_stack_fault);
+
+    vm.exception_context_stack[0].frame_magic ^= 1u;
+    vm.exception_context_stack[0].frame_format = 0xAu;
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_stack_fault);
+
+    vm.exception_context_stack[0].frame_format = 0x7u;
+    vm.exception_context_stack[0].frame_type = AMIVM_FRAME_68020_BUS;
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_stack_fault);
+
+    vm.exception_context_stack[0].frame_type = AMIVM_FRAME_68040_ACCESS;
+    vm.exception_context_stack[0].frame_sp = vm.ram_size - 1u;
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_stack_fault);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -243,7 +297,8 @@ int main(void)
 {
     if (test_memory_map() != 0 || test_devices() != 0 ||
         test_machine_dump_profile() != 0 || test_exception_frame_lifecycle() != 0 ||
-        test_nested_exception_frames() != 0 || test_config() != 0) {
+        test_nested_exception_frames() != 0 || test_nested_exception_negative_cases() != 0 ||
+        test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
