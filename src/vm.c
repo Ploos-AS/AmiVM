@@ -1461,11 +1461,22 @@ void amivm_mmu_translation_cache_insert(struct amivm_vm *vm,
 
 void amivm_mmu_page_table_changed(struct amivm_vm *vm, uint32_t logical)
 {
+    const uint8_t shift = amivm_mmu_cache_page_shift(vm);
+    const uint32_t page = logical >> shift;
+    const uint32_t count = amivm_mmu_cache_entry_count(vm);
+    const uint32_t slot = page % count;
+
     if (!vm)
         return;
-    if (vm->mmu.translation_cache_valid &&
-        (logical >> 12u) == vm->mmu.translation_cache_logical_page)
-        amivm_mmu_translation_cache_invalidate(vm);
+    if ((vm->mmu.translation_cache_valid_mask &
+         (uint8_t)(1u << slot)) != 0u &&
+        vm->mmu.translation_cache_entries[slot] == page) {
+        vm->mmu.translation_cache_valid_mask &=
+            (uint8_t)~(1u << slot);
+        vm->mmu.translation_cache_valid =
+            vm->mmu.translation_cache_valid_mask != 0u;
+        vm->mmu.last_translation_valid = false;
+    }
 }
 
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
