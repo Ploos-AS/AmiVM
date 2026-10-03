@@ -1243,12 +1243,30 @@ int amivm_m68k_service_irq(struct amivm_vm *vm)
     if (!vm || !vm->irq_pending) return 0;
     mask = (uint8_t)((vm->m68k.sr >> 8) & 7u);
     if (vm->irq_level <= mask) return 0;
-    vm->m68k.sr = (uint16_t)((vm->m68k.sr & ~0x0700u) |
-                             ((uint16_t)vm->irq_level << 8) | 0x2000u);
-    vm->pending_exception = AMIVM_M68K_EXC_SPURIOUS_INTERRUPT;
-    vm->pending_exception_vector = (uint8_t)(24u + vm->irq_level);
-    vm->irq_pending = false;
-    return vm->pending_exception_vector;
+    {
+        const uint16_t old_sr = vm->m68k.sr;
+        const bool old_pending = vm->irq_pending;
+        const enum amivm_m68k_exception old_exception = vm->pending_exception;
+        const uint8_t old_vector = vm->pending_exception_vector;
+        const uint8_t level = vm->irq_level;
+        const uint8_t vector = (uint8_t)(24u + level);
+
+        vm->m68k.sr = (uint16_t)((vm->m68k.sr & ~0x0700u) |
+                                 ((uint16_t)level << 8) | 0x2000u);
+        vm->pending_exception = AMIVM_M68K_EXC_SPURIOUS_INTERRUPT;
+        vm->pending_exception_vector = vector;
+        vm->irq_pending = false;
+
+        if (vm->exception_vector_base >= vm->ram_size ||
+            vm->exception_vector_base + ((uint32_t)vector * 4u) + 3u >= vm->ram_size) {
+            vm->m68k.sr = old_sr;
+            vm->irq_pending = old_pending;
+            vm->pending_exception = old_exception;
+            vm->pending_exception_vector = old_vector;
+            return -1;
+        }
+        return vector;
+    }
 }
 
 int amivm_m68k_set_supervisor(struct amivm_vm *vm, bool supervisor)
