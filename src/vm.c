@@ -1955,6 +1955,18 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     vm->fast_ram_size = resolved.fast_ram_size;
     vm->cpu_cycles = 0u;
     vm->chipset_cycles = 0u;
+
+    /*
+     * MMU cache policy is profile-driven. The generic translation cache
+     * remains available as scaffolding, but only qualified 68040-family
+     * profiles enable it by default.
+     */
+    vm->mmu.translation_cache_entry_count = 0u;
+    vm->mmu.translation_cache_page_shift = 0u;
+    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile)) {
+        vm->mmu.translation_cache_entry_count = 4u;
+        vm->mmu.translation_cache_page_shift = 12u;
+    }
         vm->device_count = resolved.device_count;
     memset(&vm->aga, 0, sizeof vm->aga);
     vm->aga.beam_h = 0u;
