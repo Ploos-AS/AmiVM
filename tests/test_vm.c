@@ -328,6 +328,60 @@ static int test_exception_depth_boundary(void)
 }
 
 
+static int test_exception_stack_atomicity(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00001000u;
+    uint8_t before[64];
+    uint8_t after[64];
+    uint8_t value;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = 0x00123456u;
+    vm.m68k.sr = 0x2700u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 56u;
+
+    for (size_t i = 0u; i < sizeof before; ++i) {
+        CHECK(amivm_read8(&vm, initial_sp - (uint32_t)sizeof before + (uint32_t)i, &value));
+        before[i] = value;
+    }
+
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+
+    /*
+     * The next frame is deliberately placed where the requested frame cannot
+     * fit.  The implementation must not leave a partial frame behind.
+     */
+    vm.m68k.a[7] = 20u;
+    vm.exception_entry_vector = 57u;
+    vm.mmu_exception_pc = 0x00222222u;
+    vm.mmu_exception_sr = 0x2701u;
+
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_stack_fault);
+    CHECK(vm.m68k.a[7] == 20u);
+
+    for (size_t i = 0u; i < sizeof after; ++i) {
+        CHECK(amivm_read8(&vm, 20u - (uint32_t)sizeof after + (uint32_t)i, &value));
+        after[i] = value;
+    }
+    CHECK(memcmp(before, after, sizeof before) == 0);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -347,7 +401,8 @@ int main(void)
     if (test_memory_map() != 0 || test_devices() != 0 ||
         test_machine_dump_profile() != 0 || test_exception_frame_lifecycle() != 0 ||
         test_nested_exception_frames() != 0 || test_nested_exception_negative_cases() != 0 ||
-        test_exception_depth_boundary() != 0 || test_config() != 0) {
+        test_exception_depth_boundary() != 0 || test_exception_stack_atomicity() != 0 ||
+        test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
