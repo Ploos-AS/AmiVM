@@ -484,6 +484,56 @@ static int test_nested_exception_atomicity(void)
 }
 
 
+static int test_nested_context_stack_rollback(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    const uint32_t initial_sp = AMIVM_RAM_BASE + 0x00100000u;
+    struct amivm_exception_context saved;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = initial_sp;
+    vm.m68k.pc = 0x00111111u;
+    vm.m68k.sr = 0x2500u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 56u;
+
+    CHECK(amivm_m68k_set_exception_frame_type(&vm, AMIVM_FRAME_68040_ACCESS) == 0);
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) == 0);
+    CHECK(vm.exception_depth == 1u);
+
+    saved = vm.exception_context_stack[0];
+
+    vm.m68k.a[7] = 20u;
+    vm.m68k.pc = 0x00222222u;
+    vm.m68k.sr = 0x2701u;
+    vm.mmu_exception_pc = vm.m68k.pc;
+    vm.mmu_exception_sr = vm.m68k.sr;
+    vm.exception_entry_vector = 57u;
+
+    CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
+    CHECK(vm.exception_depth == 1u);
+    CHECK(memcmp(&vm.exception_context_stack[0], &saved, sizeof saved) == 0);
+
+    vm.m68k.a[7] = saved.frame_sp;
+    CHECK(amivm_m68k_validate_exception_frame(&vm) == 0);
+    CHECK(amivm_m68k_rte_mmu_exception(&vm) == 0);
+    CHECK(vm.exception_depth == 0u);
+    CHECK(vm.m68k.a[7] == initial_sp);
+    CHECK(vm.m68k.pc == 0x00111111u);
+    CHECK(vm.m68k.sr == 0x2500u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -504,7 +554,8 @@ int main(void)
         test_machine_dump_profile() != 0 || test_exception_frame_lifecycle() != 0 ||
         test_nested_exception_frames() != 0 || test_nested_exception_negative_cases() != 0 ||
         test_exception_depth_boundary() != 0 || test_exception_stack_atomicity() != 0 ||
-        test_nested_exception_atomicity() != 0 || test_config() != 0) {
+        test_nested_exception_atomicity() != 0 || test_nested_context_stack_rollback() != 0 ||
+        test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.92 nested exception-frame tests: PASS");
