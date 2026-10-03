@@ -1376,9 +1376,20 @@ int amivm_mmu_tt_match(const struct amivm_mmu_state *mmu,
 
 static uint8_t amivm_mmu_cache_page_shift(const struct amivm_vm *vm)
 {
+    uint8_t shift;
     if (!vm || vm->mmu.translation_cache_page_shift == 0u)
         return 12u;
-    return vm->mmu.translation_cache_page_shift;
+    shift = vm->mmu.translation_cache_page_shift;
+    if (shift < 12u)
+        return 12u;
+    if (shift > 31u)
+        return 31u;
+    return shift;
+}
+
+static uint32_t amivm_mmu_page_mask(uint8_t shift)
+{
+    return shift == 32u ? UINT32_MAX : ((UINT32_C(1) << shift) - 1u);
 }
 
 static uint8_t amivm_mmu_cache_entry_count(const struct amivm_vm *vm)
@@ -1439,7 +1450,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                 return -1;
             }
             *physical = vm->mmu.translation_cache_physical_pages[slot] |
-                        (logical & ((1u << shift) - 1u));
+                        (logical & amivm_mmu_page_mask(shift));
             vm->mmu.last_physical = *physical;
             vm->mmu.last_translation_valid = true;
             return 0;
@@ -1457,7 +1468,7 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
        table walker will replace this test mapping without changing
        the memory-bus contract. */
     if (vm->mmu.root_index_bits != 0u && vm->mmu.leaf_index_bits != 0u) {
-        uint32_t page_mask = (1u << shift) - 1u;
+        uint32_t page_mask = amivm_mmu_page_mask(shift);
         uint32_t leaf_mask = (1u << vm->mmu.leaf_index_bits) - 1u;
         uint32_t root_mask = (1u << vm->mmu.root_index_bits) - 1u;
         uint32_t root_index = (logical >> (vm->mmu.leaf_index_bits + shift)) & root_mask;
@@ -1509,9 +1520,12 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     }
 
     if (vm->mmu.page_table_entries != 0u) {
-        uint32_t page_mask = (1u << vm->mmu.page_shift) - 1u;
+        uint8_t page_shift = vm->mmu.page_shift;
+        uint32_t page_mask;
+        if (page_shift > 31u) page_shift = 31u;
+        page_mask = amivm_mmu_page_mask(page_shift);
         uint32_t page = (logical & ~page_mask) & vm->mmu.page_table_mask;
-        uint32_t index = (logical >> vm->mmu.page_shift) % vm->mmu.page_table_entries;
+        uint32_t index = (logical >> page_shift) % vm->mmu.page_table_entries;
         uint32_t pte_addr = vm->mmu.page_table_base + index * 4u;
         uint32_t pte;
         bool ok;
