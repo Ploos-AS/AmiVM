@@ -2261,6 +2261,88 @@ static int test_vm_step_mmu_fault_recovery(void)
 }
 
 
+static uint32_t test_cpu_backend_mmu_recovery_pending_irq(struct amivm_vm *vm, void *state)
+{
+    uint32_t *steps = (uint32_t *)state;
+    const uint32_t logical = 0x00456000u;
+    const uint32_t root = AMIVM_RAM_BASE + 0x1000u;
+    const uint32_t leaf = AMIVM_RAM_BASE + 0x2000u;
+    const uint32_t root_index = (logical >> (2u + 12u)) & 3u;
+    const uint32_t leaf_index = (logical >> 12u) & 3u;
+    bool ok = false;
+
+    ++(*steps);
+    if (*steps == 1u) {
+        vm->mmu.enabled = true;
+        vm->mmu.root_index_bits = 2u;
+        vm->mmu.leaf_index_bits = 2u;
+        vm->mmu.root_table_base = root;
+        CHECK(amivm_write32(vm, root + root_index * 4u, leaf | 1u));
+        (void)amivm_m68k_read_u32(vm, logical, &ok);
+        CHECK(!ok);
+        CHECK(vm->mmu.last_fault == AMIVM_MMU_FAULT_INVALID);
+        CHECK(amivm_m68k_raise_exception(vm, AMIVM_M68K_EXC_MMU_FAULT) == 0);
+    } else if (*steps == 2u) {
+        CHECK(amivm_write32(vm, leaf + leaf_index * 4u,
+                            (AMIVM_RAM_BASE + 0x3000u) | 1u));
+        (void)amivm_m68k_read_u32(vm, logical, &ok);
+        CHECK(ok);
+        CHECK(vm->mmu.last_fault == AMIVM_MMU_FAULT_NONE);
+        vm->m68k.pc += 2u;
+    }
+    return 4u;
+}
+
+static int test_vm_step_mmu_recovery_pending_irq(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    struct amivm_cpu_backend backend;
+    uint32_t steps = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    backend.step = test_cpu_backend_mmu_recovery_pending_irq;
+    backend.state = &steps;
+    CHECK(amivm_vm_attach_cpu_backend(&vm, &backend) == 0);
+
+    vm.m68k.pc = 0x00100000u;
+    vm.m68k.sr = 0x0000u;
+    vm.m68k.supervisor = false;
+    vm.m68k.a[7] = AMIVM_RAM_BASE + 0x00100000u;
+
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 56u * 4u, 0x00140000u));
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 30u * 4u, 0x00141000u));
+
+    amivm_m68k_request_irq(&vm, 6u);
+
+    CHECK(amivm_vm_step(&vm) == 0);
+    CHECK(vm.m68k.pc == 0x00141000u);
+    CHECK(vm.irq_in_service);
+    CHECK(vm.pending_exception == AMIVM_M68K_EXC_MMU_FAULT);
+
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.m68k.pc == 0x00141000u);
+    CHECK(vm.irq_in_service);
+
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.m68k.pc == 0x00100000u);
+    CHECK(!vm.irq_in_service);
+
+    CHECK(amivm_vm_step(&vm) == 0);
+    CHECK(steps == 2u);
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_NONE);
+    CHECK(vm.m68k.pc == 0x00100002u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -2298,7 +2380,7 @@ int main(void)
         test_vm_step_real_mmu_write_fault() != 0 || test_vm_step_real_mmu_user_fault() != 0 ||
         test_vm_step_mmu_fault_nested_irq() != 0 || test_vm_step_mmu_irq_priority() != 0 ||
         test_vm_step_mmu_irq_deferred() != 0 || test_vm_step_mmu_fault_recovery() != 0 ||
-        test_config() != 0) {
+        test_vm_step_mmu_recovery_pending_irq() != 0 || test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.108 nested IRQ round-trip tests: PASS");
