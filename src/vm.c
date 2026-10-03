@@ -179,9 +179,7 @@ static int amivm_m68k_validate_irq_state(const struct amivm_vm *vm)
         return -1;
     if (vm->irq_pending && (vm->irq_level < 1u || vm->irq_level > 7u))
         return -1;
-    if (!vm->irq_in_service && vm->exception_depth != 0u)
-        return 0;
-    if (vm->irq_in_service && vm->exception_depth == 0u)
+    if (vm->irq_in_service && (vm->m68k.sr & 0x2000u) == 0u)
         return -1;
     return 0;
 }
@@ -1212,6 +1210,7 @@ int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector)
 {
     uint8_t v;
     if (!vm || !vector || !vm->irq_pending) return -1;
+    if (amivm_m68k_validate_irq_state(vm) != 0) return -1;
     if (vm->irq_level <= (uint8_t)((vm->m68k.sr >> 8) & 7u)) return 0;
     v = (uint8_t)(24u + vm->irq_level);
     {
@@ -1246,6 +1245,8 @@ int amivm_m68k_acknowledge_irq(struct amivm_vm *vm, uint8_t *vector)
             return -1;
         }
         *vector = v;
+        if (amivm_m68k_validate_irq_state(vm) != 0)
+            return -1;
     }
     return 1;
 }
