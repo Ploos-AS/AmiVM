@@ -1216,6 +1216,52 @@ static int test_instruction_irq_boundary(void)
 }
 
 
+static int test_instruction_state_commit_before_irq(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint8_t vector = 0u;
+    const uint32_t pc = 0x00100000u;
+    const uint32_t sp = AMIVM_RAM_BASE + 0x00100000u;
+    const uint32_t d0 = 0x11223344u;
+
+    amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.m68k.a[7] = sp;
+    vm.m68k.pc = pc;
+    vm.m68k.sr = 0x0000u;
+    vm.m68k.supervisor = false;
+    vm.m68k.d[0] = d0;
+
+    /* MOVEQ #1,D0: state-changing instruction. */
+    CHECK(amivm_write16(&vm, pc, 0x7001u));
+    CHECK(amivm_write32(&vm, vm.exception_vector_base + 25u * 4u,
+                        0x00126000u));
+
+    amivm_m68k_request_irq(&vm, 1u);
+    CHECK(amivm_vm_step_interpreter(&vm) == 0);
+    CHECK(vm.m68k.d[0] == 1u);
+    CHECK(vm.m68k.pc == pc + 2u);
+    CHECK(vm.irq_pending);
+
+    CHECK(amivm_m68k_acknowledge_irq(&vm, &vector) == 1);
+    CHECK(vector == 25u);
+    CHECK(vm.m68k.pc == 0x00126000u);
+
+    CHECK(amivm_m68k_return_from_interrupt(&vm) == 0);
+    CHECK(vm.m68k.pc == pc + 2u);
+    CHECK(vm.m68k.d[0] == 1u);
+    CHECK(!vm.m68k.supervisor);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -1244,7 +1290,8 @@ int main(void)
         test_interrupt_vector_failure_atomicity() != 0 || test_interrupt_vector_failure_full_rollback() != 0 ||
         test_service_irq_rollback() != 0 || test_irq_api_equivalence() != 0 ||
         test_irq_state_machine_integrity() != 0 || test_irq_invalid_transitions() != 0 ||
-        test_instruction_irq_boundary() != 0 || test_config() != 0) {
+        test_instruction_irq_boundary() != 0 || test_instruction_state_commit_before_irq() != 0 ||
+        test_config() != 0) {
         return 1;
     }
     puts("AmiVM M2.108 nested IRQ round-trip tests: PASS");
