@@ -1382,6 +1382,15 @@ void amivm_mmu_translation_cache_invalidate(struct amivm_vm *vm)
     vm->mmu.last_translation_valid = false;
 }
 
+void amivm_mmu_page_table_changed(struct amivm_vm *vm, uint32_t logical)
+{
+    if (!vm)
+        return;
+    if (vm->mmu.translation_cache_valid &&
+        (logical >> 12u) == vm->mmu.translation_cache_logical_page)
+        amivm_mmu_translation_cache_invalidate(vm);
+}
+
 int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
                         bool write, uint32_t *physical)
 {
