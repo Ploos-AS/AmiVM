@@ -237,6 +237,8 @@ struct amivm_mmu_state {
     uint32_t translation_cache_physical_page;
     bool translation_cache_write;
     bool translation_cache_supervisor;
+    uint32_t root_table_page;
+    uint32_t leaf_table_page;
     enum amivm_m68k_mmu_fault last_fault;
 };
 
