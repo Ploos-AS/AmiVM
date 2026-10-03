@@ -1627,6 +1627,15 @@ void amivm_m68k_reset(struct amivm_vm *vm, uint32_t pc, uint16_t sr)
     vm->m68k.sr = sr;
     vm->m68k.supervisor = (sr & 0x2000u) != 0u;
     memset(&vm->mmu, 0, sizeof vm->mmu);
+    /*
+     * Reset clears all MMU state, including cached translations. Reapply
+     * only the profile-qualified cache geometry; the cache itself remains
+     * empty until a fresh translation is inserted.
+     */
+    if (amivm_cpu_profile_mmu_cache_qualified(&vm->cpu_profile)) {
+        vm->mmu.translation_cache_entry_count = 4u;
+        vm->mmu.translation_cache_page_shift = 12u;
+    }
 }
 
 uint32_t amivm_m68k_read_u32(struct amivm_vm *vm, uint32_t addr, bool *ok)
