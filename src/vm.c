@@ -428,6 +428,59 @@ static uint8_t amivm_m68k_frame_layout_format(uint8_t descriptor)
     }
 }
 
+static int amivm_m68k_validate_frame_layout_descriptor(
+    uint8_t descriptor, const struct amivm_m68k_frame_layout *layout)
+{
+    uint32_t bytes;
+    uint32_t is_end;
+    uint32_t fa_end;
+    uint32_t fs_end;
+    if (!layout || !layout->implemented || layout->words == 0u)
+        return -1;
+    bytes = (uint32_t)layout->words * 2u;
+    if (layout->has_format_vector &&
+        ((layout->format_offset & 1u) != 0u ||
+         (uint32_t)layout->format_offset + 2u > bytes))
+        return -1;
+    if (layout->has_fault_address &&
+        ((layout->fault_address_offset & 1u) != 0u ||
+         (uint32_t)layout->fault_address_offset + 4u > bytes))
+        return -1;
+    if (layout->has_fault_status &&
+        ((layout->fault_status_offset & 1u) != 0u ||
+         (layout->fault_status_bytes != 2u &&
+          layout->fault_status_bytes != 4u) ||
+         (uint32_t)layout->fault_status_offset + layout->fault_status_bytes > bytes))
+        return -1;
+    if (layout->internal_state_words > 34u)
+        return -1;
+    if (layout->internal_state_words != 0u &&
+        ((layout->internal_state_offset & 1u) != 0u ||
+         (uint32_t)layout->internal_state_offset +
+             (uint32_t)layout->internal_state_words * 4u > bytes))
+        return -1;
+    if (layout->preserves_internal_state && layout->internal_state_words == 0u)
+        return -1;
+    is_end = (uint32_t)layout->internal_state_offset +
+        (uint32_t)layout->internal_state_words * 4u;
+    fa_end = (uint32_t)layout->fault_address_offset + 4u;
+    fs_end = (uint32_t)layout->fault_status_offset + layout->fault_status_bytes;
+    if (layout->internal_state_words != 0u && layout->has_fault_address &&
+        layout->internal_state_offset < fa_end &&
+        layout->fault_address_offset < is_end)
+        return -1;
+    if (layout->internal_state_words != 0u && layout->has_fault_status &&
+        layout->internal_state_offset < fs_end &&
+        layout->fault_status_offset < is_end)
+        return -1;
+    if (layout->has_fault_address && layout->has_fault_status &&
+        layout->fault_address_offset < fs_end &&
+        layout->fault_status_offset < fa_end)
+        return -1;
+    (void)descriptor;
+    return 0;
+}
+
 const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor)
 {
     static const struct amivm_m68k_frame_layout layouts[] = {
@@ -442,6 +495,9 @@ const struct amivm_m68k_frame_layout *amivm_m68k_frame_layout(uint8_t descriptor
     };
     if (descriptor > AMIVM_FRAME_68040_ACCESS ||
         descriptor == AMIVM_FRAME_RESERVED_2)
+        return NULL;
+    if (amivm_m68k_validate_frame_layout_descriptor(
+            descriptor, &layouts[descriptor]) != 0)
         return NULL;
     return &layouts[descriptor];
 }
