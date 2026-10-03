@@ -1041,6 +1041,13 @@ int main(void)
                                 CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
                                 CHECK(vm.exception_depth == saved_depth);
                                 vm.exception_context_stack[0].frame_format = saved_format;
+                                {
+                                    uint8_t saved_vector = vm.exception_context_stack[0].entry_vector;
+                                    vm.exception_context_stack[0].entry_vector ^= 1u;
+                                    CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
+                                    CHECK(vm.exception_depth == saved_depth);
+                                    vm.exception_context_stack[0].entry_vector = saved_vector;
+                                }
                             }
                             CHECK(amivm_m68k_rte_mmu_exception(&vm) != 0);
                             CHECK(vm.exception_frame_sp == saved_sp);
