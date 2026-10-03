@@ -642,8 +642,10 @@ int amivm_m68k_stack_mmu_exception(struct amivm_vm *vm)
         vm->exception_fault_stage = 0u;
     }
 
-    if (vm->exception_depth >= 8u)
+    if (vm->exception_depth >= 8u) {
+        vm->exception_stack_fault = false;
         return -1;
+    }
     if (vm->exception_depth > 0u) {
         uint8_t d = (uint8_t)(vm->exception_depth - 1u);
         vm->exception_context_stack[d].frame_sp = vm->exception_frame_sp;
