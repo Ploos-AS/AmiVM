@@ -1145,6 +1145,10 @@ static int amivm_m68k_validate_stacked_frame(struct amivm_vm *vm)
 
 int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
 {
+    if (!vm)
+        return -1;
+    if (amivm_m68k_validate_irq_state(vm) != 0)
+        return -1;
     const struct amivm_m68k_frame_layout *layout;
     uint8_t frame_size;
     if (!vm) return -1;
@@ -1174,6 +1178,8 @@ int amivm_m68k_return_from_interrupt(struct amivm_vm *vm)
         vm->m68k.sr = (uint16_t)(((uint16_t)sr_hi << 8) | sr_lo);
         vm->m68k.supervisor = (vm->m68k.sr & 0x2000u) != 0u;
         vm->irq_in_service = false;
+        if (amivm_m68k_validate_irq_state(vm) != 0)
+            return -1;
     } else if (vm->exception_frame_active) {
         bool ok;
         uint32_t frame_pc = amivm_m68k_read_u32(vm, vm->m68k.a[7], &ok);
