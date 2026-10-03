@@ -141,6 +141,37 @@ int main(void)
         }
     }
 
-    puts("AmiVM M2.85 negative exception-frame compatibility matrix: PASS");
+    {
+        const struct amivm_cpu_profile *base040 = amivm_cpu_profile_by_name("68040");
+        const struct amivm_cpu_profile *hyper040 = amivm_cpu_profile_by_name("hyper040");
+        const struct amivm_cpu_profile *base060 = amivm_cpu_profile_by_name("68060");
+        const struct amivm_cpu_profile *hyper060 = amivm_cpu_profile_by_name("hyper060");
+
+        CHECK(base040 && hyper040 && base060 && hyper060);
+        CHECK(hyper040->isa_level == base040->isa_level);
+        CHECK(hyper040->has_mmu == base040->has_mmu);
+        CHECK(hyper040->has_fpu == base040->has_fpu);
+        CHECK(hyper040->mmu_model == base040->mmu_model);
+        CHECK(hyper040->fpu_model == base040->fpu_model);
+        CHECK(hyper040->has_master_stack == base040->has_master_stack);
+        CHECK(hyper040->default_exception_frame_class == base040->default_exception_frame_class);
+        CHECK(hyper040->exception_frame_family == base040->exception_frame_family);
+        CHECK(hyper040->hyper && !base040->hyper);
+
+        CHECK(hyper060->isa_level == base060->isa_level);
+        CHECK(hyper060->has_mmu == base060->has_mmu);
+        CHECK(hyper060->has_fpu == base060->has_fpu);
+        CHECK(hyper060->mmu_model == base060->mmu_model);
+        CHECK(hyper060->fpu_model == base060->fpu_model);
+        CHECK(hyper060->has_master_stack == base060->has_master_stack);
+        CHECK(hyper060->default_exception_frame_class == base060->default_exception_frame_class);
+        CHECK(hyper060->exception_frame_family == base060->exception_frame_family);
+        CHECK(hyper060->hyper && !base060->hyper);
+
+        CHECK(amivm_m68k_frame_layout_format(AMIVM_FRAME_68040_ACCESS) == 0x7u);
+        CHECK(amivm_m68k_frame_layout_format(AMIVM_FRAME_68060_ACCESS) == 0x4u);
+    }
+
+    puts("AmiVM M2.91 Hyper CPU exception-semantic equivalence: PASS");
     return 0;
 }
