@@ -69,6 +69,29 @@ AmiVM is **not** primarily intended to replace cycle-accurate Amiga emulators fo
 7. **Compatibility as a profile** — keep a separate compatibility machine for software that expects traditional Amiga hardware conventions.
 8. **Automation first** — serial console, deterministic launch configuration, headless mode, snapshots and CI-friendly execution are part of the architecture.
 
+## CPU/MMU qualification policy
+
+AmiVM keeps the CPU profile and MMU implementation as separate qualification contracts. An integrated CPU MMU is not interchangeable with an external 68851, and an MMU feature marked as scaffold is not presented as fully qualified.
+
+| CPU profile | MMU arrangement | Translation-cache qualification |
+|---|---|---|
+| 68020 | optional external 68851 | scaffold |
+| 68030 | integrated MMU | scaffold |
+| 68040 | integrated MMU | qualified |
+| 68060 | integrated MMU | scaffold |
+
+The current external-MMU contract is deliberately narrow:
+
+- **68020 + 68851** is accepted.
+- External 68851 configuration with 68030, 68040 or 68060 is rejected.
+- A 68040 does not accept an external MMU because its MMU is integrated.
+- The qualified translation-cache path currently targets the 68040-family policy only.
+- The generic MMU/cache mechanisms are retained as scaffolding for the other CPU profiles until their architectural behavior is independently qualified.
+
+This distinction is important for operating-system qualification: AmiVM must not claim that a guest is running against a fully qualified 68030/68060 MMU merely because a generic MMU path exists.
+
+The policy is enforced during configuration resolution and VM initialization, and the complete matrix is covered by the MMU policy tests.
+
 ## CPU and machine profiles
 
 AmiVM separates the guest-visible CPU contract from host execution speed. Selecting `68020` must not deliberately reproduce the performance of a physical 68020; it selects the ISA and architectural capabilities visible to the guest while AmiVM executes that contract as fast as practical.
