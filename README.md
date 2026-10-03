@@ -21,6 +21,27 @@ Cycle accounting exists only to provide deterministic, software-visible timing s
 Memory/device timing is likewise semantic rather than a host-speed limiter. Cacheability, serialization, MMIO and device-visible latency may contribute to deterministic guest timing when required, while the host executes the VM at full practical speed.
 
 
+## 68040 MMU/TLB capability matrix
+
+| Capability | Status | Qualification evidence |
+| --- | --- | --- |
+| 4-entry translation cache | **PASS** | Dedicated 68040 qualification suite |
+| 4 KiB translation pages | **PASS** | Geometry and lifecycle tests |
+| Logical → physical translation | **PASS** | Fill/lookup/refill tests |
+| Read/write permission metadata | **PASS** | Mixed-permission tests |
+| Supervisor/user permission metadata | **PASS** | Privilege qualification tests |
+| Collision/eviction | **PASS** | All-slot collision tests |
+| Targeted invalidation | **PASS** | Mixed-state targeted invalidation tests |
+| Full invalidation | **PASS** | Full refill/invalidation tests |
+| MMU disable/enable lifecycle | **PASS** | 68040 lifecycle test |
+| CPU reset lifecycle | **PASS** | 68040 reset qualification |
+| 68040 MMU/TLB architectural completeness | **NOT QUALIFIED** | Additional architectural features remain |
+| 68030 MMU | **SCAFFOLD** | No independent qualification suite yet |
+| 68060 MMU | **SCAFFOLD** | No independent qualification suite yet |
+| 68020 + 68851 | **SCAFFOLD** | No independent qualification suite yet |
+
+**Qualification rule:** `PASS` means the specific capability has deterministic AmiVM test coverage. It does not mean the entire Motorola 68040 MMU is complete.
+
 ## 68040 MMU translation-cache qualification
 
 The current translation-cache implementation has an explicit architectural boundary:
