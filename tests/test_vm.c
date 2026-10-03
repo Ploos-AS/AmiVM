@@ -367,9 +367,32 @@ static int test_exception_stack_atomicity(void)
     vm.mmu_exception_pc = 0x00222222u;
     vm.mmu_exception_sr = 0x2701u;
 
-    CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
-    CHECK(vm.exception_stack_fault);
-    CHECK(vm.m68k.a[7] == 20u);
+    {
+        const uint8_t frame_type = vm.exception_frame_type;
+        const uint8_t frame_format = vm.exception_frame_format;
+        const uint8_t frame_size = vm.exception_frame_size;
+        const uint8_t frame_words = vm.exception_frame_word_count;
+        const uint16_t vector_offset = vm.exception_frame_vector_offset;
+        const uint16_t format_vector = vm.exception_format_vector_word;
+        const uint32_t frame_sp = vm.exception_frame_sp;
+        const uint32_t frame_magic = vm.exception_frame_magic;
+        const uint8_t fault_stage = vm.exception_fault_stage;
+        const uint8_t depth = vm.exception_depth;
+
+        CHECK(amivm_m68k_stack_mmu_exception(&vm) != 0);
+        CHECK(vm.exception_stack_fault);
+        CHECK(vm.m68k.a[7] == 20u);
+        CHECK(vm.exception_frame_type == frame_type);
+        CHECK(vm.exception_frame_format == frame_format);
+        CHECK(vm.exception_frame_size == frame_size);
+        CHECK(vm.exception_frame_word_count == frame_words);
+        CHECK(vm.exception_frame_vector_offset == vector_offset);
+        CHECK(vm.exception_format_vector_word == format_vector);
+        CHECK(vm.exception_frame_sp == frame_sp);
+        CHECK(vm.exception_frame_magic == frame_magic);
+        CHECK(vm.exception_fault_stage == fault_stage);
+        CHECK(vm.exception_depth == depth);
+    }
 
     for (size_t i = 0u; i < sizeof after; ++i) {
         CHECK(amivm_read8(&vm, 20u - (uint32_t)sizeof after + (uint32_t)i, &value));
