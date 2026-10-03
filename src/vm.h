@@ -232,7 +232,6 @@ struct amivm_mmu_state {
     uint32_t last_physical;
     bool last_write;
     bool last_translation_valid;
-    bool translation_cache_valid;
     uint32_t translation_cache_logical_page;
     uint32_t translation_cache_physical_page;
     uint32_t translation_cache_entries[4];
