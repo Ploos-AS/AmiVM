@@ -1596,24 +1596,35 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
         const struct amivm_mmu_tt_state *tt_state = NULL;
         bool tt_matched = false;
 
-        if (amivm_mmu_tt_matches(&vm->mmu.tt0_state, logical,
-                                 supervisor, false) ||
-            amivm_mmu_tt_matches(&vm->mmu.tt0_state, logical,
-                                 supervisor, write)) {
+        if (vm->mmu.tt0_state.enabled &&
+            (logical & vm->mmu.tt0_state.mask) ==
+                (vm->mmu.tt0_state.base & vm->mmu.tt0_state.mask)) {
             tt_state = &vm->mmu.tt0_state;
-        } else if (amivm_mmu_tt_matches(&vm->mmu.tt1_state, logical,
-                                        supervisor, false) ||
-                   amivm_mmu_tt_matches(&vm->mmu.tt1_state, logical,
-                                        supervisor, write)) {
+        } else if (vm->mmu.tt1_state.enabled &&
+                   (logical & vm->mmu.tt1_state.mask) ==
+                       (vm->mmu.tt1_state.base & vm->mmu.tt1_state.mask)) {
             tt_state = &vm->mmu.tt1_state;
         }
 
         if (tt_state) {
+            const bool privilege_ok =
+                tt_state->supervisor == AMIVM_MMU_TT_SUPERVISOR_BOTH ||
+                (tt_state->supervisor ==
+                     AMIVM_MMU_TT_SUPERVISOR_ONLY && supervisor) ||
+                (tt_state->supervisor ==
+                     AMIVM_MMU_TT_USER_ONLY && !supervisor);
+
+            if (!privilege_ok) {
+                vm->mmu.last_fault = AMIVM_MMU_FAULT_SUPERVISOR;
+                vm->mmu_fault_status |= 8u;
+                return -1;
+            }
+
             tt_matched = amivm_mmu_tt_translate(tt_state, logical,
                                                  supervisor, false,
                                                  &tt_result);
             if (!tt_matched)
-                tt_matched = true;
+                return -1;
 
             if (write && tt_state->write_protect) {
                 vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
