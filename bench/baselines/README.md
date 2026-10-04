@@ -10,7 +10,7 @@ Run a workload and capture its result:
 
 Generate a baseline artifact:
 
-    amivm_powerload_baseline result.json cpu.integer.baseline.json
+    amivm_powerload_baseline result.json cpu.integer.baseline.json --expect-workload cpu.integer --expect-mode FAST --expect-config reference-interpreter --expect-method process-clock
 
 Review and commit the generated baseline only when the workload, VM configuration, measurement method, and correctness result are known to be valid.
 
