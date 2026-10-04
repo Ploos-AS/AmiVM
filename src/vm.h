@@ -209,6 +209,26 @@ enum amivm_m68k_mmu_fault {
     AMIVM_MMU_FAULT_SUPERVISOR = 3
 };
 
+enum amivm_mmu_tt_match {
+    AMIVM_MMU_TT_MATCH_DISABLED = 0,
+    AMIVM_MMU_TT_MATCH_ENABLED = 1
+};
+
+enum amivm_mmu_tt_supervisor {
+    AMIVM_MMU_TT_SUPERVISOR_BOTH = 0,
+    AMIVM_MMU_TT_SUPERVISOR_ONLY = 1,
+    AMIVM_MMU_TT_USER_ONLY = 2
+};
+
+struct amivm_mmu_tt_state {
+    uint32_t value;
+    bool enabled;
+    enum amivm_mmu_tt_supervisor supervisor;
+    bool write_protect;
+    uint32_t base;
+    uint32_t mask;
+};
+
 struct amivm_mmu_state {
     bool enabled;
     bool test_page_valid;
@@ -228,6 +248,8 @@ struct amivm_mmu_state {
     uint32_t crp;
     uint32_t tt0;
     uint32_t tt1;
+    struct amivm_mmu_tt_state tt0_state;
+    struct amivm_mmu_tt_state tt1_state;
     uint32_t last_logical;
     uint32_t last_physical;
     bool last_write;
