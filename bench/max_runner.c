@@ -17,7 +17,8 @@ static const char *workloads[] = {
 
 static int implemented(const char *id)
 {
-    return strcmp(id, "cpu.integer") == 0;
+    return strcmp(id, "cpu.integer") == 0 ||
+           strcmp(id, "render.raytrace") == 0;
 }
 
 int main(int argc, char **argv)
