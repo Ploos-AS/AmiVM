@@ -1,9 +1,72 @@
 #include "powerload_runner.h"
+#include "powerload.h"
 
+#include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <stdint.h>
 
-static const struct amivm_powerload_workload workloads[] = {
-    {"cpu.integer", "cpu", "Integer arithmetic and branch-heavy 68k workload", NULL},
+static uint64_t cpu_integer_workload(uint64_t iterations)
+{
+    uint64_t value = 0u;
+    uint64_t i;
+    for (i = 0u; i < iterations; ++i) {
+        value += 1u;
+        value ^= value << 7u;
+        value += 3u;
+        value ^= value >> 3u;
+    }
+    return value;
+}
+
+static int run_cpu_integer(const struct amivm_powerload_context *context)
+{
+    const uint64_t iterations = 100000000u;
+    uint64_t value;
+    clock_t begin;
+    clock_t end;
+    double seconds;
+    struct amivm_powerload_result result;
+    FILE *stream = stdout;
+
+    if (!context)
+        return 2;
+
+    if (context->output_path) {
+        stream = fopen(context->output_path, "w");
+        if (!stream)
+            return 2;
+    }
+
+    begin = clock();
+    value = cpu_integer_workload(iterations);
+    end = clock();
+    seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
+
+    amivm_powerload_result_init(&result, "cpu.integer", context->mode);
+    result.wall_clock_seconds = seconds;
+    result.throughput = seconds > 0.0 ? (double)iterations / seconds : 0.0;
+    result.throughput_unit = "iterations_per_second";
+    result.vm_config = "host-baseline";
+    result.measurement_method = "process-clock";
+    result.reproducible = true;
+    result.notes = "runner host baseline";
+
+    if (amivm_powerload_result_write_json(stream, &result) != 0) {
+        if (stream != stdout)
+            fclose(stream);
+        return 1;
+    }
+
+    if (stream != stdout)
+        fclose(stream);
+
+    (void)value;
+    return 0;
+}
+
+static struct amivm_powerload_workload workloads[] = {
+    {"cpu.integer", "cpu", "Integer arithmetic and branch-heavy 68k workload", run_cpu_integer},
     {"cpu.floating", "cpu", "Floating-point workload", NULL},
     {"cpu.memory", "cpu", "Memory throughput and latency workload", NULL},
     {"amiga.scene.copper", "amiga-scene", "Copper and raster-oriented scene workload", NULL},
@@ -18,8 +81,7 @@ static const struct amivm_powerload_workload workloads[] = {
 const struct amivm_powerload_workload *amivm_powerload_find(const char *id)
 {
     size_t i;
-    if (!id)
-        return NULL;
+    if (!id) return NULL;
     for (i = 0u; i < amivm_powerload_count(); ++i)
         if (strcmp(workloads[i].id, id) == 0)
             return &workloads[i];
