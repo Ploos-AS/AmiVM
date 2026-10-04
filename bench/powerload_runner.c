@@ -115,3 +115,47 @@ int amivm_powerload_run(const char *id, const char *mode, const char *output)
     return run_selected(workload, mode ? mode : "FAST", output);
 }
 
+
+int main(int argc, char **argv)
+{
+    const char *workload = NULL;
+    const char *mode = "FAST";
+    const char *output = NULL;
+    size_t i;
+
+    if (argc == 2 && strcmp(argv[1], "--list") == 0) {
+        for (i = 0u; i < amivm_powerload_count(); ++i)
+            puts(amivm_powerload_at(i)->id);
+        return 0;
+    }
+
+    for (i = 1u; i < (size_t)argc; ++i) {
+        if (strcmp(argv[i], "--workload") == 0 && i + 1u < (size_t)argc)
+            workload = argv[++i];
+        else if (strcmp(argv[i], "--mode") == 0 && i + 1u < (size_t)argc)
+            mode = argv[++i];
+        else if (strcmp(argv[i], "--output") == 0 && i + 1u < (size_t)argc)
+            output = argv[++i];
+        else {
+            fprintf(stderr,
+                    "usage: %s --list | --workload <id> [--mode <mode>] [--output <file>]\n",
+                    argv[0]);
+            return 2;
+        }
+    }
+
+    if (!workload || !amivm_powerload_find(workload)) {
+        fprintf(stderr, "unsupported or missing workload: %s\n",
+                workload ? workload : "(none)");
+        return 2;
+    }
+
+    if (strcmp(mode, "FAST") != 0 &&
+        strcmp(mode, "DETERMINISTIC") != 0 &&
+        strcmp(mode, "DEBUG") != 0) {
+        fprintf(stderr, "unsupported mode: %s\n", mode);
+        return 2;
+    }
+
+    return amivm_powerload_run(workload, mode, output);
+}
