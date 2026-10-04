@@ -114,6 +114,7 @@ int main(int argc, char **argv)
 
     amivm_powerload_result_init(&result, "cpu.integer", "FAST");
     result.wall_clock_seconds = vm_seconds;
+    result.instructions = exec.stats.instructions;
     result.throughput = vm_ips;
     result.throughput_unit = "instructions_per_second";
     result.vm_config = "reference-interpreter";
