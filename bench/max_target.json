@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "target": "MAX",
+  "correctness_reference": "reference",
+  "regression_policy": {
+    "throughput": "no_regression",
+    "correctness": "exact"
+  },
+  "workloads": [
+    "cpu.integer",
+    "cpu.floating",
+    "cpu.memory",
+    "amiga.scene.copper",
+    "amiga.scene.blitter",
+    "render.raytrace",
+    "scene.generation",
+    "build.amiga",
+    "build.m68k-linux",
+    "build.m68k-netbsd"
+  ]
+}
