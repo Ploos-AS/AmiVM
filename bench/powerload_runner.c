@@ -1,82 +1,37 @@
-#include <stdio.h>
+#include "powerload_runner.h"
+
 #include <string.h>
 
-static const char *workloads[] = {
-    "cpu.integer",
-    "cpu.floating",
-    "cpu.memory",
-    "amiga.scene.copper",
-    "amiga.scene.blitter",
-    "render.raytrace",
-    "scene.generation",
-    "build.amiga",
-    "build.m68k-linux",
-    "build.m68k-netbsd"
+static const struct amivm_powerload_workload workloads[] = {
+    {"cpu.integer", "cpu", "Integer arithmetic and branch-heavy 68k workload", NULL},
+    {"cpu.floating", "cpu", "Floating-point workload", NULL},
+    {"cpu.memory", "cpu", "Memory throughput and latency workload", NULL},
+    {"amiga.scene.copper", "amiga-scene", "Copper and raster-oriented scene workload", NULL},
+    {"amiga.scene.blitter", "amiga-scene", "Blitter-heavy scene workload", NULL},
+    {"render.raytrace", "rendering", "68k raytracing workload", NULL},
+    {"scene.generation", "scene-generation", "Geometry and procedural scene generation workload", NULL},
+    {"build.amiga", "development", "Representative Amiga software build", NULL},
+    {"build.m68k-linux", "development", "Native m68k Linux software build", NULL},
+    {"build.m68k-netbsd", "development", "Native m68k NetBSD software build", NULL}
 };
 
-static int is_workload(const char *id)
+const struct amivm_powerload_workload *amivm_powerload_find(const char *id)
 {
     size_t i;
-    for (i = 0u; i < sizeof(workloads) / sizeof(workloads[0]); ++i)
-        if (strcmp(id, workloads[i]) == 0)
-            return 1;
-    return 0;
+    if (!id)
+        return NULL;
+    for (i = 0u; i < amivm_powerload_count(); ++i)
+        if (strcmp(workloads[i].id, id) == 0)
+            return &workloads[i];
+    return NULL;
 }
 
-static void usage(const char *argv0)
+size_t amivm_powerload_count(void)
 {
-    fprintf(stderr,
-            "usage: %s --list | --workload <id> [--mode <mode>] [--output <file>]\n",
-            argv0);
+    return sizeof(workloads) / sizeof(workloads[0]);
 }
 
-int main(int argc, char **argv)
+const struct amivm_powerload_workload *amivm_powerload_at(size_t index)
 {
-    const char *workload = NULL;
-    const char *mode = "FAST";
-    const char *output = NULL;
-    size_t i;
-
-    if (argc == 2 && strcmp(argv[1], "--list") == 0) {
-        for (i = 0u; i < sizeof(workloads) / sizeof(workloads[0]); ++i)
-            puts(workloads[i]);
-        return 0;
-    }
-
-    for (i = 1u; i < (size_t)argc; ++i) {
-        if (strcmp(argv[i], "--workload") == 0 && i + 1u < (size_t)argc)
-            workload = argv[++i];
-        else if (strcmp(argv[i], "--mode") == 0 && i + 1u < (size_t)argc)
-            mode = argv[++i];
-        else if (strcmp(argv[i], "--output") == 0 && i + 1u < (size_t)argc)
-            output = argv[++i];
-        else {
-            usage(argv[0]);
-            return 2;
-        }
-    }
-
-    if (!workload || !is_workload(workload)) {
-        fprintf(stderr, "unsupported or missing workload: %s\n",
-                workload ? workload : "(none)");
-        return 2;
-    }
-
-    if (strcmp(mode, "FAST") != 0 &&
-        strcmp(mode, "DETERMINISTIC") != 0 &&
-        strcmp(mode, "DEBUG") != 0) {
-        fprintf(stderr, "unsupported mode: %s\n", mode);
-        return 2;
-    }
-
-    /*
-     * M2.214 establishes the stable runner contract. Execution dispatch is
-     * deliberately implemented by the workload registry in a later step;
-     * this avoids shelling out from the runner and keeps CI deterministic.
-     */
-    printf("workload=%s mode=%s", workload, mode);
-    if (output)
-        printf(" output=%s", output);
-    putchar('\n');
-    return 0;
+    return index < amivm_powerload_count() ? &workloads[index] : NULL;
 }
