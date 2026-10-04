@@ -1593,17 +1593,29 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
      * translation-cache state.
      */
     if (vm->mmu.enabled) {
+        const struct amivm_mmu_tt_state *tt_state = NULL;
         bool tt_matched = false;
 
-        if (amivm_mmu_tt_translate(&vm->mmu.tt0_state, logical, supervisor,
-                                    false, &tt_result) ||
-            amivm_mmu_tt_translate(&vm->mmu.tt1_state, logical, supervisor,
-                                   false, &tt_result)) {
-            tt_matched = true;
+        if (amivm_mmu_tt_matches(&vm->mmu.tt0_state, logical,
+                                 supervisor, false) ||
+            amivm_mmu_tt_matches(&vm->mmu.tt0_state, logical,
+                                 supervisor, write)) {
+            tt_state = &vm->mmu.tt0_state;
+        } else if (amivm_mmu_tt_matches(&vm->mmu.tt1_state, logical,
+                                        supervisor, false) ||
+                   amivm_mmu_tt_matches(&vm->mmu.tt1_state, logical,
+                                        supervisor, write)) {
+            tt_state = &vm->mmu.tt1_state;
         }
 
-        if (tt_matched) {
-            if (write && tt_result.write_protected) {
+        if (tt_state) {
+            tt_matched = amivm_mmu_tt_translate(tt_state, logical,
+                                                 supervisor, false,
+                                                 &tt_result);
+            if (!tt_matched)
+                tt_matched = true;
+
+            if (write && tt_state->write_protect) {
                 vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
                 vm->mmu_fault_status |= 4u;
                 return -1;
