@@ -98,7 +98,12 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_test(NAME amivm_powerload_runner_list COMMAND amivm_powerload_runner --list)
+)add_executable(amivm_powerload_runner_tests tests/test_powerload_runner.c)
+target_link_libraries(amivm_powerload_runner_tests PRIVATE amivm_powerload_runner_lib)
+target_compile_options(amivm_powerload_runner_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_powerload_runner_registry COMMAND amivm_powerload_runner_tests)
+
+add_test(NAME amivm_powerload_runner_list COMMAND amivm_powerload_runner --list)
 set_tests_properties(amivm_powerload_runner_list PROPERTIES
     PASS_REGULAR_EXPRESSION "cpu.integer"
 )
