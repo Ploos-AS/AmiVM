@@ -220,6 +220,13 @@ enum amivm_mmu_tt_supervisor {
     AMIVM_MMU_TT_USER_ONLY = 2
 };
 
+struct amivm_mmu_tt_result {
+    bool matched;
+    uint32_t physical;
+    bool write_protected;
+    bool supervisor_only;
+};
+
 struct amivm_mmu_tt_state {
     uint32_t value;
     bool enabled;
