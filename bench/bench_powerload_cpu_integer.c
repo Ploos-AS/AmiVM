@@ -1,5 +1,6 @@
 #include "exec.h"
 #include "vm.h"
+#include "powerload.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -39,6 +40,7 @@ int main(int argc, char **argv)
     struct amivm_vm vm;
     struct amivm_cpu_state cpu;
     struct amivm_exec_engine exec;
+    struct amivm_powerload_result result;
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     const uint32_t initial_sp = AMIVM_RAM_BASE + 0x1000u;
     const uint32_t loop_pc = AMIVM_ROM_BASE + 0x100u;
@@ -109,12 +111,19 @@ int main(int argc, char **argv)
     vm_ips = vm_seconds > 0.0 ?
         (double)exec.stats.instructions / vm_seconds : 0.0;
 
-    fprintf(output, "{\"schema_version\":1,\"workload_id\":\"cpu.integer\",");
-    fprintf(output, "\"mode\":\"FAST\",\"wall_clock_seconds\":%.6f,", vm_seconds);
-    fprintf(output, "\"throughput\":%.0f,\"throughput_unit\":\"instructions_per_second\",", vm_ips);
-    fprintf(output, "\"host_throughput\":%.0f,\"host_throughput_unit\":\"iterations_per_second\",", host_iter_per_sec);
-    fprintf(output, "\"vm_config\":\"reference-interpreter\",\"reproducible\":true,");
-    fprintf(output, "\"notes\":\"cpu integer baseline\"}\n");
+    amivm_powerload_result_init(&result, "cpu.integer", "FAST");
+    result.wall_clock_seconds = vm_seconds;
+    result.throughput = vm_ips;
+    result.throughput_unit = "instructions_per_second";
+    result.vm_config = "reference-interpreter";
+    result.reproducible = true;
+    result.notes = "cpu integer baseline";
+
+    if (amivm_powerload_result_write_json(output, &result) != 0) {
+        if (output != stdout) fclose(output);
+        amivm_vm_destroy(&vm);
+        return 1;
+    }
 
     if (output != stdout) {
         fclose(output);
