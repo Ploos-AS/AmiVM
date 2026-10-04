@@ -23,6 +23,8 @@ target_compile_options(amivm_exec_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wa
 add_executable(amivm_powerload_cpu_integer bench/bench_powerload_cpu_integer.c)
 target_link_libraries(amivm_powerload_cpu_integer PRIVATE amivm_core)
 target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_executable(amivm_powerload_check bench/powerload_check.c)
+target_compile_options(amivm_powerload_check PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 enable_testing()
 add_test(NAME amivm_version COMMAND amivm --version)
 add_test(NAME amivm_machine_dump COMMAND amivm --dump-machine)
