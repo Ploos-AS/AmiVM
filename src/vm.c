@@ -1384,6 +1384,28 @@ static void amivm_mmu_apply_cache_policy(struct amivm_vm *vm)
         amivm_mmu_translation_cache_reconfigure(vm, 0u, 0u);
 }
 
+static bool amivm_mmu_tt_translate(const struct amivm_mmu_tt_state *tt,
+                                            uint32_t logical,
+                                            bool supervisor,
+                                            bool write,
+                                            struct amivm_mmu_tt_result *result)
+{
+    if (!result)
+        return false;
+    result->matched = false;
+    result->physical = logical;
+    result->write_protected = false;
+    result->supervisor_only = false;
+    if (!amivm_mmu_tt_matches(tt, logical, supervisor, write))
+        return false;
+    result->matched = true;
+    result->physical = logical;
+    result->write_protected = tt->write_protect;
+    result->supervisor_only =
+        tt->supervisor == AMIVM_MMU_TT_SUPERVISOR_ONLY;
+    return true;
+}
+
 static bool amivm_mmu_tt_matches(const struct amivm_mmu_tt_state *tt,
                                          uint32_t logical, bool supervisor,
                                          bool write)
