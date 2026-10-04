@@ -26,4 +26,6 @@ size_t amivm_powerload_count(void);
 
 const struct amivm_powerload_workload *amivm_powerload_at(size_t index);
 
+int amivm_powerload_run(const char *id, const char *mode, const char *output);
+
 #endif
