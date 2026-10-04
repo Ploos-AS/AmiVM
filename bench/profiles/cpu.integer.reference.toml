@@ -1,4 +1,9 @@
+# AmiVM MAX performance target
+# The workload is not assigned a separate performance profile.
+# This file describes the reference correctness configuration only.
+
 schema_version = 1
+profile_kind = "correctness-reference"
 workload_id = "cpu.integer"
 mode = "FAST"
 vm_config = "reference-interpreter"
