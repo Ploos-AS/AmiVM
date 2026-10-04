@@ -88,6 +88,7 @@ static int run_cpu_integer(const struct amivm_powerload_context *context)
     seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
     amivm_powerload_result_init(&result, "cpu.integer", context->mode);
     result.wall_clock_seconds = seconds;
+    result.instructions = exec.stats.instructions;
     result.throughput = seconds > 0.0 ?
         (double)exec.stats.instructions / seconds : 0.0;
     result.throughput_unit = "instructions_per_second";
