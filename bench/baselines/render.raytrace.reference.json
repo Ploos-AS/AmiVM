@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "workload_id": "render.raytrace",
+  "mode": "FAST",
+  "wall_clock_seconds": 0.0,
+  "throughput": 1.0,
+  "instructions": 262144,
+  "throughput_unit": "instructions_per_second",
+  "vm_config": "reference-interpreter",
+  "measurement_method": "process-clock",
+  "reproducible": true,
+  "notes": "Correctness fixture; measured throughput must replace synthetic value before production use."
+}
