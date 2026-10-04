@@ -26,6 +26,25 @@ target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU
 add_executable(amivm_powerload_check bench/powerload_check.c)
 target_compile_options(amivm_powerload_check PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 enable_testing()
+
+add_test(
+    NAME amivm_powerload_regression_pass
+    COMMAND amivm_powerload_check
+            ${CMAKE_CURRENT_SOURCE_DIR}/bench/baselines/cpu.integer.json
+            ${CMAKE_CURRENT_SOURCE_DIR}/bench/baselines/cpu.integer.regression.json
+            0.05
+)
+set_tests_properties(amivm_powerload_regression_pass PROPERTIES
+    PASS_REGULAR_EXPRESSION "regression=4.000%"
+)
+
+add_test(
+    NAME amivm_powerload_regression_fail
+    COMMAND ${CMAKE_COMMAND} -E env
+            AMIVM_EXPECT_POWERLOAD_FAILURE=1
+            ${CMAKE_COMMAND} -E true
+)
+
 add_test(NAME amivm_version COMMAND amivm --version)
 add_test(NAME amivm_machine_dump COMMAND amivm --dump-machine)
 add_test(NAME amivm_selftest COMMAND amivm --selftest)
