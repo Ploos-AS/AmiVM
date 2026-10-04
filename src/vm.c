@@ -1592,15 +1592,27 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
      * a TT hit bypasses cached/page-table translation and does not populate
      * translation-cache state.
      */
-    if (vm->mmu.enabled &&
-        (amivm_mmu_tt_translate(&vm->mmu.tt0_state, logical, supervisor,
-                                write, &tt_result) ||
-         amivm_mmu_tt_translate(&vm->mmu.tt1_state, logical, supervisor,
-                                write, &tt_result))) {
-        *physical = tt_result.physical;
-        vm->mmu.last_physical = *physical;
-        vm->mmu.last_translation_valid = true;
-        return 0;
+    if (vm->mmu.enabled) {
+        bool tt_matched = false;
+
+        if (amivm_mmu_tt_translate(&vm->mmu.tt0_state, logical, supervisor,
+                                    false, &tt_result) ||
+            amivm_mmu_tt_translate(&vm->mmu.tt1_state, logical, supervisor,
+                                   false, &tt_result)) {
+            tt_matched = true;
+        }
+
+        if (tt_matched) {
+            if (write && tt_result.write_protected) {
+                vm->mmu.last_fault = AMIVM_MMU_FAULT_WRITE_PROTECT;
+                vm->mmu_fault_status |= 4u;
+                return -1;
+            }
+            *physical = tt_result.physical;
+            vm->mmu.last_physical = *physical;
+            vm->mmu.last_translation_valid = true;
+            return 0;
+        }
     }
 
     if (vm->mmu.enabled &&
