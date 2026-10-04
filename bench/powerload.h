@@ -12,6 +12,7 @@ struct amivm_powerload_result {
     double throughput;
     const char *throughput_unit;
     const char *vm_config;
+    const char *measurement_method;
     bool reproducible;
     const char *notes;
 };
