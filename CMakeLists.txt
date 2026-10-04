@@ -26,6 +26,9 @@ target_compile_options(amivm_powerload PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wal
 add_executable(amivm_powerload_cpu_integer bench/bench_powerload_cpu_integer.c)
 target_link_libraries(amivm_powerload_cpu_integer PRIVATE amivm_core amivm_powerload)
 target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_executable(amivm_powerload_tests tests/test_powerload.c)
+target_link_libraries(amivm_powerload_tests PRIVATE amivm_powerload)
+target_compile_options(amivm_powerload_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_executable(amivm_powerload_check bench/powerload_check.c)
 target_compile_options(amivm_powerload_check PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 enable_testing()
@@ -89,4 +92,5 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)
+)add_test(NAME amivm_powerload_api COMMAND amivm_powerload_tests)
+
