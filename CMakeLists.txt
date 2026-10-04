@@ -29,6 +29,11 @@ target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU
 add_executable(amivm_powerload_tests tests/test_powerload.c)
 target_link_libraries(amivm_powerload_tests PRIVATE amivm_powerload)
 target_compile_options(amivm_powerload_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_library(amivm_powerload_raytrace STATIC bench/powerload_raytrace.c)
+target_include_directories(amivm_powerload_raytrace PUBLIC bench)
+target_link_libraries(amivm_powerload_raytrace PRIVATE amivm_powerload amivm_core)
+target_compile_options(amivm_powerload_raytrace PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
 add_library(amivm_powerload_runner_lib STATIC bench/powerload_runner.c)
 target_include_directories(amivm_powerload_runner_lib PUBLIC bench)
 target_compile_options(amivm_powerload_runner_lib PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
