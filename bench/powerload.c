@@ -11,6 +11,7 @@ void amivm_powerload_result_init(struct amivm_powerload_result *result,
     result->mode = mode;
     result->wall_clock_seconds = 0.0;
     result->throughput = 0.0;
+    result->instructions = 0u;
     result->throughput_unit = "";
     result->vm_config = "";
     result->measurement_method = "";
@@ -29,7 +30,7 @@ int amivm_powerload_result_write_json(
                 "\"workload_id\":\"%s\","
                 "\"mode\":\"%s\","
                 "\"wall_clock_seconds\":%.6f,"
-                "\"throughput\":%.6f,"
+                "\"throughput\":%.6f,"instructions\":%llu,"
                 "\"throughput_unit\":\"%s\","
                 "\"vm_config\":\"%s\","measurement_method\":\"%s\","
                 "\"reproducible\":%s,"
@@ -39,6 +40,7 @@ int amivm_powerload_result_write_json(
                 result->mode,
                 result->wall_clock_seconds,
                 result->throughput,
+                (unsigned long long)result->instructions,
                 result->throughput_unit ? result->throughput_unit : "",
                 result->vm_config ? result->vm_config : "",
                 result->measurement_method ? result->measurement_method : "",
