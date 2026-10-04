@@ -85,7 +85,14 @@ int main(void)
     vm.rom_used = 0x10au;
 
     if (amivm_cpu_reset(&cpu, &vm, backend) != 0) {
-        amivm_vm_destroy(&vm);
+        printf("{\"schema_version\":1,\"workload_id\":\"cpu.integer\",");
+    printf("\"mode\":\"FAST\",\"wall_clock_seconds\":%.6f,", vm_seconds);
+    printf("\"throughput\":%.0f,\"throughput_unit\":\"instructions_per_second\",", vm_ips);
+    printf("\"host_throughput\":%.0f,\"host_throughput_unit\":\"iterations_per_second\",", host_iter_per_sec);
+    printf("\"vm_config\":\"reference-interpreter\",\"reproducible\":true,");
+    printf("\"notes\":\"cpu integer baseline\"}\n");
+
+    amivm_vm_destroy(&vm);
         return 1;
     }
     amivm_exec_init(&exec, backend);
