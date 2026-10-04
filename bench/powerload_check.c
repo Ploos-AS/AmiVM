@@ -60,6 +60,7 @@ int main(int argc, char **argv)
     char base_workload[128], result_workload[128];
     char base_mode[64], result_mode[64];
     char base_throughput[64], result_throughput[64];
+    char base_config[128], result_config[128];
     double allowed = 0.05;
     double base;
     double current;
@@ -92,7 +93,9 @@ int main(int argc, char **argv)
         !field(baseline, "mode", base_mode, sizeof(base_mode)) ||
         !field(result, "mode", result_mode, sizeof(result_mode)) ||
         !field(baseline, "throughput", base_throughput, sizeof(base_throughput)) ||
-        !field(result, "throughput", result_throughput, sizeof(result_throughput))) {
+        !field(result, "throughput", result_throughput, sizeof(result_throughput)) ||
+        !field(baseline, "vm_config", base_config, sizeof(base_config)) ||
+        !field(result, "vm_config", result_config, sizeof(result_config))) {
         fprintf(stderr, "missing required Powerload fields\n");
         free(baseline);
         free(result);
@@ -100,7 +103,8 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(base_workload, result_workload) != 0 ||
-        strcmp(base_mode, result_mode) != 0) {
+        strcmp(base_mode, result_mode) != 0 ||
+        strcmp(base_config, result_config) != 0) {
         fprintf(stderr, "baseline/result workload or mode mismatch\n");
         free(baseline);
         free(result);
