@@ -54,6 +54,7 @@ int main(int argc, char **argv)
     double vm_seconds;
     double host_iter_per_sec;
     double vm_ips;
+    const uint64_t expected_instructions = 131074u;
     uint64_t host_value;
 
     if (argc > 2) {
