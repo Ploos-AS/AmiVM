@@ -4204,6 +4204,45 @@ static int test_68040_tt_access_match(void)
 }
 
 
+static int test_68040_tt_translation_result(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    struct amivm_mmu_tt_result result;
+
+    amivm_config_init(&config);
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.base = 0x15000000u;
+    vm.mmu.tt0_state.mask = 0xffff0000u;
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_ONLY;
+    vm.mmu.tt0_state.write_protect = false;
+
+    CHECK(amivm_mmu_tt_translate(
+        &vm.mmu.tt0_state, 0x15001234u, true, false, &result));
+    CHECK(result.matched);
+    CHECK(result.physical == 0x15001234u);
+    CHECK(!result.write_protected);
+    CHECK(result.supervisor_only);
+
+    CHECK(!amivm_mmu_tt_translate(
+        &vm.mmu.tt0_state, 0x15001234u, false, false, &result));
+    CHECK(!result.matched);
+    CHECK(result.physical == 0x15001234u);
+
+    CHECK(!amivm_mmu_tt_translate(
+        &vm.mmu.tt0_state, 0x15001234u, true, true, &result));
+
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4277,6 +4316,7 @@ int main(void)
         test_68040_tt_address_match() != 0 ||
         test_68040_tt_privilege_match() != 0 ||
         test_68040_tt_access_match() != 0 ||
+        test_68040_tt_translation_result() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
