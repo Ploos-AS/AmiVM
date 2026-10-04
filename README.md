@@ -21,6 +21,41 @@ Cycle accounting exists only to provide deterministic, software-visible timing s
 Memory/device timing is likewise semantic rather than a host-speed limiter. Cacheability, serialization, MMIO and device-visible latency may contribute to deterministic guest timing when required, while the host executes the VM at full practical speed.
 
 
+## AmiVM performance priorities
+
+AmiVM has two primary goals:
+
+1. **PRI 1 — maximum practical 68k/Amiga performance.** AmiVM is optimized for real Amiga CPU and system workloads, including raytracing, scene generation, software rendering, demo/scene workloads, compilation, image/audio processing, and other compute-heavy applications.
+2. **PRI 2 — high-value m68k build and CI platform.** AmiVM provides practical native execution environments for Amiga, m68k Linux, and m68k NetBSD software, including native compilation and automated CI workloads.
+
+Performance work must be measured with real workloads, not only synthetic CPU benchmarks.
+
+### Performance modes
+
+| Mode | Goal |
+| --- | --- |
+| **FAST** | Maximum throughput with JIT, aggressive caching, and minimal instrumentation |
+| **DETERMINISTIC** | Reproducible execution for CI, qualification, snapshots, and scene verification |
+| **DEBUG** | Breakpoints, watchpoints, tracing, memory inspection, and instruction-level debugging |
+
+Debug and deterministic instrumentation must be isolated from the normal FAST path wherever practical.
+
+### AmiVM Powerload Suite
+
+The Powerload Suite is the primary workload-based performance benchmark for AmiVM.
+
+| Workload group | Coverage |
+| --- | --- |
+| CPU | Integer, floating point, branches, memory throughput |
+| Amiga Scene | Copper, Blitter, raster, sprites, audio |
+| Rendering | Raytracing, rasterization, texture/image processing |
+| Scene Generation | Geometry, transforms, procedural generation, sorting |
+| Development | GCC, VBCC, assembler, linker, large project builds |
+| m68k Linux | Native compilation, userland workloads, test suites |
+| m68k NetBSD | Native compilation, userland workloads, test suites |
+
+Powerload results should report throughput, wall-clock time, and reproducibility where applicable. The suite should be usable both for development benchmarking and regression detection.
+
 ## 68040 MMU/TLB capability matrix
 
 | Capability | Status | Qualification evidence |
