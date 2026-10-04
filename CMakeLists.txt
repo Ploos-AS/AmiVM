@@ -154,6 +154,11 @@ target_include_directories(amivm_raytrace_68k PUBLIC bench)
 target_link_libraries(amivm_raytrace_68k PRIVATE amivm_core amivm_raytrace_68k_program amivm_raytrace_scene)
 target_compile_options(amivm_raytrace_68k PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
+add_executable(amivm_raytrace_68k_program_tests tests/test_raytrace_68k_program.c)
+target_link_libraries(amivm_raytrace_68k_program_tests PRIVATE amivm_raytrace_68k_program)
+target_compile_options(amivm_raytrace_68k_program_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_raytrace_68k_program COMMAND amivm_raytrace_68k_program_tests)
+
 add_executable(amivm_raytrace_68k_tests tests/test_raytrace_68k.c)
 target_link_libraries(amivm_raytrace_68k_tests PRIVATE amivm_raytrace_68k amivm_core)
 target_compile_options(amivm_raytrace_68k_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
