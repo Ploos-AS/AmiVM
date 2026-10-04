@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <time.h>
 
+int amivm_powerload_run_raytrace(const struct amivm_powerload_context *context);
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -119,7 +121,7 @@ static struct amivm_powerload_workload workloads[] = {
     {"cpu.memory", "cpu", "Memory throughput and latency workload", NULL},
     {"amiga.scene.copper", "amiga-scene", "Copper and raster-oriented scene workload", NULL},
     {"amiga.scene.blitter", "amiga-scene", "Blitter-heavy scene workload", NULL},
-    {"render.raytrace", "rendering", "68k raytracing workload", NULL},
+    {"render.raytrace", "rendering", "68k raytracing workload", amivm_powerload_run_raytrace},
     {"scene.generation", "scene-generation", "Geometry and procedural scene generation workload", NULL},
     {"build.amiga", "development", "Representative Amiga software build", NULL},
     {"build.m68k-linux", "development", "Native m68k Linux software build", NULL},
