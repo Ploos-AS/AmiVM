@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AmiVM Powerload Result",
+  "type": "object",
+  "required": ["schema_version", "workload_id", "mode", "wall_clock_seconds"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "workload_id": {"type": "string"},
+    "mode": {"enum": ["FAST", "DETERMINISTIC", "DEBUG"]},
+    "wall_clock_seconds": {"type": "number", "minimum": 0},
+    "throughput": {"type": "number", "minimum": 0},
+    "throughput_unit": {"type": "string"},
+    "host": {"type": "string"},
+    "vm_config": {"type": "string"},
+    "reproducible": {"type": "boolean"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}
