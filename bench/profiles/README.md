@@ -1,14 +1,9 @@
 # Powerload profiles
 
-Profiles define the identity of a comparable benchmark result.
+AmiVM has one primary performance target: MAX.
 
-A profile specifies:
+Workloads do not get separate performance profiles. CPU, Amiga scene, raytracing, scene generation, Amiga builds, m68k Linux builds, and m68k NetBSD builds all compete against the same goal: maximum correct throughput.
 
-- schema version
-- workload ID
-- mode
-- VM configuration
-- measurement method
-- throughput unit
+The reference configuration exists for correctness qualification and semantic comparison. It is not the performance target.
 
-Baselines and regression comparisons must use the same profile. Profiles are versioned artifacts and should be reviewed when execution backends or measurement methodology changes.
+The MAX target is represented by max.toml. Backend/configuration experiments may be added later, but they are implementation candidates, not separate workload performance targets.
