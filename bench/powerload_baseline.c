@@ -53,11 +53,26 @@ int main(int argc, char **argv)
     char *json;
     char workload[128], mode[64], throughput[64], instructions[64];
     char config[128], method[128], reproducible[32];
+    const char *expected_workload;
+    const char *expected_mode;
+    const char *expected_config;
+    const char *expected_method;
     FILE *out;
 
-    if (argc != 3) {
+    if (argc != 3 && argc != 7) {
         fprintf(stderr, "usage: %s <result.json> <baseline.json>\n", argv[0]);
         return 2;
+    }
+
+    expected_workload = expected_mode = expected_config = expected_method = NULL;
+    if (argc == 7) {
+        if (strcmp(argv[3], "--expect-workload") != 0 ||
+            strcmp(argv[5], "--expect-mode") != 0) {
+            fprintf(stderr, "invalid expectation arguments\\n");
+            return 2;
+        }
+        expected_workload = argv[4];
+        expected_mode = argv[6];
     }
 
     json = read_file(argv[1]);
@@ -72,6 +87,17 @@ int main(int argc, char **argv)
         !field(json, "reproducible", reproducible, sizeof(reproducible))) {
         free(json);
         return 2;
+    }
+
+    if (expected_workload && strcmp(workload, expected_workload) != 0) {
+        fprintf(stderr, "workload does not match expected baseline profile\\n");
+        free(json);
+        return 1;
+    }
+    if (expected_mode && strcmp(mode, expected_mode) != 0) {
+        fprintf(stderr, "mode does not match expected baseline profile\\n");
+        free(json);
+        return 1;
     }
 
     if (strcmp(reproducible, "true") != 0 ||
