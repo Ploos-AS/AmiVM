@@ -116,6 +116,7 @@ int main(int argc, char **argv)
     result.throughput = vm_ips;
     result.throughput_unit = "instructions_per_second";
     result.vm_config = "reference-interpreter";
+    result.measurement_method = "process-clock";
     result.reproducible = true;
     result.notes = "cpu integer baseline";
 
