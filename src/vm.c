@@ -1385,13 +1385,16 @@ static void amivm_mmu_apply_cache_policy(struct amivm_vm *vm)
 }
 
 static bool amivm_mmu_tt_matches(const struct amivm_mmu_tt_state *tt,
-                                         uint32_t logical, bool supervisor)
+                                         uint32_t logical, bool supervisor,
+                                         bool write)
 {
     if (!tt || !tt->enabled)
         return false;
     if (tt->supervisor == AMIVM_MMU_TT_SUPERVISOR_ONLY && !supervisor)
         return false;
     if (tt->supervisor == AMIVM_MMU_TT_USER_ONLY && supervisor)
+        return false;
+    if (write && tt->write_protect)
         return false;
     return (logical & tt->mask) == (tt->base & tt->mask);
 }
