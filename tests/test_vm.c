@@ -4359,6 +4359,53 @@ static int test_68040_tt_supervisor_fault_fast_path(void)
 }
 
 
+static int test_68040_tt0_tt1_precedence(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    /* Deliberately overlap TT0 and TT1. TT0 is the higher-priority match. */
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.base = 0x19000000u;
+    vm.mmu.tt0_state.mask = 0xffff0000u;
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_BOTH;
+    vm.mmu.tt0_state.write_protect = true;
+
+    vm.mmu.tt1_state.enabled = true;
+    vm.mmu.tt1_state.base = 0x19000000u;
+    vm.mmu.tt1_state.mask = 0xffff0000u;
+    vm.mmu.tt1_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_BOTH;
+    vm.mmu.tt1_state.write_protect = false;
+
+    CHECK(amivm_mmu_translate(&vm, 0x19001234u, false, &physical) == 0);
+    CHECK(physical == 0x19001234u);
+
+    /* TT0 must own the overlapping region for writes as well. */
+    CHECK(amivm_mmu_translate(&vm, 0x19001234u, true, &physical) != 0);
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_WRITE_PROTECT);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    /* Removing TT0 exposes TT1 without changing TT1 state. */
+    vm.mmu.tt0_state.enabled = false;
+    CHECK(amivm_mmu_translate(&vm, 0x19001234u, true, &physical) == 0);
+    CHECK(physical == 0x19001234u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4436,6 +4483,7 @@ int main(void)
         test_68040_tt_bypasses_tlb() != 0 ||
         test_68040_tt_write_protect_fast_path() != 0 ||
         test_68040_tt_supervisor_fault_fast_path() != 0 ||
+        test_68040_tt0_tt1_precedence() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
