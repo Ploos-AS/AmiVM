@@ -33,7 +33,7 @@ static uint64_t host_integer_workload(uint64_t iterations)
     return value;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     struct amivm_config config;
     struct amivm_vm vm;
@@ -44,6 +44,8 @@ int main(void)
     const uint32_t loop_pc = AMIVM_ROM_BASE + 0x100u;
     const uint64_t host_iterations = 100000000u;
     const uint64_t vm_budget = 1000000u;
+    const char *output_path = NULL;
+    FILE *output = stdout;
     clock_t begin;
     clock_t end;
     double host_seconds;
@@ -52,29 +54,33 @@ int main(void)
     double vm_ips;
     uint64_t host_value;
 
+    if (argc > 2) {
+        fprintf(stderr, "usage: %s [result.json]\n", argv[0]);
+        return 2;
+    }
+    if (argc == 2) {
+        output_path = argv[1];
+        output = fopen(output_path, "w");
+        if (!output) {
+            perror(output_path);
+            return 2;
+        }
+    }
+
     begin = clock();
     host_value = host_integer_workload(host_iterations);
     end = clock();
     host_seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
     host_iter_per_sec = host_seconds > 0.0 ?
-        (double)host_iterations / seconds : 0.0;
+        (double)host_iterations / host_seconds : 0.0;
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
-    if (amivm_vm_init(&vm, &config) != 0)
+    if (amivm_vm_init(&vm, &config) != 0) {
+        if (output != stdout) fclose(output);
         return 1;
+    }
 
-    /*
-     * 68k workload:
-     *   MOVEQ #0,D0
-     *   MOVEQ #0,D1
-     * loop:
-     *   ADDQ.L #1,D0
-     *   DBRA D1,loop
-     *
-     * This deliberately starts as a simple integer baseline. More complex
-     * Powerloads will be added once the measurement/reporting path is stable.
-     */
     put32_be(&vm.rom[0], initial_sp);
     put32_be(&vm.rom[4], loop_pc);
     put16_be(&vm.rom[0x100], 0x7000u);
@@ -85,14 +91,8 @@ int main(void)
     vm.rom_used = 0x10au;
 
     if (amivm_cpu_reset(&cpu, &vm, backend) != 0) {
-        printf("{\"schema_version\":1,\"workload_id\":\"cpu.integer\",");
-    printf("\"mode\":\"FAST\",\"wall_clock_seconds\":%.6f,", vm_seconds);
-    printf("\"throughput\":%.0f,\"throughput_unit\":\"instructions_per_second\",", vm_ips);
-    printf("\"host_throughput\":%.0f,\"host_throughput_unit\":\"iterations_per_second\",", host_iter_per_sec);
-    printf("\"vm_config\":\"reference-interpreter\",\"reproducible\":true,");
-    printf("\"notes\":\"cpu integer baseline\"}\n");
-
-    amivm_vm_destroy(&vm);
+        amivm_vm_destroy(&vm);
+        if (output != stdout) fclose(output);
         return 1;
     }
     amivm_exec_init(&exec, backend);
@@ -100,6 +100,7 @@ int main(void)
     begin = clock();
     if (amivm_exec_run(&exec, &cpu, &vm, vm_budget) <= 0) {
         amivm_vm_destroy(&vm);
+        if (output != stdout) fclose(output);
         return 1;
     }
     end = clock();
@@ -107,6 +108,17 @@ int main(void)
     vm_seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
     vm_ips = vm_seconds > 0.0 ?
         (double)exec.stats.instructions / vm_seconds : 0.0;
+
+    fprintf(output, "{\"schema_version\":1,\"workload_id\":\"cpu.integer\",");
+    fprintf(output, "\"mode\":\"FAST\",\"wall_clock_seconds\":%.6f,", vm_seconds);
+    fprintf(output, "\"throughput\":%.0f,\"throughput_unit\":\"instructions_per_second\",", vm_ips);
+    fprintf(output, "\"host_throughput\":%.0f,\"host_throughput_unit\":\"iterations_per_second\",", host_iter_per_sec);
+    fprintf(output, "\"vm_config\":\"reference-interpreter\",\"reproducible\":true,");
+    fprintf(output, "\"notes\":\"cpu integer baseline\"}\n");
+
+    if (output != stdout) {
+        fclose(output);
+    }
 
     printf("AmiVM Powerload: cpu.integer\n");
     printf("mode=FAST\n");
@@ -119,5 +131,6 @@ int main(void)
            (unsigned long long)exec.stats.cache_misses);
 
     amivm_vm_destroy(&vm);
+    (void)output_path;
     return 0;
 }
