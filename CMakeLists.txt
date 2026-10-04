@@ -29,6 +29,8 @@ target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU
 add_executable(amivm_powerload_tests tests/test_powerload.c)
 target_link_libraries(amivm_powerload_tests PRIVATE amivm_powerload)
 target_compile_options(amivm_powerload_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_executable(amivm_powerload_runner bench/powerload_runner.c)
+target_compile_options(amivm_powerload_runner PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_executable(amivm_powerload_check bench/powerload_check.c)
 target_compile_options(amivm_powerload_check PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 enable_testing()
