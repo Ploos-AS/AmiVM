@@ -98,5 +98,27 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_test(NAME amivm_powerload_api COMMAND amivm_powerload_tests)
+)add_test(NAME amivm_powerload_runner_list COMMAND amivm_powerload_runner --list)
+set_tests_properties(amivm_powerload_runner_list PROPERTIES
+    PASS_REGULAR_EXPRESSION "cpu.integer"
+)
+
+add_test(NAME amivm_powerload_runner_invalid_workload
+    COMMAND amivm_powerload_runner --workload does.not.exist)
+set_tests_properties(amivm_powerload_runner_invalid_workload PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME amivm_powerload_runner_invalid_mode
+    COMMAND amivm_powerload_runner --workload cpu.integer --mode INVALID)
+set_tests_properties(amivm_powerload_runner_invalid_mode PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME amivm_powerload_runner_cpu_integer
+    COMMAND amivm_powerload_runner
+            --workload cpu.integer
+            --mode FAST
+            --output ${CMAKE_CURRENT_BINARY_DIR}/cpu.integer.runner.json)
+set_tests_properties(amivm_powerload_runner_cpu_integer PROPERTIES
+    PASS_REGULAR_EXPRESSION ""
+)
+
+add_test(NAME amivm_powerload_api COMMAND amivm_powerload_tests)
 
