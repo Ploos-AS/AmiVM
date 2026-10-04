@@ -42,15 +42,17 @@ int amivm_raytrace_68k_run(struct amivm_cpu_state *cpu,
     put16(&vm->rom[0x104], 0x7408u); /* MOVEQ #8,D2 */
     put16(&vm->rom[0x106], 0x7600u); /* MOVEQ #0,D3 */
 
-    put16(&vm->rom[0x108], 0xD680u); /* ADD.L D0,D3 */
-    put16(&vm->rom[0x10A], 0xD283u); /* ADD.L D3,D1 */
+    put16(&vm->rom[0x108], 0x7203u); /* MOVEQ #3,D1 */
+    put16(&vm->rom[0x10A], 0xD680u); /* ADD.L D0,D3 */
     put16(&vm->rom[0x10C], 0xB183u); /* EOR.L D1,D3 */
-    put16(&vm->rom[0x10E], 0x5280u); /* ADDQ #1,D1 */
-    put16(&vm->rom[0x110], 0x51C9u); /* DBRA D1,-56 */
-    put16(&vm->rom[0x112], 0x51CAu); /* DBRA D2,-12 */
-    put16(&vm->rom[0x114], 0x4E75u); /* RTS */
+    put16(&vm->rom[0x10E], 0xD082u); /* ADD.L D2,D0 */
+    put16(&vm->rom[0x110], 0x51C9u); /* DBRA D1 */
+    put16(&vm->rom[0x112], 0xFFF6u); /* -> 0x10A */
+    put16(&vm->rom[0x114], 0x51CAu); /* DBRA D2 */
+    put16(&vm->rom[0x116], 0xFFF0u); /* -> 0x108 */
+    put16(&vm->rom[0x118], 0x4E75u); /* RTS */
 
-    vm->rom_used = 0x116u;
+    vm->rom_used = 0x11Au;
 
     if (amivm_cpu_reset(cpu, vm, exec->backend) != 0)
         return 1;
