@@ -1,0 +1,6 @@
+schema_version = 1
+workload_id = "cpu.integer"
+mode = "FAST"
+vm_config = "reference-interpreter"
+measurement_method = "process-clock"
+throughput_unit = "instructions_per_second"
