@@ -59,20 +59,24 @@ int main(int argc, char **argv)
     const char *expected_method;
     FILE *out;
 
-    if (argc != 3 && argc != 7) {
+    if (argc != 3 && argc != 11) {
         fprintf(stderr, "usage: %s <result.json> <baseline.json>\n", argv[0]);
         return 2;
     }
 
     expected_workload = expected_mode = expected_config = expected_method = NULL;
-    if (argc == 7) {
+    if (argc == 11) {
         if (strcmp(argv[3], "--expect-workload") != 0 ||
-            strcmp(argv[5], "--expect-mode") != 0) {
+            strcmp(argv[5], "--expect-mode") != 0 ||
+            strcmp(argv[7], "--expect-config") != 0 ||
+            strcmp(argv[9], "--expect-method") != 0) {
             fprintf(stderr, "invalid expectation arguments\\n");
             return 2;
         }
         expected_workload = argv[4];
         expected_mode = argv[6];
+        expected_config = argv[8];
+        expected_method = argv[10];
     }
 
     json = read_file(argv[1]);
@@ -94,6 +98,17 @@ int main(int argc, char **argv)
         free(json);
         return 1;
     }
+    if (expected_config && strcmp(config, expected_config) != 0) {
+        fprintf(stderr, "VM config does not match expected baseline profile\\n");
+        free(json);
+        return 1;
+    }
+    if (expected_method && strcmp(method, expected_method) != 0) {
+        fprintf(stderr, "measurement method does not match expected baseline profile\\n");
+        free(json);
+        return 1;
+    }
+
     if (expected_mode && strcmp(mode, expected_mode) != 0) {
         fprintf(stderr, "mode does not match expected baseline profile\\n");
         free(json);
