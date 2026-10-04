@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "target": "MAX",
+  "workloads": [
+    {"id": "cpu.integer", "status": "implemented"},
+    {"id": "cpu.floating", "status": "planned"},
+    {"id": "cpu.memory", "status": "planned"},
+    {"id": "amiga.scene.copper", "status": "planned"},
+    {"id": "amiga.scene.blitter", "status": "planned"},
+    {"id": "render.raytrace", "status": "planned"},
+    {"id": "scene.generation", "status": "planned"},
+    {"id": "build.amiga", "status": "planned"},
+    {"id": "build.m68k-linux", "status": "planned"},
+    {"id": "build.m68k-netbsd", "status": "planned"}
+  ]
+}
