@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 struct amivm_powerload_result {
     unsigned schema_version;
@@ -10,6 +11,7 @@ struct amivm_powerload_result {
     const char *mode;
     double wall_clock_seconds;
     double throughput;
+    uint64_t instructions;
     const char *throughput_unit;
     const char *vm_config;
     const char *measurement_method;
