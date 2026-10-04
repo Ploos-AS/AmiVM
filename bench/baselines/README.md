@@ -1,8 +1,17 @@
 # Powerload baselines
 
-Baselines are versioned benchmark references used by CI regression checks.
+Baselines are generated from measured Powerload result files.
 
-- Baselines must be replaced with measured results, not guessed performance numbers.
-- Synthetic fixtures are kept separately to test the checker itself.
-- A baseline is only comparable when workload ID, mode, VM configuration, and measurement methodology match.
-- The initial cpu.integer.json value is a structural placeholder until a real benchmark run is captured.
+## Generate
+
+Run a workload and capture its result:
+
+    amivm_powerload_runner --workload cpu.integer --mode FAST --output result.json
+
+Generate a baseline artifact:
+
+    amivm_powerload_baseline result.json cpu.integer.baseline.json
+
+Review and commit the generated baseline only when the workload, VM configuration, measurement method, and correctness result are known to be valid.
+
+Synthetic regression fixtures remain separate and must never become production baselines.
