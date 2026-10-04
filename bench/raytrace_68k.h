@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#include "exec.h"
+#include "vm.h"
+
 struct amivm_raytrace_68k_result {
     uint32_t checksum;
     uint64_t instructions;
