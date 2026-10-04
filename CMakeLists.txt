@@ -98,7 +98,10 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_executable(amivm_max_normalize bench/max_normalize.c)
+)add_executable(amivm_max_gate bench/max_gate.c)
+target_compile_options(amivm_max_gate PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
+add_executable(amivm_max_normalize bench/max_normalize.c)
 target_compile_options(amivm_max_normalize PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
 add_executable(amivm_max_score bench/max_score.c)
