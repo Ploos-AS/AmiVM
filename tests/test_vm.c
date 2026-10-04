@@ -4243,6 +4243,53 @@ static int test_68040_tt_translation_result(void)
 }
 
 
+static int test_68040_tt_bypasses_tlb(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.m68k.sr = 0x2000u;
+
+    /* A stale/different TLB mapping exists for the same logical page. */
+    amivm_mmu_translation_cache_insert(
+        &vm, 0x16000000u, AMIVM_RAM_BASE + 0x30000u, true, true);
+    CHECK(amivm_mmu_translation_cache_lookup(
+        &vm, 0x16000000u, false, &physical));
+    CHECK(physical == AMIVM_RAM_BASE + 0x30000u);
+
+    /* TT must win and must not alter the cached mapping. */
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.base = 0x16000000u;
+    vm.mmu.tt0_state.mask = 0xffff0000u;
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_BOTH;
+    vm.mmu.tt0_state.write_protect = false;
+
+    CHECK(amivm_mmu_translate(&vm, 0x16001234u, false, &physical) == 0);
+    CHECK(physical == 0x16001234u);
+    CHECK(vm.mmu.translation_cache_valid_mask != 0u);
+
+    /* A TT hit must not populate another TLB entry. */
+    CHECK(amivm_mmu_translate(&vm, 0x16005678u, false, &physical) == 0);
+    CHECK(physical == 0x16005678u);
+
+    /* Disable TT: the original TLB mapping remains the next translation. */
+    vm.mmu.tt0_state.enabled = false;
+    CHECK(amivm_mmu_translate(&vm, 0x16000000u, false, &physical) == 0);
+    CHECK(physical == AMIVM_RAM_BASE + 0x30000u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4317,6 +4364,7 @@ int main(void)
         test_68040_tt_privilege_match() != 0 ||
         test_68040_tt_access_match() != 0 ||
         test_68040_tt_translation_result() != 0 ||
+        test_68040_tt_bypasses_tlb() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
