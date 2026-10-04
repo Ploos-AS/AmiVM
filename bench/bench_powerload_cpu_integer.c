@@ -46,7 +46,8 @@ int main(void)
     const uint64_t vm_budget = 1000000u;
     clock_t begin;
     clock_t end;
-    double seconds;
+    double host_seconds;
+    double vm_seconds;
     double host_iter_per_sec;
     double vm_ips;
     uint64_t host_value;
@@ -54,8 +55,8 @@ int main(void)
     begin = clock();
     host_value = host_integer_workload(host_iterations);
     end = clock();
-    seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
-    host_iter_per_sec = seconds > 0.0 ?
+    host_seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
+    host_iter_per_sec = host_seconds > 0.0 ?
         (double)host_iterations / seconds : 0.0;
 
     amivm_config_init(&config);
@@ -96,17 +97,17 @@ int main(void)
     }
     end = clock();
 
-    seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
-    vm_ips = seconds > 0.0 ?
-        (double)exec.stats.instructions / seconds : 0.0;
+    vm_seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
+    vm_ips = vm_seconds > 0.0 ?
+        (double)exec.stats.instructions / vm_seconds : 0.0;
 
     printf("AmiVM Powerload: cpu.integer\n");
     printf("mode=FAST\n");
     printf("host_iterations=%llu host_seconds=%.6f host_iter_per_sec=%.0f host_value=%llu\n",
-           (unsigned long long)host_iterations, seconds, host_iter_per_sec,
+           (unsigned long long)host_iterations, host_seconds, host_iter_per_sec,
            (unsigned long long)host_value);
     printf("vm_instructions=%llu vm_seconds=%.6f vm_ips=%.0f cache_hits=%llu cache_misses=%llu\n",
-           (unsigned long long)exec.stats.instructions, seconds, vm_ips,
+           (unsigned long long)exec.stats.instructions, vm_seconds, vm_ips,
            (unsigned long long)exec.stats.cache_hits,
            (unsigned long long)exec.stats.cache_misses);
 
