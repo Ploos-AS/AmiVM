@@ -78,6 +78,17 @@ static struct amivm_powerload_workload workloads[] = {
     {"build.m68k-netbsd", "development", "Native m68k NetBSD software build", NULL}
 };
 
+static int run_selected(const struct amivm_powerload_workload *workload,
+                         const char *mode, const char *output)
+{
+    struct amivm_powerload_context context;
+    if (!workload || !workload->run)
+        return 3;
+    context.mode = mode;
+    context.output_path = output;
+    return workload->run(&context);
+}
+
 const struct amivm_powerload_workload *amivm_powerload_find(const char *id)
 {
     size_t i;
@@ -97,3 +108,10 @@ const struct amivm_powerload_workload *amivm_powerload_at(size_t index)
 {
     return index < amivm_powerload_count() ? &workloads[index] : NULL;
 }
+int amivm_powerload_run(const char *id, const char *mode, const char *output)
+{
+    const struct amivm_powerload_workload *workload =
+        amivm_powerload_find(id);
+    return run_selected(workload, mode ? mode : "FAST", output);
+}
+
