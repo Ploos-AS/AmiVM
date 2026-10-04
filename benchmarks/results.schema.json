@@ -12,6 +12,7 @@
     "throughput_unit": {"type": "string"},
     "host": {"type": "string"},
     "vm_config": {"type": "string"},
+    "measurement_method": {"type": "string"},
     "reproducible": {"type": "boolean"},
     "notes": {"type": "string"}
   },
