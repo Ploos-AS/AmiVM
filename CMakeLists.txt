@@ -137,6 +137,11 @@ set_tests_properties(amivm_powerload_runner_result_validate PROPERTIES
     DEPENDS amivm_powerload_runner_result
 )
 
+add_executable(amivm_powerload_raytrace_tests tests/test_powerload_raytrace.c)
+target_link_libraries(amivm_powerload_raytrace_tests PRIVATE amivm_powerload_runner_lib)
+target_compile_options(amivm_powerload_raytrace_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_powerload_raytrace_registry COMMAND amivm_powerload_raytrace_tests)
+
 add_executable(amivm_powerload_runner_tests tests/test_powerload_runner.c)
 target_link_libraries(amivm_powerload_runner_tests PRIVATE amivm_powerload_runner_lib)
 target_compile_options(amivm_powerload_runner_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
