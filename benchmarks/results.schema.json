@@ -9,6 +9,7 @@
     "mode": {"enum": ["FAST", "DETERMINISTIC", "DEBUG"]},
     "wall_clock_seconds": {"type": "number", "minimum": 0},
     "throughput": {"type": "number", "minimum": 0},
+    "instructions": {"type": "integer", "minimum": 0},
     "throughput_unit": {"type": "string"},
     "host": {"type": "string"},
     "vm_config": {"type": "string"},
