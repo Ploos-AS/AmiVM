@@ -98,7 +98,14 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_executable(amivm_powerload_baseline bench/powerload_baseline.c)
+)add_executable(amivm_powerload_profile bench/powerload_profile.c)
+target_compile_options(amivm_powerload_profile PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
+add_test(NAME amivm_powerload_profile_cpu_integer
+    COMMAND amivm_powerload_profile
+            ${CMAKE_CURRENT_SOURCE_DIR}/bench/profiles/cpu.integer.reference.toml)
+
+add_executable(amivm_powerload_baseline bench/powerload_baseline.c)
 target_compile_options(amivm_powerload_baseline PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
 add_executable(amivm_validate_powerload_result bench/validate_powerload_result.c)
