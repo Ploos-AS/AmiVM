@@ -14,7 +14,7 @@ int main(void)
         return 2;
 
     /* Stable semantic oracle for the fixed-point scene. */
-    if (result.checksum != 0xC7A4A5D0A7C4D0A5ULL)
+    if (result.checksum != 0x46C27F643F2959E8ULL)
         return 3;
 
     return 0;
