@@ -7,7 +7,7 @@
     {"id": "cpu.memory", "status": "planned"},
     {"id": "amiga.scene.copper", "status": "planned"},
     {"id": "amiga.scene.blitter", "status": "planned"},
-    {"id": "render.raytrace", "status": "planned"},
+    {"id": "render.raytrace", "status": "implemented", "runner": "amivm_powerload_raytrace_68k"},
     {"id": "scene.generation", "status": "planned"},
     {"id": "build.amiga", "status": "planned"},
     {"id": "build.m68k-linux", "status": "planned"},
