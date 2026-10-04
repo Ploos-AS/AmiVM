@@ -1,0 +1,6 @@
+# AmiVM MAX performance target
+
+schema_version = 1
+profile_kind = "performance-target"
+target = "MAX"
+correctness_reference = "reference"
