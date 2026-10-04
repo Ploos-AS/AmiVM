@@ -23,7 +23,7 @@ static const uint8_t program[] = {
     /* Skip low half of the 32-bit field. */
     0x4A,0x18,                            /* TST.W (A0)+ */
 
-    0x51,0xC9,0xFF,0xF2,                 /* DBRA D1, field loop */
+    0x51,0xC9,0xFF,0xF4,                 /* DBRA D1, field loop */
     0x4E,0x75                             /* RTS */
 };
 
