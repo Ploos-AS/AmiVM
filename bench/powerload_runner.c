@@ -52,6 +52,7 @@ static int run_cpu_integer(const struct amivm_powerload_context *context)
     clock_t begin;
     clock_t end;
     double seconds;
+    const uint64_t expected_instructions = 131074u;
 
     if (!context)
         return 2;
