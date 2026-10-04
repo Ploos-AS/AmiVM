@@ -4325,6 +4325,40 @@ static int test_68040_tt_write_protect_fast_path(void)
 }
 
 
+static int test_68040_tt_supervisor_fault_fast_path(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+    uint32_t physical = 0u;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.enabled = true;
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.base = 0x18000000u;
+    vm.mmu.tt0_state.mask = 0xffff0000u;
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_ONLY;
+    vm.mmu.tt0_state.write_protect = false;
+
+    vm.m68k.sr = 0u;
+    CHECK(amivm_mmu_translate(&vm, 0x18001234u, false, &physical) != 0);
+    CHECK(vm.mmu.last_fault == AMIVM_MMU_FAULT_SUPERVISOR);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    vm.m68k.sr = 0x2000u;
+    CHECK(amivm_mmu_translate(&vm, 0x18001234u, false, &physical) == 0);
+    CHECK(physical == 0x18001234u);
+    CHECK(vm.mmu.translation_cache_valid_mask == 0u);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4401,6 +4435,7 @@ int main(void)
         test_68040_tt_translation_result() != 0 ||
         test_68040_tt_bypasses_tlb() != 0 ||
         test_68040_tt_write_protect_fast_path() != 0 ||
+        test_68040_tt_supervisor_fault_fast_path() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
