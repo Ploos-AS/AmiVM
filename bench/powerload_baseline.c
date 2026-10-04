@@ -74,6 +74,14 @@ int main(int argc, char **argv)
         return 2;
     }
 
+    if (strcmp(reproducible, "true") != 0 ||
+        strtoul(instructions, NULL, 10) == 0u ||
+        strtod(throughput, NULL) <= 0.0) {
+        fprintf(stderr, "result is not eligible for a production baseline\\n");
+        free(json);
+        return 1;
+    }
+
     out = fopen(argv[2], "w");
     if (!out) {
         free(json);
