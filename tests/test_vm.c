@@ -4068,6 +4068,48 @@ static int test_68040_tlb_qualification_suite(void)
 }
 
 
+static int test_68040_tt_register_state(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+
+    amivm_config_init(&config);
+    config.ram_size = 4u * 1024u * 1024u;
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_cpu_profile_mmu_cache_qualified(config.cpu_profile));
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    CHECK(vm.mmu.tt0 == 0u);
+    CHECK(vm.mmu.tt1 == 0u);
+    CHECK(!vm.mmu.tt0_state.enabled);
+    CHECK(!vm.mmu.tt1_state.enabled);
+    CHECK(vm.mmu.tt0_state.supervisor == AMIVM_MMU_TT_SUPERVISOR_BOTH);
+    CHECK(vm.mmu.tt1_state.supervisor == AMIVM_MMU_TT_SUPERVISOR_BOTH);
+    CHECK(!vm.mmu.tt0_state.write_protect);
+    CHECK(!vm.mmu.tt1_state.write_protect);
+
+    /* State is deliberately separate from the qualified TLB cache. */
+    vm.mmu.tt0 = 0x12345678u;
+    vm.mmu.tt0_state.value = vm.mmu.tt0;
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_ONLY;
+    vm.mmu.tt0_state.write_protect = true;
+    vm.mmu.tt0_state.base = 0x12000000u;
+    vm.mmu.tt0_state.mask = 0x00ffffffu;
+
+    CHECK(vm.mmu.tt0_state.value == 0x12345678u);
+    CHECK(vm.mmu.tt0_state.enabled);
+    CHECK(vm.mmu.tt0_state.supervisor == AMIVM_MMU_TT_SUPERVISOR_ONLY);
+    CHECK(vm.mmu.tt0_state.write_protect);
+    CHECK(vm.mmu.tt0_state.base == 0x12000000u);
+    CHECK(vm.mmu.tt0_state.mask == 0x00ffffffu);
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
 static int test_config(void)
 {
     size_t bytes = 0;
@@ -4137,6 +4179,7 @@ int main(void)
         test_68040_tlb_refill_after_targeted_invalidation() != 0 ||
         test_68040_tlb_full_refill() != 0 ||
         test_68040_tlb_qualification_suite() != 0 ||
+        test_68040_tt_register_state() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
