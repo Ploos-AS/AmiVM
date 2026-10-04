@@ -4,6 +4,7 @@
   "mode": "FAST",
   "wall_clock_seconds": 0.0,
   "throughput": 1000000.0,
+  "instructions": 131074,
   "throughput_unit": "instructions_per_second",
   "vm_config": "reference-interpreter",
   "reproducible": true,
