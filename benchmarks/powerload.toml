@@ -1,0 +1,67 @@
+schema_version = 1
+
+[defaults]
+mode = "FAST"
+warmup_runs = 1
+measurement_runs = 5
+report = "json"
+
+[[workload]]
+id = "cpu.integer"
+category = "cpu"
+description = "Integer arithmetic and branch-heavy 68k workload"
+status = "planned"
+
+[[workload]]
+id = "cpu.floating"
+category = "cpu"
+description = "Floating-point workload"
+status = "planned"
+
+[[workload]]
+id = "cpu.memory"
+category = "cpu"
+description = "Memory throughput and latency workload"
+status = "planned"
+
+[[workload]]
+id = "amiga.scene.copper"
+category = "amiga-scene"
+description = "Copper and raster-oriented scene workload"
+status = "planned"
+
+[[workload]]
+id = "amiga.scene.blitter"
+category = "amiga-scene"
+description = "Blitter-heavy scene workload"
+status = "planned"
+
+[[workload]]
+id = "render.raytrace"
+category = "rendering"
+description = "68k raytracing workload"
+status = "planned"
+
+[[workload]]
+id = "scene.generation"
+category = "scene-generation"
+description = "Geometry and procedural scene generation workload"
+status = "planned"
+
+[[workload]]
+id = "build.amiga"
+category = "development"
+description = "Representative Amiga software build"
+status = "planned"
+
+[[workload]]
+id = "build.m68k-linux"
+category = "development"
+description = "Native m68k Linux software build"
+status = "planned"
+
+[[workload]]
+id = "build.m68k-netbsd"
+category = "development"
+description = "Native m68k NetBSD software build"
+status = "planned"
