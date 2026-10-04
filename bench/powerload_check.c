@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     char base_mode[64], result_mode[64];
     char base_throughput[64], result_throughput[64];
     char base_config[128], result_config[128];
+    char base_instructions[64], result_instructions[64];
     double allowed = 0.05;
     double base;
     double current;
@@ -95,7 +96,9 @@ int main(int argc, char **argv)
         !field(baseline, "throughput", base_throughput, sizeof(base_throughput)) ||
         !field(result, "throughput", result_throughput, sizeof(result_throughput)) ||
         !field(baseline, "vm_config", base_config, sizeof(base_config)) ||
-        !field(result, "vm_config", result_config, sizeof(result_config))) {
+        !field(result, "vm_config", result_config, sizeof(result_config)) ||
+        !field(baseline, "instructions", base_instructions, sizeof(base_instructions)) ||
+        !field(result, "instructions", result_instructions, sizeof(result_instructions))) {
         fprintf(stderr, "missing required Powerload fields\n");
         free(baseline);
         free(result);
@@ -109,6 +112,14 @@ int main(int argc, char **argv)
         free(baseline);
         free(result);
         return 2;
+    }
+
+    if (strcmp(base_instructions, result_instructions) != 0) {
+        fprintf(stderr, "instruction-count mismatch: baseline=%s result=%s\\n",
+                base_instructions, result_instructions);
+        free(baseline);
+        free(result);
+        return 1;
     }
 
     base = strtod(base_throughput, NULL);
