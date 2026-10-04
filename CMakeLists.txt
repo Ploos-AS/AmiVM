@@ -137,6 +137,10 @@ set_tests_properties(amivm_powerload_runner_result_validate PROPERTIES
     DEPENDS amivm_powerload_runner_result
 )
 
+add_executable(amivm_powerload_raytrace_68k bench/bench_powerload_raytrace_68k.c)
+target_link_libraries(amivm_powerload_raytrace_68k PRIVATE amivm_raytrace_68k amivm_powerload amivm_core)
+target_compile_options(amivm_powerload_raytrace_68k PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
 add_library(amivm_raytrace_68k STATIC bench/raytrace_68k.c)
 target_include_directories(amivm_raytrace_68k PUBLIC bench)
 target_link_libraries(amivm_raytrace_68k PRIVATE amivm_core)
