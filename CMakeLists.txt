@@ -116,6 +116,15 @@ add_test(NAME amivm_powerload_runner_invalid_mode
     COMMAND amivm_powerload_runner --workload cpu.integer --mode INVALID)
 set_tests_properties(amivm_powerload_runner_invalid_mode PROPERTIES WILL_FAIL TRUE)
 
+add_test(NAME amivm_powerload_runner_result
+    COMMAND amivm_powerload_runner
+            --workload cpu.integer
+            --mode FAST
+            --output ${CMAKE_CURRENT_BINARY_DIR}/cpu.integer.runner.json)
+set_tests_properties(amivm_powerload_runner_result PROPERTIES
+    PASS_REGULAR_EXPRESSION ""
+)
+
 add_test(NAME amivm_powerload_runner_cpu_integer
     COMMAND amivm_powerload_runner
             --workload cpu.integer
