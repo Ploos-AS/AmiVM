@@ -4125,20 +4125,51 @@ static int test_68040_tt_address_match(void)
     vm.mmu.tt0_state.base = 0x12000000u;
     vm.mmu.tt0_state.mask = 0xffff0000u;
 
-    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12000000u));
-    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12001234u));
-    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x1200ffffu));
-    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12010000u));
-    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x11001234u));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12000000u, true));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12001234u, true));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x1200ffffu, true));
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12010000u, true));
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x11001234u, true));
 
     vm.mmu.tt0_state.enabled = false;
-    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12001234u));
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12001234u, true));
 
     vm.mmu.tt0_state.enabled = true;
     vm.mmu.tt0_state.base = 0x12345000u;
     vm.mmu.tt0_state.mask = 0xfffff000u;
-    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12345abcu));
-    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12346000u));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12345abcu, true));
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x12346000u, true));
+
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+
+static int test_68040_tt_privilege_match(void)
+{
+    struct amivm_config config;
+    struct amivm_vm vm;
+
+    amivm_config_init(&config);
+    config.cpu_profile = amivm_cpu_profile_by_name("68040");
+    CHECK(config.cpu_profile != NULL);
+    CHECK(amivm_vm_init(&vm, &config) == 0);
+
+    vm.mmu.tt0_state.enabled = true;
+    vm.mmu.tt0_state.base = 0x13000000u;
+    vm.mmu.tt0_state.mask = 0xffff0000u;
+
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_ONLY;
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, true));
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, false));
+
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_USER_ONLY;
+    CHECK(!amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, true));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, false));
+
+    vm.mmu.tt0_state.supervisor = AMIVM_MMU_TT_SUPERVISOR_BOTH;
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, true));
+    CHECK(amivm_mmu_tt_matches(&vm.mmu.tt0_state, 0x13001234u, false));
 
     amivm_vm_destroy(&vm);
     return 0;
@@ -4216,6 +4247,7 @@ int main(void)
         test_68040_tlb_qualification_suite() != 0 ||
         test_68040_tt_register_state() != 0 ||
         test_68040_tt_address_match() != 0 ||
+        test_68040_tt_privilege_match() != 0 ||
         test_mmu_translation_cache_reconfigure() != 0 ||
         test_profile_cache_reconfigure_invariant() != 0 ||
         test_cpu_mmu_cache_policy() != 0 ||
