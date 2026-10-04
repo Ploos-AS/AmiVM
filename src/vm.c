@@ -1384,6 +1384,14 @@ static void amivm_mmu_apply_cache_policy(struct amivm_vm *vm)
         amivm_mmu_translation_cache_reconfigure(vm, 0u, 0u);
 }
 
+static bool amivm_mmu_tt_matches(const struct amivm_mmu_tt_state *tt,
+                                         uint32_t logical)
+{
+    if (!tt || !tt->enabled)
+        return false;
+    return (logical & tt->mask) == (tt->base & tt->mask);
+}
+
 static uint8_t amivm_mmu_cache_page_shift(const struct amivm_vm *vm)
 {
     if (!vm || vm->mmu.translation_cache_page_shift == 0u)
