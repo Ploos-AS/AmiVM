@@ -98,7 +98,10 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_executable(amivm_powerload_profile bench/powerload_profile.c)
+)add_executable(amivm_max_score bench/max_score.c)
+target_compile_options(amivm_max_score PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
+add_executable(amivm_powerload_profile bench/powerload_profile.c)
 target_compile_options(amivm_powerload_profile PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
 add_test(NAME amivm_powerload_profile_cpu_integer
