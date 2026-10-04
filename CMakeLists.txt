@@ -20,6 +20,9 @@ endforeach()
 add_executable(amivm_exec_bench bench/bench_exec.c)
 target_link_libraries(amivm_exec_bench PRIVATE amivm_core)
 target_compile_options(amivm_exec_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_executable(amivm_powerload_cpu_integer bench/bench_powerload_cpu_integer.c)
+target_link_libraries(amivm_powerload_cpu_integer PRIVATE amivm_core)
+target_compile_options(amivm_powerload_cpu_integer PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 enable_testing()
 add_test(NAME amivm_version COMMAND amivm --version)
 add_test(NAME amivm_machine_dump COMMAND amivm --dump-machine)
@@ -28,6 +31,7 @@ foreach(test_name IN LISTS AMIVM_TESTS)
  add_test(NAME amivm_${test_name} COMMAND amivm_${test_name}_tests)
 endforeach()
 add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
+add_test(NAME amivm_powerload_cpu_integer_smoke COMMAND amivm_powerload_cpu_integer)
 
 # M2 qualification gate: keep the architectural exit-contract tests grouped
 # under one CTest label so CI can prove the CPU execution foundation
