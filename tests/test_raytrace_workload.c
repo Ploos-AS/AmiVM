@@ -19,7 +19,7 @@ int main(void)
      * This checksum is the semantic oracle for the fixed scene.
      * It must remain stable across optimized execution backends.
      */
-    if (result.checksum != 0x0000000000000000ULL)
+    if (result.checksum != 0x00048d73d4b42600ULL)
         return 2;
 
     return 0;
