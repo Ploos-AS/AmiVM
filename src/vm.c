@@ -1585,6 +1585,23 @@ int amivm_mmu_translate(struct amivm_vm *vm, uint32_t logical,
     vm->mmu_fault_status = (write ? 2u : 0u) |
                             (vm->mmu.mmu_supervisor ? 1u : 0u);
     const uint8_t shift = amivm_mmu_cache_page_shift(vm);
+    struct amivm_mmu_tt_result tt_result;
+
+    /*
+     * Transparent translation is deliberately ahead of the TLB/cache path:
+     * a TT hit bypasses cached/page-table translation and does not populate
+     * translation-cache state.
+     */
+    if (vm->mmu.enabled &&
+        (amivm_mmu_tt_translate(&vm->mmu.tt0_state, logical, supervisor,
+                                write, &tt_result) ||
+         amivm_mmu_tt_translate(&vm->mmu.tt1_state, logical, supervisor,
+                                write, &tt_result))) {
+        *physical = tt_result.physical;
+        vm->mmu.last_physical = *physical;
+        vm->mmu.last_translation_valid = true;
+        return 0;
+    }
 
     if (vm->mmu.enabled &&
         amivm_mmu_translation_cache_lookup(vm, logical, write, physical))
