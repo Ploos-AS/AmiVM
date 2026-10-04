@@ -40,9 +40,13 @@ set_tests_properties(amivm_powerload_regression_pass PROPERTIES
 
 add_test(
     NAME amivm_powerload_regression_fail
-    COMMAND ${CMAKE_COMMAND} -E env
-            AMIVM_EXPECT_POWERLOAD_FAILURE=1
-            ${CMAKE_COMMAND} -E true
+    COMMAND amivm_powerload_check
+            ${CMAKE_CURRENT_SOURCE_DIR}/bench/baselines/cpu.integer.json
+            ${CMAKE_CURRENT_SOURCE_DIR}/bench/baselines/cpu.integer.regression-fail.json
+            0.05
+)
+set_tests_properties(amivm_powerload_regression_fail PROPERTIES
+    WILL_FAIL TRUE
 )
 
 add_test(NAME amivm_version COMMAND amivm --version)
