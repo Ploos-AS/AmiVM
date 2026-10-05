@@ -23,19 +23,27 @@ int main(void)
     };
     uint32_t result = 0u;
     FILE *disk;
+    FILE *rom_file;
 
     amivm_config_init(&config);
     config.ram_size = 10u * 1024u * 1024u;
     if (amivm_vm_init(&vm, &config) != 0)
         return 1;
 
+    rom_file = fopen("amivm-guest-test.rom", "wb");
+    if (!rom_file) { amivm_vm_destroy(&vm); return 2; }
+    fwrite(rom, 1, sizeof(rom), rom_file);
+    fclose(rom_file);
+    h.rom_path = "amivm-guest-test.rom";
+
     disk = fopen("amivm-guest-test.img", "wb");
-    if (!disk) { amivm_vm_destroy(&vm); return 2; }
+    if (!disk) { remove("amivm-guest-test.rom"); amivm_vm_destroy(&vm); return 2; }
     fputc(0x41, disk);
     fclose(disk);
     h.disk_path = "amivm-guest-test.img";
     if (amivm_guest_harness_run_external(&vm, &h, &result) != 0) {
         remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
         amivm_vm_destroy(&vm);
         return 2;
     }
@@ -50,16 +58,19 @@ int main(void)
         (AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION)) {
         amivm_vm_destroy(&vm);
         remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
         return 4;
     }
 
     if (!vm.m68k.stopped) {
         amivm_vm_destroy(&vm);
         remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
         return 5;
     }
 
     remove("amivm-guest-test.img");
+    remove("amivm-guest-test.rom");
     amivm_vm_destroy(&vm);
     return 0;
 }
