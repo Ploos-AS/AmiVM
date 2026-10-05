@@ -189,6 +189,11 @@ target_include_directories(amivm_boot PUBLIC src)
 target_link_libraries(amivm_boot PRIVATE amivm_core amivm_rom_boot)
 target_compile_options(amivm_boot PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
+add_executable(amivm_memory_map_tests tests/test_memory_map.c)
+target_link_libraries(amivm_memory_map_tests PRIVATE amivm_core)
+target_compile_options(amivm_memory_map_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_memory_map_boundaries COMMAND amivm_memory_map_tests)
+
 add_executable(amivm_boot_execution_tests tests/test_boot_execution.c)
 target_link_libraries(amivm_boot_execution_tests PRIVATE amivm_boot amivm_rom_boot amivm_core)
 target_compile_options(amivm_boot_execution_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
