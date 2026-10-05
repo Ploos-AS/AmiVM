@@ -11,10 +11,13 @@ int main(void)
         "external/aros-m68k/system.hdf",
         30000u,
         100000000u,
-        AMIVM_QUAL_RESET | AMIVM_QUAL_OS_DETECTED |
-        AMIVM_QUAL_FILESYSTEM | AMIVM_QUAL_SHELL |
-        AMIVM_QUAL_INTERRUPTS | AMIVM_QUAL_DEVICE_IO |
-        AMIVM_QUAL_WORKLOAD
+        AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION
+    };
+    static const unsigned char rom[] = {
+        0x00,0x00,0x10,0x00,
+        0x00,0xF0,0x00,0x08,
+        0x4E,0x71,
+        0x4E,0x72,0x27,0x00
     };
     uint32_t result = 0u;
 
@@ -23,14 +26,20 @@ int main(void)
     if (amivm_vm_init(&vm, &config) != 0)
         return 1;
 
-    if (amivm_guest_harness_run(&vm, &h, &result) != 0) {
+    if (amivm_guest_harness_run_image(&vm, &h, rom, sizeof(rom), &result) != 0) {
         amivm_vm_destroy(&vm);
         return 2;
     }
 
-    if ((result & AMIVM_QUAL_RESET) == 0u) {
+    if ((result & (AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION)) !=
+        (AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION)) {
         amivm_vm_destroy(&vm);
         return 3;
+    }
+
+    if (!vm.m68k.stopped) {
+        amivm_vm_destroy(&vm);
+        return 4;
     }
 
     amivm_vm_destroy(&vm);
