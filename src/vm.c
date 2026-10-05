@@ -2228,6 +2228,36 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
     return 0;
 }
 
+void amivm_vm_serial_clear(struct amivm_vm *vm)
+{
+    if (!vm) return;
+    vm->serial_log_len = 0u;
+    memset(vm->serial_log, 0, sizeof vm->serial_log);
+}
+
+size_t amivm_vm_serial_read(const struct amivm_vm *vm, char *buffer, size_t size)
+{
+    size_t n;
+    if (!vm || !buffer || size == 0u) return 0u;
+    n = vm->serial_log_len < size ? vm->serial_log_len : size;
+    memcpy(buffer, vm->serial_log, n);
+    return n;
+}
+
+static void amivm_vm_serial_write(struct amivm_vm *vm, uint8_t value)
+{
+    if (!vm) return;
+    if (vm->serial_log_len < AMIVM_SERIAL_LOG_SIZE) {
+        vm->serial_log[vm->serial_log_len++] = value;
+    } else {
+        memmove(vm->serial_log, vm->serial_log + 1u,
+                AMIVM_SERIAL_LOG_SIZE - 1u);
+        vm->serial_log[AMIVM_SERIAL_LOG_SIZE - 1u] = value;
+    }
+    fputc((int)value, stdout);
+    fflush(stdout);
+}
+
 void amivm_vm_destroy(struct amivm_vm *vm)
 {
     if (vm == NULL) {
@@ -2458,8 +2488,7 @@ bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value)
     }
     if (amivm_device_for_address(vm, addr) &&
         addr == AMIVM_VMSERIAL_BASE) {
-        fputc((int)value, stdout);
-        fflush(stdout);
+        amivm_vm_serial_write(vm, value);
         return true;
     }
     if (amivm_device_for_address(vm, addr) &&
