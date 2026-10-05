@@ -1,0 +1,19 @@
+{
+  "id": "amigaos.compiler-smoke",
+  "platform": "amigaos",
+  "kind": "compiler",
+  "guest": {
+    "artifact": "guest/artifacts/amigaos/compiler-smoke.adf",
+    "command": "execute compiler-smoke",
+    "input": "guest/inputs/compiler-smoke"
+  },
+  "measurement": {
+    "metric": "wall-clock",
+    "unit": "seconds",
+    "iterations": 3
+  },
+  "correctness": {
+    "type": "sha256",
+    "expected": "TBD"
+  }
+}
