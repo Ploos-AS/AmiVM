@@ -1,0 +1,19 @@
+{
+  "id": "m68k-linux.compiler-smoke",
+  "platform": "m68k-linux",
+  "kind": "compiler",
+  "guest": {
+    "artifact": "guest/artifacts/m68k-linux/compiler-smoke.tar",
+    "command": "./run-build.sh",
+    "input": "guest/inputs/compiler-smoke"
+  },
+  "measurement": {
+    "metric": "wall-clock",
+    "unit": "seconds",
+    "iterations": 3
+  },
+  "correctness": {
+    "type": "sha256",
+    "expected": "TBD"
+  }
+}
