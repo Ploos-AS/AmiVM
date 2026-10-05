@@ -1,0 +1,18 @@
+{
+  "profile": "aros-m68k",
+  "rom": "external/aros-m68k/rom.bin",
+  "disk": "external/aros-m68k/system.hdf",
+  "boot": {
+    "timeout_ms": 30000,
+    "max_instructions": 100000000
+  },
+  "qualification": [
+    "reset",
+    "os-detected",
+    "filesystem",
+    "shell",
+    "interrupts",
+    "device-io",
+    "workload"
+  ]
+}
