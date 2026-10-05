@@ -1,4 +1,5 @@
 #include "raytrace_68k.h"
+#include "raytrace_68k_result.h"
 #include "raytrace_68k_program.h"
 #include "raytrace_scene_blob.h"
 
