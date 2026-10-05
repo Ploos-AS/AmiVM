@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AmiVM Real Workload",
+  "type": "object",
+  "required": ["id","platform","kind","guest","measurement","correctness"],
+  "properties": {
+    "id": {"type":"string","pattern":"^[a-z0-9][a-z0-9._-]*$"},
+    "platform": {"enum":["amigaos","m68k-linux","m68k-netbsd"]},
+    "kind": {"enum":["compiler","raytracing","scene-generation","rendering","compute","compression","image","audio","userspace","ports-build"]},
+    "guest": {
+      "type":"object",
+      "required":["artifact","command"],
+      "properties":{
+        "artifact":{"type":"string"},
+        "command":{"type":"string"},
+        "input":{"type":"string"}
+      },
+      "additionalProperties":false
+    },
+    "measurement": {
+      "type":"object",
+      "required":["metric"],
+      "properties":{
+        "metric":{"enum":["wall-clock","throughput","completed-work"]},
+        "unit":{"type":"string"},
+        "iterations":{"type":"integer","minimum":1}
+      },
+      "additionalProperties":false
+    },
+    "correctness": {
+      "type":"object",
+      "required":["type","expected"],
+      "properties":{
+        "type":{"enum":["sha256","exit-code","text","binary","json"]},
+        "expected":{"type":"string"}
+      },
+      "additionalProperties":false
+    }
+  },
+  "additionalProperties":false
+}
