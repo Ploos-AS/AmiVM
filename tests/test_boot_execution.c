@@ -3,11 +3,10 @@
 #include "vm.h"
 
 static const unsigned char rom[] = {
-    0x10,0x00,0x10,0x00, /* SP = $00100000 */
-    0x00,0x00,0x01,0x00, /* PC = $00000100 */
-    0x21,0xFC,0x00,0x00,0x12,0x34,0x56,0x78, /* MOVE.L #$12345678,$00100010 */
-    0x00,0x10,0x00,0x10,
-    0x4E,0x75              /* RTS */
+    0x10,0x00,0x00,0x00,
+    0x00,0xF0,0x00,0x08,
+    0x4E,0x71,
+    0x4E,0x75
 };
 
 int main(void)
@@ -27,15 +26,15 @@ int main(void)
     if (amivm_boot_prepare(&vm, &boot) != 0)
         goto fail;
 
-    /* The smoke image is copied to the VM ROM address space at $00000000. */
-    if (amivm_boot_step(&vm, 2u) != 0)
+    if (vm.m68k.pc != AMIVM_ROM_BASE + 8u ||
+        vm.m68k.a[7] != AMIVM_RAM_BASE)
         goto fail;
 
-    /* The test is intentionally about execution reaching the instruction stream. */
-    if (vm.m68k.pc == 0x00000100u) {
-        amivm_vm_destroy(&vm);
-        return 2;
-    }
+    if (amivm_boot_step(&vm, 1u) != 0)
+        goto fail;
+
+    if (vm.m68k.pc != AMIVM_ROM_BASE + 10u)
+        goto fail;
 
     amivm_vm_destroy(&vm);
     return 0;
