@@ -24,6 +24,7 @@
 #define AMIVM_MAX_ADF_SIZE (1760u * 1024u)
 
 #define AMIVM_MAX_IRQ_LINES 8u
+#define AMIVM_SERIAL_LOG_SIZE 4096u
 
 struct amivm_irq_controller {
     uint32_t pending;
@@ -383,6 +384,8 @@ struct amivm_vm {
     size_t device_count;
     uint64_t cpu_cycles;
     uint64_t chipset_cycles;
+    uint8_t serial_log[AMIVM_SERIAL_LOG_SIZE];
+    size_t serial_log_len;
     uint32_t last_instruction_cycles;
     struct amivm_cpu_backend cpu_backend;
     struct amivm_m68k_registers m68k;
@@ -502,6 +505,8 @@ bool amivm_parse_size_mib(const char *text, size_t *bytes_out);
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config);
 void amivm_vm_destroy(struct amivm_vm *vm);
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path);
+void amivm_vm_serial_clear(struct amivm_vm *vm);
+size_t amivm_vm_serial_read(const struct amivm_vm *vm, char *buffer, size_t size);
 int amivm_vm_attach_hard_drive(struct amivm_vm *vm, unsigned index,
                                const char *path);
 int amivm_media_read(const struct amivm_media *media, size_t offset,
