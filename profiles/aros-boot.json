@@ -1,0 +1,30 @@
+{
+  "profile": "aros-m68k",
+  "rom": {
+    "required": true,
+    "source": "external",
+    "path": "external/aros-m68k/rom.bin"
+  },
+  "guest": {
+    "image": "external/aros-m68k/system.img",
+    "optional": true
+  },
+  "qualification": {
+    "boot": {
+      "timeout_ms": 30000,
+      "required": true
+    },
+    "os_detection": {
+      "required": true,
+      "markers": ["AROS", "Amiga"]
+    },
+    "shell": {
+      "required": true,
+      "command": "version"
+    },
+    "filesystem": {
+      "required": true,
+      "command": "list"
+    }
+  }
+}
