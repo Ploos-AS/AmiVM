@@ -21,12 +21,18 @@ enum {
     AMIVM_QUAL_SHELL       = 1u << 3,
     AMIVM_QUAL_INTERRUPTS  = 1u << 4,
     AMIVM_QUAL_DEVICE_IO   = 1u << 5,
-    AMIVM_QUAL_WORKLOAD    = 1u << 6
+    AMIVM_QUAL_WORKLOAD    = 1u << 6,
+    AMIVM_QUAL_EXECUTION   = 1u << 7
 };
 
 int amivm_guest_harness_validate(const struct amivm_guest_harness *h);
 int amivm_guest_harness_run(struct amivm_vm *vm,
                             const struct amivm_guest_harness *h,
                             uint32_t *result_mask);
+int amivm_guest_harness_run_image(struct amivm_vm *vm,
+                                  const struct amivm_guest_harness *h,
+                                  const uint8_t *image,
+                                  size_t image_size,
+                                  uint32_t *result_mask);
 
 #endif
