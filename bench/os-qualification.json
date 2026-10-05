@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "qualification": "OS-first",
+  "policy": "external-guest-assets",
+  "first_target": {
+    "os": "AROS",
+    "rom_source": "aros",
+    "profile": "amiga-68k"
+  },
+  "later_targets": [
+    {"os": "AmigaOS", "rom_source": "external"},
+    {"os": "m68k-linux", "rom_source": "external"},
+    {"os": "m68k-netbsd", "rom_source": "external"}
+  ],
+  "repository_policy": {
+    "kickstart_in_git": false,
+    "amigaos_in_git": false,
+    "guest_os_images_in_git": false
+  },
+  "qualification": {
+    "boot": true,
+    "cpu": true,
+    "memory": true,
+    "devices": true,
+    "interrupts": true,
+    "filesystem": true,
+    "shell": true,
+    "workloads": true
+  }
+}
