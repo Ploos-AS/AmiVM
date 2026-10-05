@@ -502,6 +502,8 @@ bool amivm_parse_size_mib(const char *text, size_t *bytes_out);
 int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config);
 void amivm_vm_destroy(struct amivm_vm *vm);
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path);
+int amivm_vm_attach_hard_drive(struct amivm_vm *vm, unsigned index,
+                               const char *path);
 int amivm_media_read(const struct amivm_media *media, size_t offset,
                      void *buffer, size_t size);
 int amivm_media_seek(struct amivm_media *media, unsigned track, unsigned head);
