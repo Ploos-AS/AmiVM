@@ -174,6 +174,16 @@ target_link_libraries(amivm_raytrace_fixedpoint_tests PRIVATE amivm_raytrace_fix
 target_compile_options(amivm_raytrace_fixedpoint_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_raytrace_fixedpoint_correctness COMMAND amivm_raytrace_fixedpoint_tests)
 
+add_library(amivm_boot STATIC src/boot.c)
+target_include_directories(amivm_boot PUBLIC src)
+target_link_libraries(amivm_boot PRIVATE amivm_core)
+target_compile_options(amivm_boot PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
+add_executable(amivm_boot_tests tests/test_boot.c)
+target_link_libraries(amivm_boot_tests PRIVATE amivm_boot amivm_core)
+target_compile_options(amivm_boot_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_boot_lifecycle COMMAND amivm_boot_tests)
+
 add_library(amivm_guest STATIC src/guest.c)
 target_include_directories(amivm_guest PUBLIC src)
 target_compile_options(amivm_guest PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
