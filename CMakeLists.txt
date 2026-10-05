@@ -189,6 +189,11 @@ target_include_directories(amivm_boot PUBLIC src)
 target_link_libraries(amivm_boot PRIVATE amivm_core amivm_rom_boot)
 target_compile_options(amivm_boot PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
+add_executable(amivm_aga_execution_tests tests/test_aga_execution.c)
+target_link_libraries(amivm_aga_execution_tests PRIVATE amivm_boot amivm_rom_boot amivm_core)
+target_compile_options(amivm_aga_execution_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_aga_execution COMMAND amivm_aga_execution_tests)
+
 add_executable(amivm_mmio_execution_tests tests/test_mmio_execution.c)
 target_link_libraries(amivm_mmio_execution_tests PRIVATE amivm_boot amivm_rom_boot amivm_core)
 target_compile_options(amivm_mmio_execution_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
