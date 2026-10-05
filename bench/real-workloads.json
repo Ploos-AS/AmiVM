@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "priority": "MAX",
+  "execution_target": "AmiVM",
+  "policy": "measure_real_guest_software_first",
+  "targets": {
+    "amigaos": {
+      "priority": 1,
+      "workloads": [
+        "compiler-build",
+        "raytracing",
+        "scene-generation",
+        "software-rendering",
+        "image-processing",
+        "audio-processing",
+        "compression"
+      ]
+    },
+    "m68k-linux": {
+      "priority": 2,
+      "workloads": [
+        "native-compilation",
+        "userspace-build",
+        "compute",
+        "raytracing",
+        "compression"
+      ]
+    },
+    "m68k-netbsd": {
+      "priority": 3,
+      "workloads": [
+        "native-compilation",
+        "ports-build",
+        "compute",
+        "compression",
+        "userspace"
+      ]
+    }
+  },
+  "measurement": {
+    "guest_wall_clock": true,
+    "host_wall_clock": true,
+    "throughput": true,
+    "correctness_artifact": true,
+    "reproducible_when_possible": true
+  },
+  "microbenchmarks": {
+    "role": "execution-engine-regression",
+    "must_not_define_max": true
+  }
+}
