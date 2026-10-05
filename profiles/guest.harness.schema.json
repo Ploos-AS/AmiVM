@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AmiVM Guest Harness",
+  "type": "object",
+  "required": ["profile", "rom", "disk", "boot", "qualification"],
+  "properties": {
+    "profile": {"type": "string"},
+    "rom": {"type": "string"},
+    "disk": {"type": "string"},
+    "boot": {
+      "type": "object",
+      "required": ["timeout_ms"],
+      "properties": {
+        "timeout_ms": {"type": "integer", "minimum": 1},
+        "max_instructions": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "qualification": {
+      "type": "array",
+      "items": {
+        "enum": ["reset", "os-detected", "filesystem", "shell", "interrupts", "device-io", "workload"]
+      }
+    }
+  },
+  "additionalProperties": false
+}
