@@ -186,7 +186,7 @@ add_test(NAME amivm_rom_reset_vectors COMMAND amivm_rom_boot_tests)
 
 add_library(amivm_boot STATIC src/boot.c)
 target_include_directories(amivm_boot PUBLIC src)
-target_link_libraries(amivm_boot PRIVATE amivm_core)
+target_link_libraries(amivm_boot PRIVATE amivm_core amivm_rom_boot)
 target_compile_options(amivm_boot PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
 add_executable(amivm_boot_tests tests/test_boot.c)
