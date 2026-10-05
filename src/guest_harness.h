@@ -34,5 +34,8 @@ int amivm_guest_harness_run_image(struct amivm_vm *vm,
                                   const uint8_t *image,
                                   size_t image_size,
                                   uint32_t *result_mask);
+int amivm_guest_harness_run_external(struct amivm_vm *vm,
+                                     const struct amivm_guest_harness *h,
+                                     uint32_t *result_mask);
 
 #endif
