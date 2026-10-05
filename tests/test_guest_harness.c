@@ -16,13 +16,16 @@ int main(void)
         AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION
     };
     static const unsigned char rom[] = {
-        0x00,0x00,0x10,0x00,
-        0x00,0xF0,0x00,0x08,
-        0x4E,0x71,
+        0x00,0x10,0x00,0x00,
+        0x00,0xF0,0x01,0x00,
+        0x70,0x41,
+        0x13,0xC0,
+        0xFF,0x00,0x00,0x00,
         0x4E,0x72,0x27,0x00
     };
     uint32_t result = 0u;
     FILE *disk;
+    char serial[8] = {0};
     FILE *rom_file;
 
     amivm_config_init(&config);
@@ -67,6 +70,22 @@ int main(void)
         remove("amivm-guest-test.img");
         remove("amivm-guest-test.rom");
         return 5;
+    }
+
+    if (amivm_vm_serial_read(&vm, serial, sizeof serial) != 1u ||
+        serial[0] != 'A') {
+        amivm_vm_destroy(&vm);
+        remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
+        return 6;
+    }
+
+    amivm_vm_serial_clear(&vm);
+    if (amivm_vm_serial_read(&vm, serial, sizeof serial) != 0u) {
+        amivm_vm_destroy(&vm);
+        remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
+        return 7;
     }
 
     remove("amivm-guest-test.img");
