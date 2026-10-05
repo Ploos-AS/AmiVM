@@ -1,0 +1,45 @@
+{
+  "id": "aros-m68k",
+  "qualification": "first-os",
+  "os": "AROS",
+  "architecture": "m68k",
+  "machine": "amiga",
+  "cpu": {
+    "family": "68000",
+    "model": "68020",
+    "fpu": false,
+    "max_performance": true
+  },
+  "memory": {
+    "chip_ram": "2MiB",
+    "fast_ram": "8MiB"
+  },
+  "devices": [
+    "cia",
+    "custom-chips",
+    "aga",
+    "serial",
+    "storage"
+  ],
+  "rom": {
+    "source": "external",
+    "kind": "aros",
+    "path": "external/aros-m68k/rom.bin"
+  },
+  "boot": {
+    "reset": "rom-vector",
+    "boot_timeout_ms": 30000
+  },
+  "execution": {
+    "speed_policy": "max",
+    "throttle": false,
+    "deterministic_mode": "optional"
+  },
+  "qualification": {
+    "boot": true,
+    "shell": true,
+    "filesystem": true,
+    "interrupts": true,
+    "device_io": true
+  }
+}
