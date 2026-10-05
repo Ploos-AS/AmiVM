@@ -174,6 +174,15 @@ target_link_libraries(amivm_raytrace_fixedpoint_tests PRIVATE amivm_raytrace_fix
 target_compile_options(amivm_raytrace_fixedpoint_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_raytrace_fixedpoint_correctness COMMAND amivm_raytrace_fixedpoint_tests)
 
+add_library(amivm_workload_runner STATIC bench/workload_runner.c)
+target_include_directories(amivm_workload_runner PUBLIC bench)
+target_compile_options(amivm_workload_runner PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+
+add_executable(amivm_workload_runner_tests tests/test_workload_runner.c)
+target_link_libraries(amivm_workload_runner_tests PRIVATE amivm_workload_runner)
+target_compile_options(amivm_workload_runner_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_workload_descriptor_validation COMMAND amivm_workload_runner_tests)
+
 add_library(amivm_raytrace_workload STATIC
     bench/raytrace_scene.c
     bench/raytrace_kernel.c
