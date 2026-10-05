@@ -1,16 +1,19 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "target": "MAX",
+  "target_kind": "amiga-vm-emulator",
+  "workload_policy": "real-world-workloads-first",
+  "microbenchmarks_are_supporting_tests": true,
   "workloads": [
-    {"id": "cpu.integer", "status": "implemented"},
-    {"id": "cpu.floating", "status": "planned"},
-    {"id": "cpu.memory", "status": "planned"},
-    {"id": "amiga.scene.copper", "status": "planned"},
-    {"id": "amiga.scene.blitter", "status": "planned"},
-    {"id": "render.raytrace", "status": "implemented", "runner": "amivm_powerload_raytrace_68k"},
-    {"id": "scene.generation", "status": "planned"},
-    {"id": "build.amiga", "status": "planned"},
-    {"id": "build.m68k-linux", "status": "planned"},
-    {"id": "build.m68k-netbsd", "status": "planned"}
+    {"id": "cpu.integer", "status": "implemented", "kind": "microbenchmark"},
+    {"id": "cpu.floating", "status": "planned", "kind": "microbenchmark"},
+    {"id": "cpu.memory", "status": "planned", "kind": "microbenchmark"},
+    {"id": "amiga.scene.copper", "status": "planned", "kind": "microbenchmark"},
+    {"id": "amiga.scene.blitter", "status": "planned", "kind": "microbenchmark"},
+    {"id": "render.raytrace", "status": "supporting", "kind": "microbenchmark"},
+    {"id": "scene.generation", "status": "planned", "kind": "real-workload"},
+    {"id": "build.amiga", "status": "planned", "kind": "real-workload"},
+    {"id": "build.m68k-linux", "status": "planned", "kind": "real-workload"},
+    {"id": "build.m68k-netbsd", "status": "planned", "kind": "real-workload"}
   ]
 }
