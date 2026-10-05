@@ -46,6 +46,8 @@ int main(void)
 
     if (amivm_rom_install(&vm, rom, sizeof(rom)) != 0)
         goto fail;
+    if (amivm_m68k_set_exception_vector_base(&vm, VECTOR_BASE) != 0)
+        goto fail;
 
     for (i = 0u; i < sizeof(handler); ++i)
         if (!amivm_write8(&vm, HANDLER + i, handler[i]))
