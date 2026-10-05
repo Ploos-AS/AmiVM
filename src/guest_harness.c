@@ -44,6 +44,36 @@ int amivm_guest_harness_run_image(struct amivm_vm *vm,
     return 0;
 }
 
+int amivm_guest_harness_run_external(struct amivm_vm *vm,
+                                     const struct amivm_guest_harness *h,
+                                     uint32_t *result_mask)
+{
+    uint64_t i;
+
+    if (!vm || !result_mask || amivm_guest_harness_validate(h) != 0)
+        return 1;
+
+    if (amivm_vm_load_rom(vm, h->rom_path) != 0)
+        return 1;
+
+    if (h->disk_path[0] != '\0' &&
+        amivm_vm_attach_hard_drive(vm, 0u, h->disk_path) != 0)
+        return 1;
+
+    if (amivm_rom_reset(vm) != 0)
+        return 1;
+
+    *result_mask = AMIVM_QUAL_RESET;
+    for (i = 0u; i < h->max_instructions; ++i) {
+        if (vm->m68k.stopped)
+            break;
+        if (amivm_vm_step(vm) != 0)
+            return 1;
+        *result_mask |= AMIVM_QUAL_EXECUTION;
+    }
+    return 0;
+}
+
 int amivm_guest_harness_run(struct amivm_vm *vm,
                             const struct amivm_guest_harness *h,
                             uint32_t *result_mask)
