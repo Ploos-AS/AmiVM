@@ -1,4 +1,5 @@
 #include "boot.h"
+#include "rom_boot.h"
 #include "vm.h"
 
 int amivm_boot_prepare(struct amivm_vm *vm,
@@ -11,6 +12,9 @@ int amivm_boot_prepare(struct amivm_vm *vm,
         config->kind != AMIVM_BOOT_GUEST_IMAGE)
         return 1;
 
+    if (config->kind == AMIVM_BOOT_AMIGA_ROM)
+        return amivm_rom_reset(vm);
+
     vm->m68k.a[7] = config->initial_sp;
     vm->m68k.pc = config->initial_pc;
     vm->m68k.sr = config->initial_sr;
@@ -20,7 +24,6 @@ int amivm_boot_prepare(struct amivm_vm *vm,
     vm->exception_halted = false;
     vm->exception_double_fault = false;
     vm->exception_depth = 0u;
-
     return 0;
 }
 
