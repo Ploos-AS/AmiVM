@@ -2243,6 +2243,17 @@ void amivm_vm_destroy(struct amivm_vm *vm)
     memset(vm, 0, sizeof(*vm));
 }
 
+int amivm_vm_attach_hard_drive(struct amivm_vm *vm, unsigned index,
+                               const char *path)
+{
+    if (!vm || index >= AMIVM_MAX_HARD_DRIVES || !path)
+        return -1;
+    free(vm->hard_drive[index].data);
+    free(vm->hard_drive[index].path);
+    memset(&vm->hard_drive[index], 0, sizeof vm->hard_drive[index]);
+    return probe_media(path, AMIVM_MEDIA_PATH, &vm->hard_drive[index]);
+}
+
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path)
 {
     FILE *fp;
