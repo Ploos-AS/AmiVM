@@ -18,5 +18,6 @@ else
     echo "image:   <not supplied>"
 fi
 
-echo "status: external guest assets are present; execution harness integration pending"
+echo "status: external guest assets are present; guest-image execution harness is available"
+echo "next: run the AmiVM guest harness with the supplied ROM/image and qualify guest-observed boot markers"
 exit 0
