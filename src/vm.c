@@ -1907,6 +1907,7 @@ int amivm_vm_step(struct amivm_vm *vm)
 
     /* Execute exactly one architectural instruction first. */
     cycles = vm->cpu_backend.step(vm, vm->cpu_backend.state);
+    amivm_vm_record_guest_state(vm);
     if (cycles == 0u) return -1;
     amivm_vm_account_instruction(vm, cycles);
 
@@ -2226,6 +2227,18 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     return 0;
+}
+
+void amivm_vm_record_guest_state(struct amivm_vm *vm)
+{
+    if (!vm)
+        return;
+    vm->last_guest_pc = vm->m68k.pc;
+    vm->last_guest_sr = vm->m68k.sr;
+    vm->last_guest_instruction = vm->m68k.fault_opcode;
+    vm->last_guest_fault_address = vm->m68k.fault_address;
+    vm->last_guest_fault_status = vm->m68k.mmusr;
+    vm->last_guest_exception = vm->m68k.last_exception_vector;
 }
 
 void amivm_vm_serial_clear(struct amivm_vm *vm)
