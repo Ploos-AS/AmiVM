@@ -66,6 +66,8 @@ int amivm_guest_harness_irq_status(const struct amivm_vm *vm,
                                    char *buffer, size_t buffer_size);
 int amivm_guest_harness_irq_activity(const struct amivm_vm *vm,
                                      char *buffer, size_t buffer_size);
+int amivm_guest_harness_irq_path_status(const struct amivm_vm *vm,
+                                        char *buffer, size_t buffer_size);
 int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                                         const char *serial,
                                         size_t serial_size,
