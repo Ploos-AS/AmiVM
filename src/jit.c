@@ -722,8 +722,11 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             (void)cond;
         } else if (op->opcode == AMIVM_IR_BSR ||
                    op->opcode == AMIVM_IR_RTS) {
-            uintptr_t helper = (uintptr_t)(op->opcode == AMIVM_IR_BSR ?
-                               amivm_jit_helper_bsr : amivm_jit_helper_rts);
+            uintptr_t helper;
+            if (op->opcode == AMIVM_IR_BSR)
+                helper = (uintptr_t)(void *)amivm_jit_helper_bsr;
+            else
+                helper = (uintptr_t)(void *)amivm_jit_helper_rts;
             unsigned shift;
             code->requires_context = 1;
             rc = emit32(code, 0xaa0103e0u); /* mov x0,x1 */
