@@ -179,6 +179,11 @@ int main(int argc, char **argv)
             if (amivm_guest_harness_format_failure(&vm, &harness, result_mask,
                                                     diagnostic, sizeof diagnostic) == 0)
                 printf("Guest diagnostic: %s\n", diagnostic);
+            {
+                char trace[8192];
+                if (amivm_guest_harness_format_trace(&vm, trace, sizeof trace) == 0)
+                    printf("Guest trace:\n%s\n", trace);
+            }
         }
         amivm_vm_destroy(&vm);
         return rc == 0 ? 0 : 1;
