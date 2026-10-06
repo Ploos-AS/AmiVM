@@ -189,9 +189,6 @@ target_include_directories(amivm_boot PUBLIC src)
 target_link_libraries(amivm_boot PRIVATE amivm_core amivm_rom_boot)
 target_compile_options(amivm_boot PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
-add_executable(amivm_guest_harness_tests tests/test_guest_harness.c)
-target_link_libraries(amivm_guest_harness_tests PRIVATE amivm_core)
-target_compile_options(amivm_guest_harness_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_guest_harness_contract COMMAND amivm_guest_harness_tests)
 
 add_library(amivm_rom_source STATIC src/rom_source.c)
