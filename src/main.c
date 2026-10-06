@@ -181,6 +181,18 @@ int main(int argc, char **argv)
                                                        sizeof devices) == 0)
                     printf("Devices: %s\n", devices);
             }
+            {
+                static const char *const required_devices[] = {
+                    "cia", "custom-chips", "aga", "serial", "storage"
+                };
+                char required[1024];
+                int device_rc = amivm_guest_harness_required_devices(
+                    &vm, required_devices,
+                    sizeof required_devices / sizeof required_devices[0],
+                    required, sizeof required);
+                printf("Required devices: %s%s\n",
+                       required, device_rc == 0 ? "" : " (NOT QUALIFIED)");
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
