@@ -269,6 +269,31 @@ int amivm_guest_harness_irq_path_status(
     return 0;
 }
 
+int amivm_guest_harness_storage_status(
+    const struct amivm_vm *vm, char *buffer, size_t buffer_size)
+{
+    const struct amivm_trackdisk *td;
+    const struct amivm_ide_state *ide;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    td = &vm->trackdisk;
+    ide = &vm->ide;
+
+    (void)snprintf(buffer, buffer_size,
+                   "trackdisk=%s;busy=%s;command=%u;track=%u;head=%u;"
+                   "sector=%u;dma=0x%08x;status=0x%02x;error=0x%02x;"
+                   "irq=%s;ide_status=0x%02x;lba=%u",
+                   td->command != AMIVM_TRACKDISK_CMD_NONE ? "OBSERVED" : "IDLE",
+                   td->busy ? "yes" : "no",
+                   (unsigned)td->command, td->track, td->head, td->sector,
+                   td->dma_address, td->status, td->error,
+                   td->irq_enable ? "ENABLED" : "DISABLED",
+                   ide->status, ide->lba);
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
