@@ -91,7 +91,7 @@ int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                    p->has_master_stack ? "yes" : "no",
                    p->hyper ? "yes" : "no",
                    p->exception_frame_family,
-                   vm->cpu_backend.name ? vm->cpu_backend.name : "unknown",
+                   amivm_cpu_backend_name(&vm->cpu_backend),
                    "yes");
     return 0;
 }
