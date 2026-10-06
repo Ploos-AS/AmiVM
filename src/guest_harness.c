@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
 {
@@ -70,6 +71,34 @@ bool amivm_guest_harness_qualification_complete(
         return false;
     required = h->qualification_mask;
     return (result_mask & required) == required;
+}
+
+int amivm_guest_harness_format_failure(const struct amivm_vm *vm,
+                                       const struct amivm_guest_harness *h,
+                                       uint32_t result_mask,
+                                       char *buffer, size_t buffer_size)
+{
+    size_t serial_len;
+    char serial[AMIVM_SERIAL_LOG_SIZE + 1u];
+
+    if (!vm || !h || !buffer || buffer_size == 0u)
+        return 1;
+
+    serial_len = amivm_vm_serial_read(vm, serial, h->serial_capture_size);
+    if (serial_len > AMIVM_SERIAL_LOG_SIZE)
+        serial_len = AMIVM_SERIAL_LOG_SIZE;
+    serial[serial_len] = '\0';
+
+    (void)snprintf(buffer, buffer_size,
+                   "profile=%s result=0x%08x pc=0x%08x sr=0x%04x "
+                   "instruction=0x%08x exception=%u fault_address=0x%08x "
+                   "fault_status=0x%08x serial=\"%s\"",
+                   h->profile, result_mask,
+                   vm->last_guest_pc, vm->last_guest_sr,
+                   vm->last_guest_instruction, vm->last_guest_exception,
+                   vm->last_guest_fault_address,
+                   vm->last_guest_fault_status, serial);
+    return 0;
 }
 
 int amivm_guest_harness_run_image(struct amivm_vm *vm,
