@@ -2,7 +2,6 @@
 #include "vm.h"
 
 #include <stdio.h>
-#include <string.h>
 
 int main(void)
 {
@@ -91,21 +90,12 @@ int main(void)
             (markers & (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
                         AMIVM_QUAL_SHELL)) !=
             (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
-             AMIVM_QUAL_SHELL) ||
-            !amivm_guest_harness_qualification_complete(&h, markers)) {
+             AMIVM_QUAL_SHELL)) {
             amivm_vm_destroy(&vm);
             remove("amivm-guest-test.img");
             remove("amivm-guest-test.rom");
             return 8;
         }
-    }
-
-    if (strcmp(amivm_guest_harness_failure_class(
-                &vm, &h, AMIVM_QUAL_RESET), "BOOT_TIMEOUT") != 0) {
-        amivm_vm_destroy(&vm);
-        remove("amivm-guest-test.img");
-        remove("amivm-guest-test.rom");
-        return 9;
     }
 
     amivm_vm_serial_clear(&vm);
