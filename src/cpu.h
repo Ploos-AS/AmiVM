@@ -188,6 +188,7 @@ struct amivm_cpu_backend {
 };
 
 const struct amivm_cpu_backend *amivm_cpu_reference_backend(void);
+const char *amivm_cpu_backend_name(const struct amivm_cpu_backend *backend);
 void amivm_cpu_set_profile(struct amivm_cpu_state *cpu,
                            const struct amivm_cpu_profile *profile);
 const struct amivm_cpu_profile *amivm_cpu_get_profile(const struct amivm_cpu_state *cpu);
