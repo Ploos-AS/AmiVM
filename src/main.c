@@ -217,6 +217,12 @@ int main(int argc, char **argv)
                                                         sizeof storage) == 0)
                     printf("Storage: %s\n", storage);
             }
+            {
+                char transaction[512];
+                if (amivm_guest_harness_storage_transaction(
+                        &vm, transaction, sizeof transaction) == 0)
+                    printf("Storage transaction: %s\n", transaction);
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
