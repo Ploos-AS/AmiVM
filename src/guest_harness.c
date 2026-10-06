@@ -100,6 +100,36 @@ int amivm_guest_harness_format_failure(const struct amivm_vm *vm,
                    vm->last_guest_fault_status, serial);
     return 0;
 }
+int amivm_guest_harness_format_trace(const struct amivm_vm *vm,
+                                     char *buffer, size_t buffer_size)
+{
+    size_t i, count;
+    int used = 0;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    buffer[0] = '\0';
+    count = amivm_vm_guest_trace_count(vm);
+    for (i = 0u; i < count; ++i) {
+        const struct amivm_trace_entry *e =
+            amivm_vm_guest_trace_at(vm, i);
+        int n;
+        if (!e) continue;
+        n = snprintf(buffer + used, buffer_size > (size_t)used ?
+                     buffer_size - (size_t)used : 0u,
+                     "%s%zu: pc=%08x sr=%04x op=%04x cycles=%u exc=%u",
+                     used ? "\\n" : "", i, e->pc, e->sr, e->opcode,
+                     e->cycles, e->exception);
+        if (n < 0) return 1;
+        if ((size_t)n >= buffer_size - (size_t)used) {
+            used = (int)buffer_size - 1;
+            break;
+        }
+        used += n;
+    }
+    return 0;
+}
 
 int amivm_guest_harness_run_image(struct amivm_vm *vm,
                                   const struct amivm_guest_harness *h,
