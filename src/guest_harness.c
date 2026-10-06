@@ -184,6 +184,25 @@ int amivm_guest_harness_required_devices(
     return all_pass ? 0 : 2;
 }
 
+int amivm_guest_harness_irq_status(const struct amivm_vm *vm,
+                                   char *buffer, size_t buffer_size)
+{
+    const struct amivm_irq_controller *irq;
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    irq = &vm->irq;
+    (void)snprintf(buffer, buffer_size,
+                   "controller=%s;pending=0x%08x;enabled=0x%08x;"
+                   "vblank=%s;timer_ticks=%llu",
+                   irq ? "PASS" : "FAIL",
+                   irq ? irq->pending : 0u,
+                   irq ? irq->enabled : 0u,
+                   vm->aga.vblank_irq_enable ? "ENABLED" : "DISABLED",
+                   (unsigned long long)vm->timer_ticks);
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
