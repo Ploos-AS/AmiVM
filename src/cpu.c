@@ -1638,11 +1638,6 @@ static const struct amivm_cpu_backend reference_backend = {
     "reference-68040", reference_reset, reference_step
 };
 
-const char *amivm_cpu_backend_name(const struct amivm_cpu_backend *backend)
-{
-    return (backend && backend->name) ? backend->name : "unknown";
-}
-
 const struct amivm_cpu_backend *amivm_cpu_reference_backend(void)
 {
     return &reference_backend;
