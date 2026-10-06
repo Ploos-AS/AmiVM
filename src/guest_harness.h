@@ -16,6 +16,7 @@ struct amivm_guest_harness {
     const char *os_marker;
     const char *filesystem_marker;
     const char *shell_marker;
+    size_t serial_capture_size;
 };
 
 enum {
