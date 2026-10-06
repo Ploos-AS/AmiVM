@@ -13,7 +13,8 @@ int main(void)
         "external/aros-m68k/system.hdf",
         30000u,
         100000000u,
-        AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION
+        AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION,
+        "AROS", "Workbench", "Shell"
     };
     static const unsigned char rom[] = {
         0x00,0x10,0x00,0x00,
@@ -78,6 +79,22 @@ int main(void)
         remove("amivm-guest-test.img");
         remove("amivm-guest-test.rom");
         return 6;
+    }
+
+    {
+        char bootlog[] = "AROS\nWorkbench\nShell\n";
+        uint32_t markers = result;
+        if (amivm_guest_harness_classify_serial(&h, bootlog, sizeof bootlog - 1u,
+                                                &markers) != 0 ||
+            (markers & (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
+                        AMIVM_QUAL_SHELL)) !=
+            (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
+             AMIVM_QUAL_SHELL)) {
+            amivm_vm_destroy(&vm);
+            remove("amivm-guest-test.img");
+            remove("amivm-guest-test.rom");
+            return 8;
+        }
     }
 
     amivm_vm_serial_clear(&vm);
