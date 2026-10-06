@@ -1906,8 +1906,15 @@ int amivm_vm_step(struct amivm_vm *vm)
     if (!vm || !vm->cpu_backend.step) return -1;
 
     /* Execute exactly one architectural instruction first. */
-    cycles = vm->cpu_backend.step(vm, vm->cpu_backend.state);
-    amivm_vm_record_guest_state(vm);
+    {
+        uint32_t pc_before = vm->m68k.pc;
+        uint16_t sr_before = vm->m68k.sr;
+        uint16_t opcode_before = vm->m68k.fault_opcode;
+        cycles = vm->cpu_backend.step(vm, vm->cpu_backend.state);
+        amivm_vm_record_guest_state(vm);
+        amivm_vm_trace_guest_step(vm, pc_before, sr_before, opcode_before,
+                                  cycles, vm->m68k.last_exception_vector);
+    }
     if (cycles == 0u) return -1;
     amivm_vm_account_instruction(vm, cycles);
 
@@ -2227,6 +2234,51 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     return 0;
+}
+
+void amivm_vm_clear_guest_trace(struct amivm_vm *vm)
+{
+    if (!vm) return;
+    memset(vm->guest_trace, 0, sizeof vm->guest_trace);
+    vm->guest_trace_next = 0u;
+    vm->guest_trace_count = 0u;
+}
+
+size_t amivm_vm_guest_trace_count(const struct amivm_vm *vm)
+{
+    return vm ? vm->guest_trace_count : 0u;
+}
+
+const struct amivm_trace_entry *amivm_vm_guest_trace_at(
+    const struct amivm_vm *vm, size_t index)
+{
+    size_t oldest;
+    size_t slot;
+    if (!vm || index >= vm->guest_trace_count)
+        return NULL;
+    oldest = (vm->guest_trace_next + AMIVM_TRACE_DEPTH -
+              vm->guest_trace_count) % AMIVM_TRACE_DEPTH;
+    slot = (oldest + index) % AMIVM_TRACE_DEPTH;
+    return &vm->guest_trace[slot];
+}
+
+static void amivm_vm_trace_guest_step(struct amivm_vm *vm,
+                                      uint32_t pc, uint16_t sr,
+                                      uint16_t opcode, uint32_t cycles,
+                                      uint8_t exception)
+{
+    struct amivm_trace_entry *entry;
+    if (!vm) return;
+    entry = &vm->guest_trace[vm->guest_trace_next];
+    entry->pc = pc;
+    entry->sr = sr;
+    entry->opcode = opcode;
+    entry->cycles = cycles;
+    entry->exception = exception;
+    vm->guest_trace_next =
+        (vm->guest_trace_next + 1u) % AMIVM_TRACE_DEPTH;
+    if (vm->guest_trace_count < AMIVM_TRACE_DEPTH)
+        ++vm->guest_trace_count;
 }
 
 void amivm_vm_record_guest_state(struct amivm_vm *vm)
