@@ -81,6 +81,15 @@ int amivm_jit_helper_rts(struct amivm_jit_context *context)
     context->cpu->pc = target_pc; return 0;
 }
 
+int amivm_jit_helper_rts_abi(struct amivm_jit_context *context,
+                             uint32_t unused_return_pc,
+                             uint32_t unused_target_pc)
+{
+    (void)unused_return_pc;
+    (void)unused_target_pc;
+    return amivm_jit_helper_rts(context);
+}
+
 int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
                             uint32_t return_pc, uint32_t address_register)
 {
