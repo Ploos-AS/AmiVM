@@ -294,6 +294,41 @@ int amivm_guest_harness_storage_status(
     return 0;
 }
 
+int amivm_guest_harness_storage_transaction(
+    const struct amivm_vm *vm, char *buffer, size_t buffer_size)
+{
+    const struct amivm_trackdisk *td;
+    const struct amivm_ide_state *ide;
+    bool attached;
+    bool command;
+    bool transfer;
+    bool completion;
+    bool error_free;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    td = &vm->trackdisk;
+    ide = &vm->ide;
+    attached = vm->disk.attached;
+    command = td->command != AMIVM_TRACKDISK_CMD_NONE ||
+              ide->status != 0u || ide->lba != 0u;
+    transfer = td->dma_address != 0u;
+    completion = command && !td->busy;
+    error_free = td->error == 0u;
+
+    (void)snprintf(buffer, buffer_size,
+                   "attached=%s;command=%s;transfer=%s;completion=%s;"
+                   "irq=%s;error=%s",
+                   attached ? "PASS" : "FAIL",
+                   command ? "OBSERVED" : "NOT OBSERVED",
+                   transfer ? "OBSERVED" : "NOT OBSERVED",
+                   completion ? "OBSERVED" : "NOT OBSERVED",
+                   td->irq_enable ? "ENABLED" : "DISABLED",
+                   error_free ? "NONE" : "PRESENT");
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
