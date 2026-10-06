@@ -175,6 +175,12 @@ int main(int argc, char **argv)
             if (amivm_guest_harness_format_capabilities(&vm, capabilities,
                                                          sizeof capabilities) == 0)
                 printf("Capabilities: %s\n", capabilities);
+            {
+                char devices[1024];
+                if (amivm_guest_harness_device_status(&vm, devices,
+                                                       sizeof devices) == 0)
+                    printf("Devices: %s\n", devices);
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
