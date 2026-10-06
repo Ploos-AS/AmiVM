@@ -171,6 +171,8 @@ int main(int argc, char **argv)
         int rc = amivm_guest_harness_run_external(&vm, &harness, &result_mask);
         printf("\nGuest profile: %s\n", harness.profile);
         printf("Qualification mask: 0x%08x\n", result_mask);
+        printf("Failure class: %s\n",
+               amivm_guest_harness_failure_class(&vm, &harness, result_mask));
         printf("Qualification complete: %s\n",
                amivm_guest_harness_qualification_complete(&harness, result_mask)
                    ? "PASS" : "NOT QUALIFIED");
