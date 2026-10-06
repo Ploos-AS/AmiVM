@@ -2,6 +2,7 @@
 #include "vm.h"
 
 #include <stdio.h>
+#include <string.h>
 
 int main(void)
 {
@@ -97,6 +98,14 @@ int main(void)
             remove("amivm-guest-test.rom");
             return 8;
         }
+    }
+
+    if (strcmp(amivm_guest_harness_failure_class(
+                &vm, &h, AMIVM_QUAL_RESET), "BOOT_TIMEOUT") != 0) {
+        amivm_vm_destroy(&vm);
+        remove("amivm-guest-test.img");
+        remove("amivm-guest-test.rom");
+        return 9;
     }
 
     amivm_vm_serial_clear(&vm);
