@@ -2,6 +2,7 @@
 #define AMIVM_GUEST_HARNESS_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct amivm_vm;
 
@@ -12,6 +13,9 @@ struct amivm_guest_harness {
     uint64_t timeout_ms;
     uint64_t max_instructions;
     uint32_t qualification_mask;
+    const char *os_marker;
+    const char *filesystem_marker;
+    const char *shell_marker;
 };
 
 enum {
@@ -37,5 +41,9 @@ int amivm_guest_harness_run_image(struct amivm_vm *vm,
 int amivm_guest_harness_run_external(struct amivm_vm *vm,
                                      const struct amivm_guest_harness *h,
                                      uint32_t *result_mask);
+int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
+                                        const char *serial,
+                                        size_t serial_size,
+                                        uint32_t *result_mask);
 
 #endif
