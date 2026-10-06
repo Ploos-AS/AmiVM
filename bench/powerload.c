@@ -30,7 +30,7 @@ int amivm_powerload_result_write_json(
                 "\"workload_id\":\"%s\","
                 "\"mode\":\"%s\","
                 "\"wall_clock_seconds\":%.6f,"
-                "\"throughput\":%.6f,"instructions\":%llu,"
+                "\"throughput\":%.6f,\"instructions\":%llu,"
                 "\"throughput_unit\":\"%s\","
                 "\"vm_config\":\"%s\","measurement_method\":\"%s\","
                 "\"reproducible\":%s,"
