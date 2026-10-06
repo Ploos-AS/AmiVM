@@ -3,6 +3,7 @@
 #include "vm.h"
 
 #include <stddef.h>
+#include <string.h>
 
 int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
 {
@@ -12,6 +13,40 @@ int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
         return 1;
     if (h->qualification_mask == 0u)
         return 1;
+    if (!h->os_marker || !h->filesystem_marker || !h->shell_marker)
+        return 1;
+    return 0;
+}
+
+int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
+                                        const char *serial,
+                                        size_t serial_size,
+                                        uint32_t *result_mask)
+{
+    size_t marker_len;
+    if (!h || !serial || !result_mask ||
+        amivm_guest_harness_validate(h) != 0)
+        return 1;
+
+    *result_mask &= ~(AMIVM_QUAL_OS_DETECTED |
+                      AMIVM_QUAL_FILESYSTEM |
+                      AMIVM_QUAL_SHELL);
+
+    marker_len = strlen(h->os_marker);
+    if (marker_len != 0u && marker_len <= serial_size &&
+        strstr(serial, h->os_marker) != NULL)
+        *result_mask |= AMIVM_QUAL_OS_DETECTED;
+
+    marker_len = strlen(h->filesystem_marker);
+    if (marker_len != 0u && marker_len <= serial_size &&
+        strstr(serial, h->filesystem_marker) != NULL)
+        *result_mask |= AMIVM_QUAL_FILESYSTEM;
+
+    marker_len = strlen(h->shell_marker);
+    if (marker_len != 0u && marker_len <= serial_size &&
+        strstr(serial, h->shell_marker) != NULL)
+        *result_mask |= AMIVM_QUAL_SHELL;
+
     return 0;
 }
 
