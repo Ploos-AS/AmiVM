@@ -297,6 +297,7 @@ struct amivm_cpu_backend {
 };
 
 struct amivm_vm;
+struct amivm_device_state;
 typedef bool (*amivm_device_read8_fn)(struct amivm_vm *vm,
                                       const struct amivm_device_state *state,
                                       uint32_t offset, uint8_t *value);
