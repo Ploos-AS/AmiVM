@@ -101,6 +101,39 @@ bool amivm_guest_harness_qualification_complete(
     return 0;
 }
 
+int amivm_guest_harness_device_status(const struct amivm_vm *vm,
+                                      char *buffer, size_t buffer_size)
+{
+    size_t i;
+    size_t used = 0u;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+    buffer[0] = '\0';
+
+    for (i = 0u; i < vm->device_count; ++i) {
+        const struct amivm_device_state *d = &vm->devices[i];
+        const char *status;
+        int n;
+
+        if (!d->desc || !d->desc->name)
+            continue;
+        status = (d->instantiated && d->enabled) ? "PASS" : "NOT QUALIFIED";
+        n = snprintf(buffer + used,
+                     buffer_size > used ? buffer_size - used : 0u,
+                     "%s%s=%s",
+                     used ? ";" : "", d->desc->name, status);
+        if (n < 0)
+            return 1;
+        if ((size_t)n >= buffer_size - used) {
+            buffer[buffer_size - 1u] = '\0';
+            return 0;
+        }
+        used += (size_t)n;
+    }
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
