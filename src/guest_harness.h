@@ -56,6 +56,8 @@ int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
 int amivm_guest_harness_capability_status(const struct amivm_vm *vm,
                                           const struct amivm_guest_harness *h,
                                           char *buffer, size_t buffer_size);
+int amivm_guest_harness_device_status(const struct amivm_vm *vm,
+                                      char *buffer, size_t buffer_size);
 int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                                         const char *serial,
                                         size_t serial_size,
