@@ -25,6 +25,7 @@
 
 #define AMIVM_MAX_IRQ_LINES 8u
 #define AMIVM_SERIAL_LOG_SIZE 4096u
+#define AMIVM_TRACE_DEPTH 64u
 
 struct amivm_irq_controller {
     uint32_t pending;
@@ -391,6 +392,15 @@ struct amivm_vm {
     uint32_t last_guest_fault_address;
     uint32_t last_guest_fault_status;
     uint8_t last_guest_exception;
+    struct amivm_trace_entry {
+        uint32_t pc;
+        uint16_t sr;
+        uint16_t opcode;
+        uint32_t cycles;
+        uint8_t exception;
+    } guest_trace[AMIVM_TRACE_DEPTH];
+    size_t guest_trace_next;
+    size_t guest_trace_count;
     size_t serial_log_len;
     uint32_t last_instruction_cycles;
     struct amivm_cpu_backend cpu_backend;
@@ -513,6 +523,9 @@ void amivm_vm_destroy(struct amivm_vm *vm);
 int amivm_vm_load_rom(struct amivm_vm *vm, const char *path);
 void amivm_vm_serial_clear(struct amivm_vm *vm);
 void amivm_vm_record_guest_state(struct amivm_vm *vm);
+void amivm_vm_clear_guest_trace(struct amivm_vm *vm);
+size_t amivm_vm_guest_trace_count(const struct amivm_vm *vm);
+const struct amivm_trace_entry *amivm_vm_guest_trace_at(const struct amivm_vm *vm, size_t index);
 size_t amivm_vm_serial_read(const struct amivm_vm *vm, char *buffer, size_t size);
 int amivm_vm_attach_hard_drive(struct amivm_vm *vm, unsigned index,
                                const char *path);
