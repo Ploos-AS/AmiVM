@@ -211,6 +211,12 @@ int main(int argc, char **argv)
                                                          sizeof irq_path) == 0)
                     printf("IRQ path: %s\n", irq_path);
             }
+            {
+                char storage[768];
+                if (amivm_guest_harness_storage_status(&vm, storage,
+                                                        sizeof storage) == 0)
+                    printf("Storage: %s\n", storage);
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
