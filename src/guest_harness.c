@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <stdbool.h>
 
 int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
 {
@@ -20,12 +21,28 @@ int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
     return 0;
 }
 
+static bool contains_marker(const char *serial, size_t serial_size,
+                         const char *marker)
+{
+    size_t marker_len;
+    size_t i;
+
+    if (!serial || !marker)
+        return false;
+    marker_len = strlen(marker);
+    if (marker_len == 0u || marker_len > serial_size)
+        return false;
+    for (i = 0u; i + marker_len <= serial_size; ++i)
+        if (memcmp(serial + i, marker, marker_len) == 0)
+            return true;
+    return false;
+}
+
 int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                                         const char *serial,
                                         size_t serial_size,
                                         uint32_t *result_mask)
 {
-    size_t marker_len;
     if (!h || !serial || !result_mask ||
         amivm_guest_harness_validate(h) != 0)
         return 1;
@@ -34,22 +51,25 @@ int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                       AMIVM_QUAL_FILESYSTEM |
                       AMIVM_QUAL_SHELL);
 
-    marker_len = strlen(h->os_marker);
-    if (marker_len != 0u && marker_len <= serial_size &&
-        strstr(serial, h->os_marker) != NULL)
+    if (contains_marker(serial, serial_size, h->os_marker))
         *result_mask |= AMIVM_QUAL_OS_DETECTED;
-
-    marker_len = strlen(h->filesystem_marker);
-    if (marker_len != 0u && marker_len <= serial_size &&
-        strstr(serial, h->filesystem_marker) != NULL)
+    if (contains_marker(serial, serial_size, h->filesystem_marker))
         *result_mask |= AMIVM_QUAL_FILESYSTEM;
-
-    marker_len = strlen(h->shell_marker);
-    if (marker_len != 0u && marker_len <= serial_size &&
-        strstr(serial, h->shell_marker) != NULL)
+    if (contains_marker(serial, serial_size, h->shell_marker))
         *result_mask |= AMIVM_QUAL_SHELL;
 
     return 0;
+}
+
+bool amivm_guest_harness_qualification_complete(
+    const struct amivm_guest_harness *h, uint32_t result_mask)
+{
+    uint32_t required;
+
+    if (!h || amivm_guest_harness_validate(h) != 0)
+        return false;
+    required = h->qualification_mask;
+    return (result_mask & required) == required;
 }
 
 int amivm_guest_harness_run_image(struct amivm_vm *vm,
