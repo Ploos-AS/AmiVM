@@ -472,6 +472,43 @@ int amivm_guest_harness_run_image(struct amivm_vm *vm,
 
     return 0;
 }
+int amivm_guest_harness_validate_assets(
+    const struct amivm_guest_harness *h, char *buffer, size_t buffer_size)
+{
+    FILE *rom;
+    FILE *disk;
+
+    if (!h || !buffer || buffer_size == 0u)
+        return 1;
+
+    if (!h->rom_path || h->rom_path[0] == '\0') {
+        (void)snprintf(buffer, buffer_size, "ROM=MISSING;disk=MISSING");
+        return 2;
+    }
+
+    rom = fopen(h->rom_path, "rb");
+    if (!rom) {
+        (void)snprintf(buffer, buffer_size, "ROM=MISSING;disk=MISSING");
+        return 2;
+    }
+    fclose(rom);
+
+    if (!h->disk_path || h->disk_path[0] == '\0') {
+        (void)snprintf(buffer, buffer_size, "ROM=READY;disk=MISSING");
+        return 2;
+    }
+
+    disk = fopen(h->disk_path, "rb");
+    if (!disk) {
+        (void)snprintf(buffer, buffer_size, "ROM=READY;disk=MISSING");
+        return 2;
+    }
+    fclose(disk);
+
+    (void)snprintf(buffer, buffer_size, "ROM=READY;disk=READY");
+    return 0;
+}
+
 
 int amivm_guest_harness_run_external(struct amivm_vm *vm,
                                      const struct amivm_guest_harness *h,
