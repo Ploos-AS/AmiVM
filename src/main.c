@@ -193,6 +193,12 @@ int main(int argc, char **argv)
                 printf("Required devices: %s%s\n",
                        required, device_rc == 0 ? "" : " (NOT QUALIFIED)");
             }
+            {
+                char irq_status[512];
+                if (amivm_guest_harness_irq_status(&vm, irq_status,
+                                                    sizeof irq_status) == 0)
+                    printf("IRQ: %s\n", irq_status);
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
