@@ -134,6 +134,56 @@ int amivm_guest_harness_device_status(const struct amivm_vm *vm,
     return 0;
 }
 
+int amivm_guest_harness_required_devices(
+    const struct amivm_vm *vm,
+    const char *const *names,
+    size_t name_count,
+    char *buffer, size_t buffer_size)
+{
+    size_t i;
+    size_t used = 0u;
+    bool all_pass = true;
+
+    if (!vm || !names || !buffer || buffer_size == 0u)
+        return 1;
+    buffer[0] = '\0';
+
+    for (i = 0u; i < name_count; ++i) {
+        size_t j;
+        bool found = false;
+        bool pass = false;
+
+        for (j = 0u; j < vm->device_count; ++j) {
+            const struct amivm_device_state *d = &vm->devices[j];
+            if (d->desc && d->desc->name &&
+                strcmp(d->desc->name, names[i]) == 0) {
+                found = true;
+                pass = d->instantiated && d->enabled;
+                break;
+            }
+        }
+
+        {
+            const char *status = pass ? "PASS" :
+                                 found ? "FAIL" : "MISSING";
+            int n = snprintf(buffer + used,
+                             buffer_size > used ? buffer_size - used : 0u,
+                             "%s%s=%s",
+                             used ? ";" : "", names[i], status);
+            if (n < 0)
+                return 1;
+            if ((size_t)n >= buffer_size - used) {
+                buffer[buffer_size - 1u] = '\0';
+                return all_pass ? 0 : 2;
+            }
+            used += (size_t)n;
+        }
+        if (!pass)
+            all_pass = false;
+    }
+    return all_pass ? 0 : 2;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
