@@ -39,46 +39,12 @@ int amivm_guest_harness_run_image(struct amivm_vm *vm,
                                   const uint8_t *image,
                                   size_t image_size,
                                   uint32_t *result_mask);
-int amivm_guest_harness_validate_assets(const struct amivm_guest_harness *h,
-                                        char *buffer, size_t buffer_size);
 int amivm_guest_harness_run_external(struct amivm_vm *vm,
                                      const struct amivm_guest_harness *h,
                                      uint32_t *result_mask);
-int amivm_guest_harness_format_failure(const struct amivm_vm *vm,
-                                       const struct amivm_guest_harness *h,
-                                       uint32_t result_mask,
-                                       char *buffer, size_t buffer_size);
-int amivm_guest_harness_format_trace(const struct amivm_vm *vm,
-                                     char *buffer, size_t buffer_size);
-const char *amivm_guest_harness_failure_class(const struct amivm_vm *vm,
-                                              const struct amivm_guest_harness *h,
-                                              uint32_t result_mask);
-int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
-                                            char *buffer, size_t buffer_size);
-int amivm_guest_harness_capability_status(const struct amivm_vm *vm,
-                                          const struct amivm_guest_harness *h,
-                                          char *buffer, size_t buffer_size);
-int amivm_guest_harness_device_status(const struct amivm_vm *vm,
-                                      char *buffer, size_t buffer_size);
-int amivm_guest_harness_required_devices(const struct amivm_vm *vm,
-                                         const char *const *names,
-                                         size_t name_count,
-                                         char *buffer, size_t buffer_size);
-int amivm_guest_harness_irq_status(const struct amivm_vm *vm,
-                                   char *buffer, size_t buffer_size);
-int amivm_guest_harness_irq_activity(const struct amivm_vm *vm,
-                                     char *buffer, size_t buffer_size);
-int amivm_guest_harness_irq_path_status(const struct amivm_vm *vm,
-                                        char *buffer, size_t buffer_size);
-int amivm_guest_harness_storage_status(const struct amivm_vm *vm,
-                                       char *buffer, size_t buffer_size);
-int amivm_guest_harness_storage_transaction(const struct amivm_vm *vm,
-                                            char *buffer, size_t buffer_size);
 int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                                         const char *serial,
                                         size_t serial_size,
                                         uint32_t *result_mask);
-bool amivm_guest_harness_qualification_complete(
-    const struct amivm_guest_harness *h, uint32_t result_mask);
 
 #endif
