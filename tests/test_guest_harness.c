@@ -14,7 +14,8 @@ int main(void)
         30000u,
         100000000u,
         AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION,
-        "AROS", "Workbench", "Shell"
+        "AROS", "Workbench", "Shell",
+        128u
     };
     static const unsigned char rom[] = {
         0x00,0x10,0x00,0x00,
