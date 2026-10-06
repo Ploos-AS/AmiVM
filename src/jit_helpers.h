@@ -21,6 +21,9 @@ int amivm_jit_helper_stack_pop_long(struct amivm_jit_context *context,
 int amivm_jit_helper_bsr(struct amivm_jit_context *context,
                          uint32_t return_pc, uint32_t target_pc);
 int amivm_jit_helper_rts(struct amivm_jit_context *context);
+int amivm_jit_helper_rts_abi(struct amivm_jit_context *context,
+                             uint32_t unused_return_pc,
+                             uint32_t unused_target_pc);
 int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
                             uint32_t return_pc, uint32_t address_register);
 int amivm_jit_helper_jmp_an(struct amivm_jit_context *context,
