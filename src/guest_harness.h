@@ -46,5 +46,7 @@ int amivm_guest_harness_classify_serial(const struct amivm_guest_harness *h,
                                         const char *serial,
                                         size_t serial_size,
                                         uint32_t *result_mask);
+bool amivm_guest_harness_qualification_complete(
+    const struct amivm_guest_harness *h, uint32_t result_mask);
 
 #endif
