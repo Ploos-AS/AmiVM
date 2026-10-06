@@ -1,6 +1,7 @@
 #include "vm.h"
 #include "cpu_profile.h"
 #include "fs_uae.h"
+#include "guest_harness.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +12,7 @@
 static void usage(const char *prog)
 {
     fprintf(stderr,
-            "Usage: %s [--version] [--dump-machine] [--config FILE] [--config-report] [--strict-config] [--selftest] [--cpu PROFILE] [--mmu 68851] [--ram-mib N] [--rom PATH]\n",
+            "Usage: %s [--version] [--dump-machine] [--config FILE] [--config-report] [--strict-config] [--selftest] [--cpu PROFILE] [--mmu 68851] [--ram-mib N] [--rom PATH] [--guest-aros ROM DISK] [--guest-max-instructions N]\n",
             prog);
 }
 
@@ -26,6 +27,9 @@ int main(int argc, char **argv)
     const char *config_path = NULL;
     struct amivm_fsuae_report fs_report;
     const struct amivm_cpu_profile *cpu_profile;
+    const char *guest_rom = NULL;
+    const char *guest_disk = NULL;
+    uint64_t guest_max_instructions = 100000000u;
 
     amivm_config_init(&config);
     cpu_profile = config.cpu_profile;
@@ -54,6 +58,32 @@ int main(int argc, char **argv)
         }
         if (strcmp(argv[i], "--strict-config") == 0) {
             strict_config = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--guest-aros") == 0) {
+            if (i + 2 >= argc) {
+                fprintf(stderr, "Usage: --guest-aros ROM DISK\n");
+                return 2;
+            }
+            guest_rom = argv[++i];
+            guest_disk = argv[++i];
+            config.cpu_profile = amivm_cpu_profile_by_name("68020");
+            config.ram_size = 10u * 1024u * 1024u;
+            continue;
+        }
+        if (strcmp(argv[i], "--guest-max-instructions") == 0) {
+            char *end = NULL;
+            unsigned long long value;
+            if (++i >= argc) {
+                fprintf(stderr, "Missing --guest-max-instructions value\n");
+                return 2;
+            }
+            value = strtoull(argv[i], &end, 0);
+            if (!end || *end != '\0' || value == 0u) {
+                fprintf(stderr, "Invalid --guest-max-instructions value\n");
+                return 2;
+            }
+            guest_max_instructions = (uint64_t)value;
             continue;
         }
         if (strcmp(argv[i], "--version") == 0) {
@@ -128,7 +158,25 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (dump_machine) {
+    if (guest_rom != NULL) {
+        struct amivm_guest_harness harness = {
+            "aros-m68k", guest_rom, guest_disk, 30000u,
+            guest_max_instructions,
+            AMIVM_QUAL_RESET | AMIVM_QUAL_EXECUTION |
+            AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
+            AMIVM_QUAL_SHELL,
+            "AROS", "Workbench", "Shell", AMIVM_SERIAL_LOG_SIZE
+        };
+        uint32_t result_mask = 0u;
+        int rc = amivm_guest_harness_run_external(&vm, &harness, &result_mask);
+        printf("\nGuest profile: %s\n", harness.profile);
+        printf("Qualification mask: 0x%08x\n", result_mask);
+        printf("Qualification complete: %s\n",
+               amivm_guest_harness_qualification_complete(&harness, result_mask)
+                   ? "PASS" : "NOT QUALIFIED");
+        amivm_vm_destroy(&vm);
+        return rc == 0 ? 0 : 1;
+    } else if (dump_machine) {
         amivm_dump_machine(&vm, stdout);
     } else {
         puts("AmiVM M1 VM core skeleton initialized");
