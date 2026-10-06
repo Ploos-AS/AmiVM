@@ -238,6 +238,37 @@ int amivm_guest_harness_irq_activity(const struct amivm_vm *vm,
     return 0;
 }
 
+int amivm_guest_harness_irq_path_status(
+    const struct amivm_vm *vm, char *buffer, size_t buffer_size)
+{
+    const struct amivm_cpu_state *cpu;
+    bool source;
+    bool accepted;
+    bool in_service;
+    bool frame;
+    bool resumed;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    cpu = &vm->m68k;
+    source = vm->irq.pending != 0u || cpu->irq_pending;
+    accepted = cpu->irq_level != 0u || cpu->irq_in_service;
+    in_service = cpu->irq_in_service;
+    frame = cpu->exception_frame_active || cpu->exception_saved_pc != 0u;
+    resumed = in_service && cpu->pc != cpu->irq_saved_pc;
+
+    (void)snprintf(buffer, buffer_size,
+                   "source=%s;accepted=%s;frame=%s;in_service=%s;"
+                   "resumed=%s",
+                   source ? "OBSERVED" : "NOT OBSERVED",
+                   accepted ? "OBSERVED" : "NOT OBSERVED",
+                   frame ? "OBSERVED" : "NOT OBSERVED",
+                   in_service ? "OBSERVED" : "NOT OBSERVED",
+                   resumed ? "OBSERVED" : "NOT OBSERVED");
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
