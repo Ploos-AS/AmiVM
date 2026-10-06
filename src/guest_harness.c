@@ -203,6 +203,41 @@ int amivm_guest_harness_irq_status(const struct amivm_vm *vm,
     return 0;
 }
 
+int amivm_guest_harness_irq_activity(const struct amivm_vm *vm,
+                                     char *buffer, size_t buffer_size)
+{
+    bool pending = false;
+    bool enabled = false;
+    bool vblank = false;
+    bool timer_active = false;
+    unsigned i;
+
+    if (!vm || !buffer || buffer_size == 0u)
+        return 1;
+
+    pending = vm->irq.pending != 0u;
+    enabled = vm->irq.enabled != 0u;
+    vblank = vm->aga.vblank_irq_enable;
+    timer_active = vm->timer_ticks != 0u;
+
+    for (i = 0u; i < AMIVM_MAX_IRQ_LINES; ++i) {
+        if (vm->irq.priority[i] != 0u) {
+            enabled = true;
+            break;
+        }
+    }
+
+    (void)snprintf(buffer, buffer_size,
+                   "pending=%s;enabled=%s;vblank=%s;timer_activity=%s;"
+                   "evidence=%s",
+                   pending ? "yes" : "no",
+                   enabled ? "yes" : "no",
+                   vblank ? "yes" : "no",
+                   timer_active ? "yes" : "no",
+                   (pending || timer_active) ? "OBSERVED" : "NOT OBSERVED");
+    return 0;
+}
+
 
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
