@@ -130,6 +130,37 @@ int amivm_guest_harness_format_trace(const struct amivm_vm *vm,
     }
     return 0;
 }
+const char *amivm_guest_harness_failure_class(
+    const struct amivm_vm *vm,
+    const struct amivm_guest_harness *h,
+    uint32_t result_mask)
+{
+    if (!vm || !h)
+        return "INVALID";
+    if (amivm_guest_harness_qualification_complete(h, result_mask))
+        return "PASS";
+
+    switch (vm->m68k.last_fault) {
+    case AMIVM_CPU_FAULT_ILLEGAL: return "ILLEGAL_INSTRUCTION";
+    case AMIVM_CPU_FAULT_MMU: return "MMU_FAULT";
+    case AMIVM_CPU_FAULT_BUS: return "BUS_ERROR";
+    case AMIVM_CPU_FAULT_ADDRESS: return "ADDRESS_ERROR";
+    case AMIVM_CPU_FAULT_PRIVILEGE: return "PRIVILEGE";
+    default:
+        break;
+    }
+
+    if ((result_mask & AMIVM_QUAL_EXECUTION) == 0u)
+        return "EXECUTION";
+    if ((result_mask & AMIVM_QUAL_OS_DETECTED) == 0u)
+        return "BOOT_TIMEOUT";
+    if ((result_mask & AMIVM_QUAL_FILESYSTEM) == 0u)
+        return "FILESYSTEM";
+    if ((result_mask & AMIVM_QUAL_SHELL) == 0u)
+        return "SHELL";
+    return "DEVICE_IO";
+}
+
 
 int amivm_guest_harness_run_image(struct amivm_vm *vm,
                                   const struct amivm_guest_harness *h,
