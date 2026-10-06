@@ -168,6 +168,16 @@ int main(int argc, char **argv)
             "AROS", "Workbench", "Shell", AMIVM_SERIAL_LOG_SIZE
         };
         uint32_t result_mask = 0u;
+        char assets[256];
+        int asset_rc = amivm_guest_harness_validate_assets(
+            &harness, assets, sizeof assets);
+        printf("\nGuest profile: %s\n", harness.profile);
+        printf("Assets: %s\n", assets);
+        if (asset_rc != 0) {
+            puts("Qualification: NOT RUN (guest assets missing)");
+            amivm_vm_destroy(&vm);
+            return 2;
+        }
         int rc = amivm_guest_harness_run_external(&vm, &harness, &result_mask);
         printf("\nGuest profile: %s\n", harness.profile);
         {
