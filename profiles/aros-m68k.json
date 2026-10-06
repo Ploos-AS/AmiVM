@@ -7,7 +7,14 @@
   "cpu": {
     "family": "68000",
     "model": "68020",
+    "minimum_isa_level": 2,
     "fpu": false,
+    "fpu_required": false,
+    "mmu": {
+      "required": false,
+      "preferred": "68020-compatible"
+    },
+    "exception_frame": "68020",
     "max_performance": true
   },
   "memory": {
@@ -21,6 +28,13 @@
     "serial",
     "storage"
   ],
+  "device_requirements": {
+    "cia": "required",
+    "custom-chips": "required",
+    "aga": "required",
+    "serial": "required",
+    "storage": "required"
+  },
   "rom": {
     "source": "external",
     "kind": "aros",
