@@ -71,7 +71,37 @@ bool amivm_guest_harness_qualification_complete(
         return false;
     required = h->qualification_mask;
     return (result_mask & required) == required;
+}int amivm_guest_harness_capability_status(
+    const struct amivm_vm *vm,
+    const struct amivm_guest_harness *h,
+    char *buffer, size_t buffer_size)
+{
+    const struct amivm_cpu_profile *p;
+    const char *cpu_status;
+    const char *mmu_status;
+    const char *fpu_status;
+    const char *backend_status;
+
+    if (!vm || !h || !buffer || buffer_size == 0u)
+        return 1;
+
+    p = amivm_cpu_get_profile(&vm->m68k);
+    if (!p)
+        return 1;
+
+    cpu_status = (p->isa_level >= 2u &&
+                  p->id == AMIVM_CPU_68020) ? "PASS" : "NOT QUALIFIED";
+    mmu_status = p->has_mmu ? "PASS" : "NOT REQUIRED";
+    fpu_status = p->has_fpu ? "PASS" : "NOT REQUIRED";
+    backend_status = vm->cpu_backend.step ? "PASS" : "NOT QUALIFIED";
+
+    (void)snprintf(buffer, buffer_size,
+                   "cpu=%s;mmu=%s;fpu=%s;backend=%s;devices=DEFERRED",
+                   cpu_status, mmu_status, fpu_status, backend_status);
+    return 0;
 }
+
+
 int amivm_guest_harness_format_capabilities(const struct amivm_vm *vm,
                                             char *buffer, size_t buffer_size)
 {
