@@ -15,6 +15,8 @@ int amivm_guest_harness_validate(const struct amivm_guest_harness *h)
         return 1;
     if (!h->os_marker || !h->filesystem_marker || !h->shell_marker)
         return 1;
+    if (h->serial_capture_size == 0u || h->serial_capture_size > AMIVM_SERIAL_LOG_SIZE)
+        return 1;
     return 0;
 }
 
@@ -105,6 +107,16 @@ int amivm_guest_harness_run_external(struct amivm_vm *vm,
         if (amivm_vm_step(vm) != 0)
             return 1;
         *result_mask |= AMIVM_QUAL_EXECUTION;
+    }
+
+    {
+        char serial[AMIVM_SERIAL_LOG_SIZE + 1u];
+        size_t n = amivm_vm_serial_read(vm, serial, h->serial_capture_size);
+        if (n > AMIVM_SERIAL_LOG_SIZE)
+            n = AMIVM_SERIAL_LOG_SIZE;
+        serial[n] = '\0';
+        if (amivm_guest_harness_classify_serial(h, serial, n, result_mask) != 0)
+            return 1;
     }
     return 0;
 }
