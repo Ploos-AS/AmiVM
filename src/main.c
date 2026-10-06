@@ -205,6 +205,12 @@ int main(int argc, char **argv)
                                                       sizeof irq_activity) == 0)
                     printf("IRQ activity: %s\n", irq_activity);
             }
+            {
+                char irq_path[512];
+                if (amivm_guest_harness_irq_path_status(&vm, irq_path,
+                                                         sizeof irq_path) == 0)
+                    printf("IRQ path: %s\n", irq_path);
+            }
         }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
