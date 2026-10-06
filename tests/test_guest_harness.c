@@ -90,7 +90,8 @@ int main(void)
             (markers & (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
                         AMIVM_QUAL_SHELL)) !=
             (AMIVM_QUAL_OS_DETECTED | AMIVM_QUAL_FILESYSTEM |
-             AMIVM_QUAL_SHELL)) {
+             AMIVM_QUAL_SHELL) ||
+            !amivm_guest_harness_qualification_complete(&h, markers)) {
             amivm_vm_destroy(&vm);
             remove("amivm-guest-test.img");
             remove("amivm-guest-test.rom");
