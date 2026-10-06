@@ -166,7 +166,6 @@ struct amivm_cpu_state {
     bool last_translation_cache_inhibit;
     bool last_translation_serialized;
     bool last_memory_access_cacheable;
-    struct amivm_cache_access last_cache_access;
     struct amivm_cache instruction_cache;
     struct amivm_cache data_cache;
     uint8_t sfc;
