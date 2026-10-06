@@ -174,6 +174,12 @@ int main(int argc, char **argv)
         printf("Qualification complete: %s\n",
                amivm_guest_harness_qualification_complete(&harness, result_mask)
                    ? "PASS" : "NOT QUALIFIED");
+        if (!amivm_guest_harness_qualification_complete(&harness, result_mask)) {
+            char diagnostic[1024];
+            if (amivm_guest_harness_format_failure(&vm, &harness, result_mask,
+                                                    diagnostic, sizeof diagnostic) == 0)
+                printf("Guest diagnostic: %s\n", diagnostic);
+        }
         amivm_vm_destroy(&vm);
         return rc == 0 ? 0 : 1;
     } else if (dump_machine) {
