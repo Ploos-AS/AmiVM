@@ -103,7 +103,8 @@ set_tests_properties(
   amivm_pflush_fc_68851
   amivm_pflush_opcode_68851
   PROPERTIES LABELS "m2-qualification"
-)add_executable(amivm_max_runner bench/max_runner.c)
+)
+add_executable(amivm_max_runner bench/max_runner.c)
 target_compile_options(amivm_max_runner PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 
 add_test(NAME amivm_max_suite_manifest COMMAND amivm_max_runner)
