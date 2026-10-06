@@ -170,6 +170,12 @@ int main(int argc, char **argv)
         uint32_t result_mask = 0u;
         int rc = amivm_guest_harness_run_external(&vm, &harness, &result_mask);
         printf("\nGuest profile: %s\n", harness.profile);
+        {
+            char capabilities[1024];
+            if (amivm_guest_harness_format_capabilities(&vm, capabilities,
+                                                         sizeof capabilities) == 0)
+                printf("Capabilities: %s\n", capabilities);
+        }
         printf("Qualification mask: 0x%08x\n", result_mask);
         printf("Failure class: %s\n",
                amivm_guest_harness_failure_class(&vm, &harness, result_mask));
