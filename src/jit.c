@@ -814,11 +814,11 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                                    ((uint32_t)(op->indirect_mode & 3u) << 13u);
                 rc = emit32(code, encoded); if (rc != AMIVM_JIT_OK) return rc;
                 rc = emit8(code, 0x41u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0xb0u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0x00u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, (uint32_t)op->base_displacement); if (rc != AMIVM_JIT_OK) return rc;
                 rc = emit8(code, 0x41u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0xb1u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0x00u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit32(code, (uint32_t)op->outer_displacement); if (rc != AMIVM_JIT_OK) return rc;
             } else {
                 rc = emit32(code, op->ea_mode == AMIVM_IR_EA_AN ? op->reg :
                                    (op->ea_mode == AMIVM_IR_EA_D16_AN ? (uint32_t)op->imm :
