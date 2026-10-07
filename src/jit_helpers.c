@@ -241,7 +241,7 @@ int amivm_jit_helper_jmp_indexed_entry(struct amivm_cpu_state *cpu,
 {
     (void)unused_return_pc;
     if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
-    return amivm_jit_helper_jmp_indexed(context, encoded);
+    return amivm_jit_helper_jmp_indexed(context, cpu->pc, encoded);
 }
 
 int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
