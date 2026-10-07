@@ -19,6 +19,7 @@ int main(void)
     memset(&vm, 0, sizeof(vm));
     if (amivm_vm_init(&vm, NULL) != 0)
         return 1;
+    cpu.pc = 0xa000u;
 
     amivm_jit_context_init(&ctx, &cpu, &vm);
     cpu.a[7] = AMIVM_RAM_BASE + 0x800u;
