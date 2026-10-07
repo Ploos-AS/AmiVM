@@ -1003,7 +1003,8 @@ int amivm_jit_execute(const struct amivm_jit_code *code,
     (void)cpu;
     return AMIVM_JIT_EXEC_UNAVAILABLE;
 #endif
-}        case AMIVM_IR_JMP: {
+}
+        case AMIVM_IR_JMP: {
             uintptr_t helper;
             int (*helper_fn)(struct amivm_cpu_state *,
                              struct amivm_jit_context *,
