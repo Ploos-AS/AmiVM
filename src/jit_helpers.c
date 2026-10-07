@@ -90,6 +90,24 @@ int amivm_jit_helper_rts_abi(struct amivm_jit_context *context,
     return amivm_jit_helper_rts(context);
 }
 
+int amivm_jit_helper_bsr_entry(struct amivm_cpu_state *cpu,
+                                struct amivm_jit_context *context,
+                                uint32_t return_pc, uint32_t target_pc)
+{
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_bsr(context, return_pc, target_pc);
+}
+
+int amivm_jit_helper_rts_entry(struct amivm_cpu_state *cpu,
+                                struct amivm_jit_context *context,
+                                uint32_t unused_return_pc, uint32_t unused_target_pc)
+{
+    (void)unused_return_pc;
+    (void)unused_target_pc;
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_rts(context);
+}
+
 int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
                             uint32_t return_pc, uint32_t address_register)
 {
