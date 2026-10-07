@@ -809,8 +809,17 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 rc = emit8(code, (uint8_t)(helper >> shift));
                 if (rc != AMIVM_JIT_OK) return rc;
             }
+            rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xecu); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc; /* align SysV stack */
             rc = emit8(code, 0xffu); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xe0u); if (rc != AMIVM_JIT_OK) return rc; /* jmp rax; helper returns to caller */
+            rc = emit8(code, 0xd0u); if (rc != AMIVM_JIT_OK) return rc; /* call rax */
+            rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xc4u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
 
             code->guest_instructions = 1u;
             code->guest_start_pc = block->guest_start_pc;
