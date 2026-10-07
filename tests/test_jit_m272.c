@@ -17,7 +17,9 @@ int main(void)
     memset(&b, 0, sizeof(b));
     memset(&cpu, 0, sizeof(cpu));
     memset(&vm, 0, sizeof(vm));
-    if (amivm_vm_init(&vm, NULL) != 0) { fprintf(stderr, "VM init failed\\n"); return 1; }
+    struct amivm_config config;
+    amivm_config_init(&config);
+    if (amivm_vm_init(&vm, &config) != 0) { fprintf(stderr, "VM init failed\\n"); return 1; }
     cpu.pc = 0xa000u;
     cpu.sr = 0x2000u;
 
