@@ -235,6 +235,15 @@ int amivm_jit_helper_jsr_indexed(struct amivm_jit_context *context,
     context->cpu->pc = target; return 0;
 }
 
+int amivm_jit_helper_jmp_indexed_entry(struct amivm_cpu_state *cpu,
+                                        struct amivm_jit_context *context,
+                                        uint32_t unused_return_pc, uint32_t encoded)
+{
+    (void)unused_return_pc;
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jmp_indexed(context, encoded);
+}
+
 int amivm_jit_helper_jmp_indexed(struct amivm_jit_context *context,
                                  uint32_t pc_base, uint32_t encoded)
 {
