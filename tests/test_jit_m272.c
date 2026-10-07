@@ -17,7 +17,7 @@ int main(void)
     memset(&b, 0, sizeof(b));
     memset(&cpu, 0, sizeof(cpu));
     memset(&vm, 0, sizeof(vm));
-    if (amivm_vm_init(&vm, 1u) != 0)
+    if (amivm_vm_init(&vm, NULL) != 0)
         return 1;
 
     amivm_jit_context_init(&ctx, &cpu, &vm);
