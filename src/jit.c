@@ -785,11 +785,14 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             int (*helper_fn)(struct amivm_cpu_state *,
                              struct amivm_jit_context *,
                              uint32_t, uint32_t);
-            if (op->ea_mode != AMIVM_IR_EA_AN && op->ea_mode != AMIVM_IR_EA_D16_AN)
+            if (op->ea_mode != AMIVM_IR_EA_AN && op->ea_mode != AMIVM_IR_EA_D16_AN &&
+                op->ea_mode != AMIVM_IR_EA_D8_AN_XN)
                 return AMIVM_JIT_UNSUPPORTED;
             helper_fn = op->ea_mode == AMIVM_IR_EA_AN ?
                         amivm_jit_helper_jmp_an_entry :
-                        amivm_jit_helper_jmp_d16_an_entry;
+                        (op->ea_mode == AMIVM_IR_EA_D16_AN ?
+                         amivm_jit_helper_jmp_d16_an_entry :
+                         amivm_jit_helper_jmp_indexed_entry);
             memcpy(&helper, &helper_fn, sizeof helper);
             code->requires_context = 1;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
@@ -799,7 +802,11 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
                 if (rc != AMIVM_JIT_OK) return rc;
             }
             rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit32(code, op->ea_mode == AMIVM_IR_EA_AN ? op->reg : op->imm);
+            rc = emit32(code, op->ea_mode == AMIVM_IR_EA_AN ? op->reg :
+                               (op->ea_mode == AMIVM_IR_EA_D16_AN ? op->imm :
+                                ((uint32_t)(op->imm & 0xff) | ((uint32_t)(op->index_reg & 7u) << 8u) |
+                                 ((uint32_t)(op->index_is_addr & 1u) << 11u) | ((uint32_t)(op->index_long & 1u) << 12u) |
+                                 ((uint32_t)(op->index_scale & 3u) << 13u) | ((uint32_t)(op->reg & 7u) << 16u))));
             if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
