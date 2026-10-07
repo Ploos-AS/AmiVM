@@ -10,7 +10,8 @@ int main(void)
     struct amivm_ir_block b={0}; struct amivm_jit_code j; struct amivm_cpu_state cpu={0};
     struct amivm_vm vm={0}; struct amivm_jit_context ctx; struct amivm_config config;
     amivm_config_init(&config); config.ram_size=2u*1024u*1024u;
-    if(amivm_vm_init(&vm,&config)!=0)return 1; amivm_jit_context_init(&ctx,&cpu,&vm);
+    if (amivm_vm_init(&vm, &config) != 0) return 1;
+    amivm_jit_context_init(&ctx, &cpu, &vm);
     cpu.a[4]=0xb000u; cpu.d[2]=0x10u; cpu.a[7]=AMIVM_RAM_BASE+0x800u; cpu.pc=0xa000u; cpu.sr=0x2000u;
     b.guest_start_pc=0xa000u;b.guest_end_pc=0xa004u;b.op_count=1;b.terminates=1;
     b.ops[0].opcode=AMIVM_IR_JSR;b.ops[0].ea_mode=AMIVM_IR_EA_D8_AN_XN;b.ops[0].reg=4u;
