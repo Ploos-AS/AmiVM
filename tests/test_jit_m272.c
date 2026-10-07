@@ -35,8 +35,7 @@ int main(void)
     b.ops[0].instruction_bytes = 2u;
     if (amivm_jit_compile(&b, &j) != AMIVM_JIT_OK || !j.requires_context)
         return 1;
-    if (amivm_jit_execute_context(&j, &cpu, &ctx) != 0)
-        return 1;
+    { int rc = amivm_jit_execute_context(&j, &cpu, &ctx); if (rc != 0) { fprintf(stderr, "BSR rc=%d pc=%08x sp=%08x\\n", rc, cpu.pc, cpu.a[7]); return 1; } }
     if (cpu.pc != 0xa022u || cpu.a[7] != AMIVM_RAM_BASE + 0x7fcu)
         return 1;
 
@@ -48,8 +47,7 @@ int main(void)
     b.ops[0].opcode = AMIVM_IR_RTS;
     if (amivm_jit_compile(&b, &j) != AMIVM_JIT_OK || !j.requires_context)
         return 1;
-    if (amivm_jit_execute_context(&j, &cpu, &ctx) != 0)
-        return 1;
+    { int rc = amivm_jit_execute_context(&j, &cpu, &ctx); if (rc != 0) { fprintf(stderr, "RTS rc=%d pc=%08x sp=%08x\\n", rc, cpu.pc, cpu.a[7]); return 1; } }
     if (cpu.pc != 0xa002u || cpu.a[7] != AMIVM_RAM_BASE + 0x800u)
         return 1;
 
