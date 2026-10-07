@@ -159,6 +159,14 @@ static int decode_d16_an(uint32_t encoded, uint32_t *reg, int32_t *disp)
     return 0;
 }
 
+int amivm_jit_helper_jsr_d16_an_entry(struct amivm_cpu_state *cpu,
+                                       struct amivm_jit_context *context,
+                                       uint32_t return_pc, uint32_t encoded)
+{
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jsr_d16_an(context, return_pc, encoded);
+}
+
 int amivm_jit_helper_jsr_d16_an(struct amivm_jit_context *context,
                                 uint32_t return_pc, uint32_t encoded)
 {
