@@ -10,6 +10,7 @@ int main(void){
  cpu.a[4]=0xb000u; cpu.d[2]=0x20u; cpu.a[7]=AMIVM_RAM_BASE+0x800u; cpu.pc=0xa000u; cpu.sr=0x2000u;
  amivm_write8(&vm,0xb010u,0); amivm_write8(&vm,0xb011u,0); amivm_write8(&vm,0xb012u,0xbf); amivm_write8(&vm,0xb013u,0xf0);
  b.guest_start_pc=0xa000u;b.guest_end_pc=0xa006u;b.op_count=1;b.terminates=1;b.ops[0].opcode=AMIVM_IR_JSR;b.ops[0].ea_mode=AMIVM_IR_EA_D8_AN_XN;b.ops[0].reg=4u;b.ops[0].index_reg=2u;b.ops[0].index_long=1u;b.ops[0].full_format=1u;b.ops[0].indirect_mode=AMIVM_EA_INDIRECT_POSTINDEXED;b.ops[0].base_displacement=0x10;b.ops[0].outer_displacement=0x20;b.ops[0].guest_pc=0xa000u;b.ops[0].instruction_bytes=6u;
- if(amivm_jit_compile(&b,&j)!=AMIVM_JIT_OK||amivm_jit_execute_context(&j,&cpu,&ctx)!=1||cpu.pc!=0xbff0u||cpu.a[7]!=AMIVM_RAM_BASE+0x7fcu)return 1; amivm_vm_destroy(&vm);
+ if (amivm_jit_compile(&b,&j)!=AMIVM_JIT_OK || amivm_jit_execute_context(&j,&cpu,&ctx)!=1 || cpu.pc!=0xbff0u || cpu.a[7]!=AMIVM_RAM_BASE+0x7fcu) return 1;
+ amivm_vm_destroy(&vm);
 #endif
  puts("AmiVM M2.82 JSR full indexed postindexed: PASS"); return 0; }
