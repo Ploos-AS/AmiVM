@@ -782,21 +782,27 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
         switch (op->opcode) {
         case AMIVM_IR_JMP: {
             uintptr_t helper;
-            int (*helper_fn)(struct amivm_cpu_state *,
-                             struct amivm_jit_context *,
-                             uint32_t, uint32_t);
             if (op->ea_mode != AMIVM_IR_EA_AN && op->ea_mode != AMIVM_IR_EA_D16_AN &&
-                op->ea_mode != AMIVM_IR_EA_D8_AN_XN && op->ea_mode != AMIVM_IR_EA_FULL_INDEXED)
+                op->ea_mode != AMIVM_IR_EA_D8_AN_XN)
                 return AMIVM_JIT_UNSUPPORTED;
-            if (op->ea_mode == AMIVM_IR_EA_AN)
-                helper_fn = amivm_jit_helper_jmp_an_entry;
-            else if (op->ea_mode == AMIVM_IR_EA_D16_AN)
-                helper_fn = amivm_jit_helper_jmp_d16_an_entry;
-            else if (op->full_format)
-                helper_fn = amivm_jit_helper_jmp_full_indexed_entry;
-            else
-                helper_fn = amivm_jit_helper_jmp_indexed_entry;
-            memcpy(&helper, &helper_fn, sizeof helper);
+            if (op->ea_mode == AMIVM_IR_EA_AN) {
+                int (*helper_fn)(struct amivm_cpu_state *, struct amivm_jit_context *, uint32_t, uint32_t) =
+                    amivm_jit_helper_jmp_an_entry;
+                memcpy(&helper, &helper_fn, sizeof helper);
+            } else if (op->ea_mode == AMIVM_IR_EA_D16_AN) {
+                int (*helper_fn)(struct amivm_cpu_state *, struct amivm_jit_context *, uint32_t, uint32_t) =
+                    amivm_jit_helper_jmp_d16_an_entry;
+                memcpy(&helper, &helper_fn, sizeof helper);
+            } else if (op->full_format) {
+                int (*helper_fn)(struct amivm_cpu_state *, struct amivm_jit_context *,
+                                 uint32_t, uint32_t, uint32_t, uint32_t) =
+                    amivm_jit_helper_jmp_full_indexed_entry;
+                memcpy(&helper, &helper_fn, sizeof helper);
+            } else {
+                int (*helper_fn)(struct amivm_cpu_state *, struct amivm_jit_context *, uint32_t, uint32_t) =
+                    amivm_jit_helper_jmp_indexed_entry;
+                memcpy(&helper, &helper_fn, sizeof helper);
+            }
             code->requires_context = 1;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
