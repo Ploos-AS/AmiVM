@@ -36,7 +36,8 @@ int main(void)
     b.ops[0].imm = 0x20;
     b.ops[0].instruction_bytes = 2u;
     if (amivm_jit_compile(&b, &j) != AMIVM_JIT_OK || !j.requires_context) { fprintf(stderr, "BSR compile failed rc=%d context=%d\\n", amivm_jit_compile(&b, &j), j.requires_context); return 1; }
-    { int direct_rc = amivm_jit_helper_bsr(&ctx, 0xa002u, 0xa022u); fprintf(stderr, "BSR direct rc=%d pc=%08x sp=%08x\\n", direct_rc, cpu.pc, cpu.a[7]); if (direct_rc != 0) return 1; cpu.pc = 0xa000u; cpu.a[7] = AMIVM_RAM_BASE + 0x800u; }\n    { int rc = amivm_jit_execute_context(&j, &cpu, &ctx); if (rc != 0) { fprintf(stderr, "BSR rc=%d pc=%08x sp=%08x\\n", rc, cpu.pc, cpu.a[7]); return 1; } }
+    { int direct_rc = amivm_jit_helper_bsr(&ctx, 0xa002u, 0xa022u); fprintf(stderr, "BSR direct rc=%d pc=%08x sp=%08x\\n", direct_rc, cpu.pc, cpu.a[7]); if (direct_rc != 0) return 1; cpu.pc = 0xa000u; cpu.a[7] = AMIVM_RAM_BASE + 0x800u; }
+    { int rc = amivm_jit_execute_context(&j, &cpu, &ctx); if (rc != 0) { fprintf(stderr, "BSR rc=%d pc=%08x sp=%08x\\n", rc, cpu.pc, cpu.a[7]); return 1; } }
     if (cpu.pc != 0xa022u || cpu.a[7] != AMIVM_RAM_BASE + 0x7fcu) { fprintf(stderr, "BSR state pc=%08x sp=%08x\\n", cpu.pc, cpu.a[7]); return 1; }
 
     memset(&b, 0, sizeof(b));
