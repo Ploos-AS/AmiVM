@@ -19,6 +19,7 @@ int main(void)
     memset(&vm, 0, sizeof(vm));
     struct amivm_config config;
     amivm_config_init(&config);
+    config.ram_size = 2u * 1024u * 1024u;
     if (amivm_vm_init(&vm, &config) != 0) { fprintf(stderr, "VM init failed\\n"); return 1; }
     cpu.pc = 0xa000u;
     cpu.sr = 0x2000u;
