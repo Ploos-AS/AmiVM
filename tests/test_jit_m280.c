@@ -1,0 +1,28 @@
+#include "jit.h"
+#include "jit_helpers.h"
+#include "vm.h"
+#include <stdint.h>
+#include <stdio.h>
+int main(void)
+{
+#if defined(__x86_64__) && defined(__linux__)
+    struct amivm_ir_block b={0}; struct amivm_jit_code j; struct amivm_cpu_state cpu={0};
+    struct amivm_vm vm={0}; struct amivm_jit_context ctx; struct amivm_config config;
+    amivm_config_init(&config); config.ram_size=2u*1024u*1024u;
+    if (amivm_vm_init(&vm,&config)!=0) return 1;
+    amivm_jit_context_init(&ctx,&cpu,&vm);
+    cpu.a[4]=0xb000u; cpu.d[2]=0x20u; cpu.a[7]=AMIVM_RAM_BASE+0x800u;
+    cpu.pc=0xa000u; cpu.sr=0x2000u;
+    b.guest_start_pc=0xa000u;b.guest_end_pc=0xa006u;b.op_count=1;b.terminates=1;
+    b.ops[0].opcode=AMIVM_IR_JSR;b.ops[0].ea_mode=AMIVM_IR_EA_D8_AN_XN;b.ops[0].reg=4u;
+    b.ops[0].index_reg=2u;b.ops[0].index_is_addr=0;b.ops[0].index_long=1;b.ops[0].index_scale=0;
+    b.ops[0].full_format=1u;b.ops[0].base_suppress=0u;b.ops[0].index_suppress=0u;
+    b.ops[0].indirect_mode=AMIVM_EA_INDIRECT_NONE;b.ops[0].base_displacement=0x10;
+    b.ops[0].outer_displacement=0;b.ops[0].guest_pc=0xa000u;b.ops[0].instruction_bytes=6u;
+    if(amivm_jit_compile(&b,&j)!=AMIVM_JIT_OK||!j.requires_context)return 1;
+    if(amivm_jit_execute_context(&j,&cpu,&ctx)!=1)return 1;
+    if(cpu.pc!=0xb030u||cpu.a[7]!=AMIVM_RAM_BASE+0x7fcu)return 1;
+    amivm_vm_destroy(&vm);
+#endif
+    puts("AmiVM M2.80 x86-64 JSR full indexed: PASS"); return 0;
+}
