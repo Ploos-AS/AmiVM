@@ -803,7 +803,7 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             }
             rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit32(code, op->ea_mode == AMIVM_IR_EA_AN ? op->reg :
-                               (op->ea_mode == AMIVM_IR_EA_D16_AN ? op->imm :
+                               (op->ea_mode == AMIVM_IR_EA_D16_AN ? (uint32_t)op->imm :
                                 ((uint32_t)(op->imm & 0xff) | ((uint32_t)(op->index_reg & 7u) << 8u) |
                                  ((uint32_t)(op->index_is_addr & 1u) << 11u) | ((uint32_t)(op->index_long & 1u) << 12u) |
                                  ((uint32_t)(op->index_scale & 3u) << 13u) | ((uint32_t)(op->reg & 7u) << 16u))));
