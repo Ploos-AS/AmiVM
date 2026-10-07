@@ -218,6 +218,14 @@ static int indexed_target(struct amivm_jit_context *context, uint32_t pc_base,
     return 0;
 }
 
+int amivm_jit_helper_jsr_indexed_entry(struct amivm_cpu_state *cpu,
+                                       struct amivm_jit_context *context,
+                                       uint32_t return_pc, uint32_t encoded)
+{
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jsr_indexed(context, return_pc, encoded);
+}
+
 int amivm_jit_helper_jsr_indexed(struct amivm_jit_context *context,
                                  uint32_t return_pc, uint32_t encoded)
 {
