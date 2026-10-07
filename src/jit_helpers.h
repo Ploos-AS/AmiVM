@@ -58,6 +58,10 @@ int amivm_jit_helper_jmp_an_entry(struct amivm_cpu_state *cpu,
                                    struct amivm_jit_context *context,
                                    uint32_t unused_return_pc, uint32_t address_register);
 
+int amivm_jit_helper_jmp_d16_an_entry(struct amivm_cpu_state *cpu,
+                                       struct amivm_jit_context *context,
+                                       uint32_t unused_return_pc, uint32_t encoded);
+
 #endif
 int amivm_jit_helper_bsr_entry(struct amivm_cpu_state *cpu,
                                 struct amivm_jit_context *context,
