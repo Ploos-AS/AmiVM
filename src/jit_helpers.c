@@ -126,6 +126,15 @@ int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
     context->cpu->pc = target_pc; return 0;
 }
 
+int amivm_jit_helper_jmp_an_entry(struct amivm_cpu_state *cpu,
+                                   struct amivm_jit_context *context,
+                                   uint32_t unused_return_pc, uint32_t address_register)
+{
+    (void)unused_return_pc;
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jmp_an(context, address_register);
+}
+
 int amivm_jit_helper_jmp_an(struct amivm_jit_context *context,
                             uint32_t address_register)
 {
