@@ -74,6 +74,11 @@ int amivm_jit_helper_jmp_indexed_entry(struct amivm_cpu_state *cpu,
                                         struct amivm_jit_context *context,
                                         uint32_t unused_return_pc, uint32_t encoded);
 
+int amivm_jit_helper_jmp_full_indexed_entry(struct amivm_cpu_state *cpu,
+                                             struct amivm_jit_context *context,
+                                             uint32_t unused_return_pc, uint32_t encoded,
+                                             uint32_t base_displacement, uint32_t outer_displacement);
+
 #endif
 int amivm_jit_helper_bsr_entry(struct amivm_cpu_state *cpu,
                                 struct amivm_jit_context *context,
