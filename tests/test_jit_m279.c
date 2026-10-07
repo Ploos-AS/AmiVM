@@ -14,7 +14,7 @@ int main(void)
     amivm_jit_context_init(&ctx,&cpu,&vm);
     cpu.a[4]=0xb000u; cpu.d[2]=0x20u; cpu.pc=0xa000u; cpu.sr=0x2000u;
     b.guest_start_pc=0xa000u;b.guest_end_pc=0xa006u;b.op_count=1;b.terminates=1;
-    b.ops[0].opcode=AMIVM_IR_JMP;b.ops[0].ea_mode=AMIVM_IR_EA_FULL_INDEXED;b.ops[0].reg=4u;
+    b.ops[0].opcode=AMIVM_IR_JMP;b.ops[0].ea_mode=AMIVM_IR_EA_D8_AN_XN;b.ops[0].reg=4u;
     b.ops[0].index_reg=2u;b.ops[0].index_is_addr=0;b.ops[0].index_long=1;b.ops[0].index_scale=0;
     b.ops[0].imm=0x10;b.ops[0].guest_pc=0xa000u;b.ops[0].instruction_bytes=6u;
     if(amivm_jit_compile(&b,&j)!=AMIVM_JIT_OK||!j.requires_context)return 1;
