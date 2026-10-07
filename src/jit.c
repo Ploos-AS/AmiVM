@@ -783,44 +783,40 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
         case AMIVM_IR_BSR:
         case AMIVM_IR_RTS: {
             uintptr_t helper;
-            int (*helper_fn)(struct amivm_jit_context *, uint32_t, uint32_t);
             uint32_t return_pc = op->guest_pc +
                                  (op->instruction_bytes ? op->instruction_bytes : 2u);
             uint32_t target_pc = op->guest_pc + 2u + (uint32_t)op->imm;
-            if (op->opcode == AMIVM_IR_BSR)
-                helper_fn = amivm_jit_helper_bsr;
-            else
-                helper_fn = amivm_jit_helper_rts_abi;
-            memcpy(&helper, &helper_fn,
-                   sizeof helper < sizeof helper_fn ? sizeof helper : sizeof helper_fn);
+            int (*helper_fn)(struct amivm_cpu_state *,
+                             struct amivm_jit_context *,
+                             uint32_t, uint32_t);
+            helper_fn = op->opcode == AMIVM_IR_BSR ?
+                        amivm_jit_helper_bsr_entry :
+                        amivm_jit_helper_rts_entry;
+            memcpy(&helper, &helper_fn, sizeof helper);
             code->requires_context = 1;
-            rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xf7u); if (rc != AMIVM_JIT_OK) return rc; /* mov rdi,rsi */
-            rc = emit8(code, 0xbeu); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit32(code, op->opcode == AMIVM_IR_BSR ? return_pc : 0u);
-            if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xbau); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit32(code, op->opcode == AMIVM_IR_BSR ? target_pc : 0u);
-            if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
             for (unsigned shift = 0u; shift < 64u; shift += 8u) {
                 rc = emit8(code, (uint8_t)(helper >> shift));
                 if (rc != AMIVM_JIT_OK) return rc;
             }
+            rc = emit8(code, 0xba); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, op->opcode == AMIVM_IR_BSR ? return_pc : 0u);
+            if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xb9); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit32(code, op->opcode == AMIVM_IR_BSR ? target_pc : 0u);
+            if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xecu); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc; /* align SysV stack */
+            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xffu); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xd0u); if (rc != AMIVM_JIT_OK) return rc; /* call rax */
+            rc = emit8(code, 0xd0u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xc4u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
-
             code->guest_instructions = 1u;
             code->guest_start_pc = block->guest_start_pc;
             code->guest_end_pc = block->guest_end_pc;
