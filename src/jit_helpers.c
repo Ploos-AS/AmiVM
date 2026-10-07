@@ -108,6 +108,14 @@ int amivm_jit_helper_rts_entry(struct amivm_cpu_state *cpu,
     return amivm_jit_helper_rts(context);
 }
 
+int amivm_jit_helper_jsr_an_entry(struct amivm_cpu_state *cpu,
+                                   struct amivm_jit_context *context,
+                                   uint32_t return_pc, uint32_t address_register)
+{
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jsr_an(context, return_pc, address_register);
+}
+
 int amivm_jit_helper_jsr_an(struct amivm_jit_context *context,
                             uint32_t return_pc, uint32_t address_register)
 {
