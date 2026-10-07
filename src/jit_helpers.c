@@ -323,6 +323,17 @@ int amivm_jit_helper_jsr_full_indexed(struct amivm_jit_context *context,
     return 0;
 }
 
+int amivm_jit_helper_jmp_full_indexed_entry(struct amivm_cpu_state *cpu,
+                                             struct amivm_jit_context *context,
+                                             uint32_t unused_return_pc, uint32_t encoded,
+                                             uint32_t base_displacement, uint32_t outer_displacement)
+{
+    (void)unused_return_pc;
+    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
+    return amivm_jit_helper_jmp_full_indexed(context, cpu->pc, encoded,
+                                             base_displacement, outer_displacement);
+}
+
 int amivm_jit_helper_jmp_full_indexed(struct amivm_jit_context *context,
                                       uint32_t pc_base, uint32_t encoded,
                                       uint32_t base_displacement,
