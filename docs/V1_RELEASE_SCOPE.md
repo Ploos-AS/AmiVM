@@ -9,7 +9,8 @@ AmiVM is a performance-first 68k virtual machine. Keep the Hyper/040 guest ABI a
 - Complete the Hyper/040 execution and guest bring-up path from M2 onward.
 - Qualify supported original Commodore Amiga model profiles in the separate Compatibility path: A1000, A500, A500+, A600, A1200, A2000, A3000 and A4000, with variants documented individually.
 - Document CPU, chipset, memory, ROM and peripheral coverage per profile. Never mark a profile complete based only on boot success.
-- Validate AmigaOS 3.x and AROS/m68k using legally supplied ROMs and redistributable test fixtures.
+- Target AmigaOS 1.x, 2.x and 3.x, AROS/m68k and AxiomicaOS/m68k using documented, appropriate machine profiles and legally supplied ROMs/test fixtures; qualify OS versions separately.
+- Include Linux/m68k, NetBSD/m68k and OpenBSD/m68k as named guest targets, with explicit machine/port-specific boot and device requirements. OpenBSD support may require porting work.
 - Preserve Linux/m68k and NetBSD/m68k Hyper targets from the existing roadmap.
 - Provide reproducible headless smoke tests, CI results and a per-profile compatibility matrix.
 - Publish known limitations and explicit pass/fail evidence before release.
