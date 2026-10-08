@@ -72,16 +72,16 @@ static int qualification_edges(void)
 
 int main(void)
 {
-    /* Branch base is opcode PC + 2 for the 16-bit displacement form. */
-    CHECK(run_word_branch(0x6000u, 0x0010, 0x2715u, 0x00004012u) == 0);
-    CHECK(run_word_branch(0x6000u, -2, 0x2715u, 0x00004000u) == 0);
+    /* Word branches use the PC after the extension word as displacement base. */
+    CHECK(run_word_branch(0x6000u, 0x0010, 0x2715u, 0x00004014u) == 0);
+    CHECK(run_word_branch(0x6000u, -2, 0x2715u, 0x00004002u) == 0);
 
     /* BEQ.w: taken uses disp16, not-taken skips the extension word. */
-    CHECK(run_word_branch(0x6700u, 0x0010, SR_Z, 0x00004012u) == 0);
+    CHECK(run_word_branch(0x6700u, 0x0010, SR_Z, 0x00004014u) == 0);
     CHECK(run_word_branch(0x6700u, 0x0010, 0u, 0x00004004u) == 0);
 
     /* BNE.w negative displacement qualifies sign extension. */
-    CHECK(run_word_branch(0x6600u, -2, 0u, 0x00004000u) == 0);
+    CHECK(run_word_branch(0x6600u, -2, 0u, 0x00004002u) == 0);
     CHECK(run_word_branch(0x6600u, -2, SR_Z, 0x00004004u) == 0);
 
     CHECK(qualification_edges() == 0);

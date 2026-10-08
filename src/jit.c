@@ -826,7 +826,8 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xc4u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, op->full_format ? 0x18u : 0x08u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;de->guest_instructions = 1u;
+            rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
+            code->guest_instructions = 1u;
             code->guest_start_pc = block->guest_start_pc;
             code->guest_end_pc = block->guest_end_pc;
             return AMIVM_JIT_OK;
