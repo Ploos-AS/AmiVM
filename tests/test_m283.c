@@ -80,5 +80,12 @@ int main(void) {
     CHECK(run_case("BNE.S taken",bne_short,sizeof(bne_short))==0);
     CHECK(run_case("BPL.S taken",bpl_short,sizeof(bpl_short))==0);
     CHECK(run_case("BNE.W taken",bne_word,sizeof(bne_word))==0);
+    /* Exercise untaken Bcc by branching forward to a stable BRA.S loop. */
+    static const uint8_t beq_short_not_taken[] = {0x67u,0x02u,0x60u,0xfeu};
+    static const uint8_t bmi_short_not_taken[] = {0x6bu,0x02u,0x60u,0xfeu};
+    static const uint8_t beq_word_not_taken[] = {0x67u,0x00u,0x00u,0x02u,0x60u,0xfeu};
+    CHECK(run_case("BEQ.S not taken",beq_short_not_taken,sizeof(beq_short_not_taken))==0);
+    CHECK(run_case("BMI.S not taken",bmi_short_not_taken,sizeof(bmi_short_not_taken))==0);
+    CHECK(run_case("BEQ.W not taken",beq_word_not_taken,sizeof(beq_word_not_taken))==0);
     return 0;
 }
