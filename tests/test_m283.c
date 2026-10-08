@@ -74,8 +74,13 @@ int main(void) {
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     /* Reference 68040 uses the post-extension PC as the word-branch base. */
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
-    /* Reference backend currently implements BRA/BSR, not Bcc.
-     * Exercise data-register and condition-code changes before a BRA loop. */
+    /* BSR pushes return PC to RAM stack; RTS restores SP and resumes
+     * at the BRA.S loop. Differential RAM comparison checks stack writes. */
+    static const uint8_t bsr_rts[] = {0x61u,0x02u,0x60u,0xfeu,0x4eu,0x75u};
+    CHECK(run_case("BSR.S / RTS stack roundtrip",bsr_rts,sizeof(bsr_rts))==0);
+    static const uint8_t bsr_word_rts[] = {0x61u,0x00u,0x00u,0x02u,0x60u,0xfeu,0x4eu,0x75u};
+    CHECK(run_case("BSR.W / RTS stack roundtrip",bsr_word_rts,sizeof(bsr_word_rts))==0);
+    /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
     CHECK(run_case("MOVEQ #0,D0; BRA.S",moveq_zero_bra,sizeof(moveq_zero_bra))==0);
