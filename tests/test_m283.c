@@ -68,5 +68,12 @@ int main(void) {
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     /* Reference 68040 uses the post-extension PC as the word-branch base. */
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
+    /* Reset SR=0x2700: Z=0 and N=0, so these conditional branches loop. */
+    static const uint8_t bne_short[] = {0x66u,0xfeu};
+    static const uint8_t bpl_short[] = {0x6au,0xfeu};
+    static const uint8_t bne_word[] = {0x66u,0x00u,0xffu,0xfcu};
+    CHECK(run_case("BNE.S taken",bne_short,sizeof(bne_short))==0);
+    CHECK(run_case("BPL.S taken",bpl_short,sizeof(bpl_short))==0);
+    CHECK(run_case("BNE.W taken",bne_word,sizeof(bne_word))==0);
     return 0;
 }
