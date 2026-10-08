@@ -161,6 +161,20 @@ int main(void) {
     };
     CHECK(run_case_setup("JSR (A0) / RTS stack roundtrip",
                          jsr_a0_rts,sizeof(jsr_a0_rts),0u,1)==0);
+    /* M290: nested JSR absolute-long -> BSR.S -> RTS -> RTS.
+     * Outer JSR at +0 targets +12; inner BSR at +12 targets +18.
+     * Each RTS unwinds one return address, ending at the BRA loop. */
+    static const uint8_t nested_jsr_bsr_rts[] = {
+        0x4eu,0xb9u,0x00u,0xf0u,0x01u,0x0cu, /* +0: JSR $00f0010c */
+        0x60u,0xfeu,                         /* +6: BRA.S -> self */
+        0x4eu,0x71u,0x4eu,0x71u,             /* +8,+10: padding */
+        0x61u,0x04u,                         /* +12: BSR.S -> +18 */
+        0x4eu,0x75u,                         /* +14: outer RTS */
+        0x4eu,0x71u,                         /* +16: padding */
+        0x4eu,0x75u                          /* +18: inner RTS */
+    };
+    CHECK(run_case("nested JSR absolute long / BSR.S / RTS stack roundtrip",
+                   nested_jsr_bsr_rts,sizeof(nested_jsr_bsr_rts))==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
