@@ -59,12 +59,14 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Bring up NetBSD/m68k on Hyper/040 and add native AmiVM device support where required.
 - Bring up OpenBSD/m68k where the maintained port and machine requirements permit a practical AmiVM target.
 - Bring up AROS/m68k using the Hyper machine where possible and Amiga-compatible bindings where required.
-- Establish the AmigaOS 3.x bootstrap/device contract for the Compatibility profile.
+- Establish bootstrap/device contracts for AmigaOS 1.x, 2.x and 3.x on appropriate original-machine Compatibility profiles.
+- Bring up AxiomicaOS/m68k on a documented Hyper/040 or Amiga-compatible profile, with its boot requirements verified rather than assumed.
 
 ### M3 target matrix
 
-- **Tier 1:** Linux/m68k, NetBSD/m68k, AROS/m68k, AmigaOS 3.x.
-- **Supported/qualified where practical:** OpenBSD/m68k, subject to the maintained port and its machine requirements.
+- **Named guest targets:** AmigaOS 1.x, 2.x and 3.x; AROS/m68k; Linux/m68k; NetBSD/m68k; OpenBSD/m68k; AxiomicaOS/m68k.
+- **OpenBSD constraint:** investigate maintained m68k ports and machine-specific boot/device expectations; if a suitable target requires guest porting or drivers, track that explicitly rather than dropping the OS.
+- **AxiomicaOS constraint:** coordinate guest boot ABI, ROM dependencies and drivers with the separate AxiomicaOS project.
 - Guest-specific boot mechanisms and drivers must not force unrelated historical hardware into the Hyper profile.
 
 ## M4 — High-performance virtual I/O
@@ -90,7 +92,7 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 
 - Add selected A4000-class conventions only where needed.
 - Preserve separation between performance-critical Hyper mode and compatibility hardware.
-- Qualify representative AmigaOS and AROS workloads.
+- Qualify representative AmigaOS 1.x/2.x/3.x, AROS/m68k and AxiomicaOS workloads against explicitly selected machine profiles.
 
 ## M7 — Performance engineering
 
