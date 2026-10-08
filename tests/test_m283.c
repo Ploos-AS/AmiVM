@@ -66,6 +66,9 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
                     fprintf(stderr,"M285 decoded: opcode=%u guest_pc=%08x bytes=%u disp=%d JIT=%d\\n",
                         (unsigned)op->opcode,op->guest_pc,(unsigned)op->instruction_bytes,
                         op->imm,entry->jit_valid);
+                    fprintf(stderr,"M285 JIT arch=%d size=%zu bytes:",(int)entry->jit.arch,entry->jit.size);
+                    for (size_t k=0;k<entry->jit.size;++k) fprintf(stderr," %02x",entry->jit.bytes[k]);
+                    fprintf(stderr,"\\n");
                 }
             }
             return 1;
