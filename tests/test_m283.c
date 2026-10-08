@@ -121,6 +121,17 @@ int main(void) {
         0x4eu,0x75u              /* 14: RTS (inner) */
     };
     CHECK(run_case("nested BSR.W + BSR.S / RTS stack roundtrip",nested_bsr_mixed,sizeof(nested_bsr_mixed))==0);
+    /* M287: JSR absolute long (0x4eb9) enters an RTS subroutine.
+     * The absolute destination is ROM_BASE + 0x10c; the pushed return
+     * address is ROM_BASE + 0x106, followed by a BRA.S self-loop. */
+    static const uint8_t jsr_abs_long_rts[] = {
+        0x4eu,0xb9u,0x00u,0xf0u,0x01u,0x0cu, /* JSR $00f0010c */
+        0x60u,0xfeu,                         /* BRA.S -> self */
+        0x4eu,0x71u,0x4eu,0x71u,             /* NOP padding */
+        0x4eu,0x75u                          /* RTS */
+    };
+    CHECK(run_case("JSR absolute long / RTS stack roundtrip",
+                   jsr_abs_long_rts,sizeof(jsr_abs_long_rts))==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
