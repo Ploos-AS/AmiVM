@@ -87,5 +87,18 @@ int main(void) {
     CHECK(run_case("BEQ.S not taken",beq_short_not_taken,sizeof(beq_short_not_taken))==0);
     CHECK(run_case("BMI.S not taken",bmi_short_not_taken,sizeof(bmi_short_not_taken))==0);
     CHECK(run_case("BEQ.W not taken",beq_word_not_taken,sizeof(beq_word_not_taken))==0);
+    /* Cover every condition code using reset CCR (N=Z=V=C=0).
+     * Taken branches loop on themselves; untaken branches reach BRA.S. */
+    static const unsigned taken_cc[] = {2u,4u,6u,8u,10u,12u,14u};
+    static const unsigned not_taken_cc[] = {3u,5u,7u,9u,11u,13u,15u};
+    unsigned k;
+    for (k=0u;k<sizeof(taken_cc)/sizeof(taken_cc[0]);++k) {
+        uint8_t insn[] = {(uint8_t)(0x60u+taken_cc[k]),0xfeu};
+        CHECK(run_case("Bcc.S taken matrix",insn,sizeof(insn))==0);
+    }
+    for (k=0u;k<sizeof(not_taken_cc)/sizeof(not_taken_cc[0]);++k) {
+        uint8_t insn[] = {(uint8_t)(0x60u+not_taken_cc[k]),0x02u,0x60u,0xfeu};
+        CHECK(run_case("Bcc.S not-taken matrix",insn,sizeof(insn))==0);
+    }
     return 0;
 }
