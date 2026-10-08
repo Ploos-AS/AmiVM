@@ -19,6 +19,7 @@ AmiVM is a performance-first 68k virtual machine. Keep the Hyper/040 guest ABI a
 - Apollo 68080, AMMX, SAGA and Vampire V4 Standalone.
 - Amiga-compatible third-party machines, including DraCo.
 - A blanket promise of cycle-exact demo/game compatibility.
+- CaffeineOS guest support and any Apollo/Vampire-specific distribution qualification.
 
 ## Release gates
 1. CPU reference execution: reset vectors, instruction stepping, supervisor/user transitions, exceptions, interrupts, MMU and FPU tests.
@@ -37,7 +38,8 @@ The original-model compatibility promise is a v1.0 planning goal and may require
 1. Classic accelerator and expansion-card profiles.
 2. Apollo 68080 CPU backend and AMMX qualification.
 3. Vampire V2 accelerator profiles, SAGA and Vampire V4 Standalone.
-4. Other compatible machines, including DraCo.
+4. CaffeineOS guest qualification on the appropriate Apollo/Vampire-compatible profile (dependent on verified release-specific CPU, ROM, graphics, storage and boot requirements).
+5. Other compatible machines, including DraCo.
 
 Do not add post-v1.0 hardware to the first-release acceptance criteria.
 
