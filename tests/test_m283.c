@@ -58,6 +58,16 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
                     (unsigned long long)engine.stats.jit_blocks,
                     (unsigned long long)engine.stats.ir_blocks,
                     (unsigned long long)engine.stats.fallbacks,ref_cpu.a[7],opt_cpu.a[7]);
+            {
+                size_t slot=(size_t)(((AMIVM_ROM_BASE+0x100u)>>1u)&(AMIVM_EXEC_CACHE_ENTRIES-1u));
+                const struct amivm_exec_cache_entry *entry=&engine.cache[slot];
+                if (entry->ir_valid && entry->block.op_count) {
+                    const struct amivm_ir_op *op=&entry->block.ops[entry->block.op_count-1u];
+                    fprintf(stderr,"M285 decoded: opcode=%u guest_pc=%08x bytes=%u disp=%d JIT=%d\\n",
+                        (unsigned)op->opcode,op->guest_pc,(unsigned)op->instruction_bytes,
+                        op->imm,entry->jit_valid);
+                }
+            }
             return 1;
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
