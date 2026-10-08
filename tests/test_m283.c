@@ -54,6 +54,10 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
         if (!same_cpu(&ref_cpu,&opt_cpu)) {
             fprintf(stderr,"M283 %s CPU divergence at step %u ref PC=%08x opt PC=%08x ref SR=%04x opt SR=%04x\n",
                     name,i,ref_cpu.pc,opt_cpu.pc,ref_cpu.sr,opt_cpu.sr);
+            fprintf(stderr,"M285 optimized path: JIT blocks=%llu IR blocks=%llu fallbacks=%llu A7 ref=%08x opt=%08x\\n",
+                    (unsigned long long)engine.stats.jit_blocks,
+                    (unsigned long long)engine.stats.ir_blocks,
+                    (unsigned long long)engine.stats.fallbacks,ref_cpu.a[7],opt_cpu.a[7]);
             return 1;
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
