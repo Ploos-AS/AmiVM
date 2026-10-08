@@ -207,7 +207,7 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
     }
     op->opcode = condition == 0u ? AMIVM_IR_BRANCH : AMIVM_IR_BRANCH_CC;
     op->condition = condition == 0u ? AMIVM_IR_CC_T : condition; op->guest_pc += 2u;
-    op->imm = displacement - 2; op->instruction_bytes = 4u; block->terminates = 1;
+    op->imm = displacement; op->instruction_bytes = 4u; block->terminates = 1;
     block->guest_end_pc = op->guest_pc + 2u; return 0;
 }
 
