@@ -74,5 +74,11 @@ int main(void) {
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
     CHECK(run_case("MOVEQ #0,D0; BRA.S",moveq_zero_bra,sizeof(moveq_zero_bra))==0);
     CHECK(run_case("MOVEQ #-1,D0; BRA.S",moveq_neg_bra,sizeof(moveq_neg_bra))==0);
+    static const uint8_t bne_short[] = {0x66u,0xfeu};
+    static const uint8_t bpl_short[] = {0x6au,0xfeu};
+    static const uint8_t bne_word[] = {0x66u,0x00u,0xffu,0xfcu};
+    CHECK(run_case("BNE.S taken",bne_short,sizeof(bne_short))==0);
+    CHECK(run_case("BPL.S taken",bpl_short,sizeof(bpl_short))==0);
+    CHECK(run_case("BNE.W taken",bne_word,sizeof(bne_word))==0);
     return 0;
 }
