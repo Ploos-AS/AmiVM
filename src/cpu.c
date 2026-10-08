@@ -594,6 +594,30 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         return 1;
     }
 
+    if ((opcode & 0xfff8u) == 0x4eb0u) { /* JSR d8(An,Xn), brief extension */
+        unsigned reg = (unsigned)(opcode & 7u);
+        uint16_t ext;
+        uint32_t index, target, sp;
+        if (fetch16(cpu, vm, next_pc, &ext) != 0)
+            return deliver_fault(cpu, vm, instruction_pc);
+        /* Full-format extensions are 68020+ and not handled here. */
+        if ((ext & 0x0100u) != 0u) {
+            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+            return deliver_fault(cpu, vm, instruction_pc);
+        }
+        index = (ext & 0x8000u) ? cpu->a[(ext >> 12u) & 7u] : cpu->d[(ext >> 12u) & 7u];
+        if ((ext & 0x0800u) == 0u)
+            index = (uint32_t)(int32_t)(int16_t)(index & 0xffffu);
+        target = cpu->a[reg] + index + (uint32_t)(int32_t)(int8_t)(ext & 0xffu);
+        sp = cpu->a[7] - 4u;
+        if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu), next_pc + 2u))
+            return deliver_fault(cpu, vm, instruction_pc);
+        cpu->a[7] = sp;
+        save_active_sp(cpu);
+        cpu->pc = target;
+        return 1;
+    }
+
     if (opcode == OP_JSR_PC_DISP) {
         uint16_t displacement;
         uint32_t target, sp;
