@@ -208,6 +208,31 @@ static void set_nz32(struct amivm_cpu_state *cpu, uint32_t value)
     if ((value & 0x80000000u) != 0u) cpu->sr |= SR_N;
 }
 
+static bool branch_condition_true(uint16_t sr, unsigned cc)
+{
+    const bool c = (sr & SR_C) != 0u;
+    const bool v = (sr & SR_V) != 0u;
+    const bool z = (sr & SR_Z) != 0u;
+    const bool n = (sr & SR_N) != 0u;
+    switch (cc) {
+    case 2: return !c && !z;       /* HI */
+    case 3: return c || z;         /* LS */
+    case 4: return !c;             /* CC */
+    case 5: return c;              /* CS */
+    case 6: return !z;             /* NE */
+    case 7: return z;              /* EQ */
+    case 8: return !v;             /* VC */
+    case 9: return v;              /* VS */
+    case 10: return !n;            /* PL */
+    case 11: return n;             /* MI */
+    case 12: return n == v;        /* GE */
+    case 13: return n != v;        /* LT */
+    case 14: return !z && n == v;  /* GT */
+    case 15: return z || n != v;   /* LE */
+    default: return false;
+    }
+}
+
 static bool read_cr(const struct amivm_cpu_state *cpu, uint16_t cr, uint32_t *value)
 {
     if (value == NULL) return false;
@@ -588,7 +613,7 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         return 1;
     }
 
-    if ((opcode & 0xff00u) == 0x6000u || (opcode & 0xff00u) == 0x6100u) {
+    if ((opcode & 0xf000u) == 0x6000u) {
         int32_t disp;
         uint32_t base = next_pc;
         if ((opcode & 0xffu) == 0u) {
@@ -607,7 +632,11 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             cpu->a[7] = sp;
             save_active_sp(cpu);
         }
-        cpu->pc = (uint32_t)((int64_t)base + disp);
+        if (((opcode >> 8u) & 15u) < 2u ||
+            branch_condition_true(cpu->sr, (unsigned)((opcode >> 8u) & 15u)))
+            cpu->pc = (uint32_t)((int64_t)base + disp);
+        else
+            cpu->pc = base;
         return 1;
     }
 

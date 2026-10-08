@@ -25,7 +25,7 @@ static int same_cpu(const struct amivm_cpu_state *a, const struct amivm_cpu_stat
            a->last_exception_vector==b->last_exception_vector;
 }
 
-static int run_case(const char *name, const uint8_t *code, size_t code_len) {
+static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr) {
     struct amivm_config cfg;
     struct amivm_vm ref_vm, opt_vm;
     struct amivm_cpu_state ref_cpu, opt_cpu;
@@ -45,6 +45,8 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     opt_vm.rom_used=ref_vm.rom_used;
     CHECK(amivm_cpu_reset(&ref_cpu,&ref_vm,backend)==0);
     CHECK(amivm_cpu_reset(&opt_cpu,&opt_vm,backend)==0);
+    ref_cpu.sr = (uint16_t)((ref_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
+    opt_cpu.sr = (uint16_t)((opt_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     amivm_exec_init(&engine,backend);
     for (i=0;i<128u;++i) {
         CHECK(amivm_cpu_step(&ref_cpu,&ref_vm,backend)==1);
@@ -62,11 +64,55 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     return 0;
 }
 
+static int run_case(const char *name, const uint8_t *code, size_t code_len) {
+    return run_case_sr(name,code,code_len,0u);
+}
+
 int main(void) {
     static const uint8_t bra_short[] = {0x60u,0xfeu};
     static const uint8_t bra_word[] = {0x60u,0x00u,0xffu,0xfcu};
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     /* Reference 68040 uses the post-extension PC as the word-branch base. */
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
+    /* Reference backend currently implements BRA/BSR, not Bcc.
+     * Exercise data-register and condition-code changes before a BRA loop. */
+    static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
+    static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
+    CHECK(run_case("MOVEQ #0,D0; BRA.S",moveq_zero_bra,sizeof(moveq_zero_bra))==0);
+    CHECK(run_case("MOVEQ #-1,D0; BRA.S",moveq_neg_bra,sizeof(moveq_neg_bra))==0);
+    static const uint8_t bne_short[] = {0x66u,0xfeu};
+    static const uint8_t bpl_short[] = {0x6au,0xfeu};
+    static const uint8_t bne_word[] = {0x66u,0x00u,0xffu,0xfcu};
+    CHECK(run_case("BNE.S taken",bne_short,sizeof(bne_short))==0);
+    CHECK(run_case("BPL.S taken",bpl_short,sizeof(bpl_short))==0);
+    CHECK(run_case("BNE.W taken",bne_word,sizeof(bne_word))==0);
+    /* Exercise untaken Bcc by branching forward to a stable BRA.S loop. */
+    static const uint8_t beq_short_not_taken[] = {0x67u,0x02u,0x60u,0xfeu};
+    static const uint8_t bmi_short_not_taken[] = {0x6bu,0x02u,0x60u,0xfeu};
+    static const uint8_t beq_word_not_taken[] = {0x67u,0x00u,0x00u,0x02u,0x60u,0xfeu};
+    CHECK(run_case("BEQ.S not taken",beq_short_not_taken,sizeof(beq_short_not_taken))==0);
+    CHECK(run_case("BMI.S not taken",bmi_short_not_taken,sizeof(bmi_short_not_taken))==0);
+    CHECK(run_case("BEQ.W not taken",beq_word_not_taken,sizeof(beq_word_not_taken))==0);
+    /* Cover every condition code using reset CCR (N=Z=V=C=0).
+     * Taken branches loop on themselves; untaken branches reach BRA.S. */
+    static const unsigned taken_cc[] = {2u,4u,6u,8u,10u,12u,14u};
+    static const unsigned not_taken_cc[] = {3u,5u,7u,9u,11u,13u,15u};
+    unsigned k;
+    for (k=0u;k<sizeof(taken_cc)/sizeof(taken_cc[0]);++k) {
+        uint8_t insn[] = {(uint8_t)(0x60u+taken_cc[k]),0xfeu};
+        CHECK(run_case("Bcc.S taken matrix",insn,sizeof(insn))==0);
+    }
+    for (k=0u;k<sizeof(not_taken_cc)/sizeof(not_taken_cc[0]);++k) {
+        uint8_t insn[] = {(uint8_t)(0x60u+not_taken_cc[k]),0x02u,0x60u,0xfeu};
+        CHECK(run_case("Bcc.S not-taken matrix",insn,sizeof(insn))==0);
+    }
+    /* Each CCR combination must agree for every conditional branch.
+     * Both paths converge to a BRA.S self-loop, avoiding ROM overrun. */
+    for (unsigned ccr=0u;ccr<16u;++ccr) {
+        for (unsigned cc=2u;cc<16u;++cc) {
+            uint8_t insn[] = {(uint8_t)(0x60u+cc),0x02u,0x60u,0xfeu,0x60u,0xfeu};
+            CHECK(run_case_sr("Bcc.S CCR matrix",insn,sizeof(insn),(uint16_t)ccr)==0);
+        }
+    }
     return 0;
 }
