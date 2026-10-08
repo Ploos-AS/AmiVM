@@ -17,11 +17,15 @@ static int same_cpu(const struct amivm_cpu_state *a, const struct amivm_cpu_stat
            a->usp==b->usp && a->isp==b->isp && a->msp==b->msp &&
            a->vbr==b->vbr && a->tc==b->tc && a->urp==b->urp &&
            a->srp==b->srp && a->mmusr==b->mmusr &&
+           a->cacr==b->cacr && a->sfc==b->sfc && a->dfc==b->dfc &&
+           a->stopped==b->stopped &&
+           a->fault_address==b->fault_address &&
+           a->fault_opcode==b->fault_opcode &&
            a->last_fault==b->last_fault &&
            a->last_exception_vector==b->last_exception_vector;
 }
 
-int main(void) {
+static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     struct amivm_config cfg;
     struct amivm_vm ref_vm, opt_vm;
     struct amivm_cpu_state ref_cpu, opt_cpu;
@@ -35,9 +39,8 @@ int main(void) {
     put32(ref_vm.rom,AMIVM_RAM_BASE+0x1000u);
     put32(ref_vm.rom+4u,AMIVM_ROM_BASE+0x100u);
     /* BRA.S -2: a one-instruction loop with an exact instruction boundary. */
-    ref_vm.rom[0x100u]=0x60u;
-    ref_vm.rom[0x101u]=0xfeu;
-    ref_vm.rom_used=0x102u;
+    memcpy(ref_vm.rom+0x100u,code,code_len);
+    ref_vm.rom_used=0x100u+code_len;
     memcpy(opt_vm.rom,ref_vm.rom,ref_vm.rom_used);
     opt_vm.rom_used=ref_vm.rom_used;
     CHECK(amivm_cpu_reset(&ref_cpu,&ref_vm,backend)==0);
@@ -47,14 +50,22 @@ int main(void) {
         CHECK(amivm_cpu_step(&ref_cpu,&ref_vm,backend)==1);
         CHECK(amivm_exec_step(&engine,&opt_cpu,&opt_vm)==1);
         if (!same_cpu(&ref_cpu,&opt_cpu)) {
-            fprintf(stderr,"M283 CPU divergence at step %u ref PC=%08x opt PC=%08x\n",
-                    i,ref_cpu.pc,opt_cpu.pc);
+            fprintf(stderr,"M283 %s CPU divergence at step %u ref PC=%08x opt PC=%08x ref SR=%04x opt SR=%04x\n",
+                    name,i,ref_cpu.pc,opt_cpu.pc,ref_cpu.sr,opt_cpu.sr);
             return 1;
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
     }
     amivm_vm_destroy(&opt_vm);
     amivm_vm_destroy(&ref_vm);
-    puts("M283 reference/optimized BRA loop differential smoke: PASS");
+    printf("M283 %s differential smoke: PASS\\n",name);
+    return 0;
+}
+
+int main(void) {
+    static const uint8_t bra_short[] = {0x60u,0xfeu};
+    static const uint8_t bra_word[] = {0x60u,0x00u,0xffu,0xfcu};
+    CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
+    CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
     return 0;
 }
