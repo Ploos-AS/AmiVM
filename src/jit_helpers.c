@@ -328,9 +328,10 @@ int amivm_jit_helper_jmp_full_indexed_entry(struct amivm_cpu_state *cpu,
                                              uint32_t unused_return_pc, uint32_t encoded,
                                              uint32_t base_displacement, uint32_t outer_displacement)
 {
+    (void)cpu;
     (void)unused_return_pc;
-    if (cpu == NULL || context == NULL || context->cpu != cpu) return -4;
-    return amivm_jit_helper_jmp_full_indexed(context, cpu->pc, encoded,
+    if (context == NULL || context->cpu == NULL) return -4;
+    return amivm_jit_helper_jmp_full_indexed(context, context->cpu->pc, encoded,
                                              base_displacement, outer_displacement);
 }
 
