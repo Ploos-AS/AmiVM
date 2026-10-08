@@ -127,3 +127,15 @@ Linux/m68k is the first bring-up guest, but the machine and device contracts mus
 - Amiga-compatible driver bundles.
 - reproducible release builds.
 - amd64 and arm64 release artifacts.
+
+## Post-v1.0 — CaffeineOS guest qualification
+
+CaffeineOS is a named **future** guest target, not a v1.0 release gate. Validate the requirements of each selected CaffeineOS image/version before choosing a machine profile; do not assume that ordinary AmigaOS 3.x compatibility is sufficient.
+
+- Record target CaffeineOS release, legal image acquisition, required ROM/firmware, CPU features, memory, storage, graphics and input devices.
+- Establish the relevant Apollo 68080/Vampire/SAGA machine profile and AMMX coverage only to the extent demanded by the chosen guest and its workloads.
+- Implement a reproducible boot-to-desktop smoke test, then qualify filesystem access, networking, RTG/graphics, audio and representative applications.
+- Maintain a compatibility matrix with explicit unsupported features and measured performance, without claiming cycle accuracy.
+- Do not redistribute proprietary images, ROMs or bundled software without permission.
+
+Dependency: post-v1.0 Apollo/Vampire support and documented guest-specific hardware requirements. No implementation or boot success is claimed here.
