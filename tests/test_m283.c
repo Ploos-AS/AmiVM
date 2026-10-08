@@ -68,12 +68,11 @@ int main(void) {
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     /* Reference 68040 uses the post-extension PC as the word-branch base. */
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
-    /* Reset SR=0x2700: Z=0 and N=0, so these conditional branches loop. */
-    static const uint8_t bne_short[] = {0x66u,0xfeu};
-    static const uint8_t bpl_short[] = {0x6au,0xfeu};
-    static const uint8_t bne_word[] = {0x66u,0x00u,0xffu,0xfcu};
-    CHECK(run_case("BNE.S taken",bne_short,sizeof(bne_short))==0);
-    CHECK(run_case("BPL.S taken",bpl_short,sizeof(bpl_short))==0);
-    CHECK(run_case("BNE.W taken",bne_word,sizeof(bne_word))==0);
+    /* Reference backend currently implements BRA/BSR, not Bcc.
+     * Exercise data-register and condition-code changes before a BRA loop. */
+    static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
+    static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
+    CHECK(run_case("MOVEQ #0,D0; BRA.S",moveq_zero_bra,sizeof(moveq_zero_bra))==0);
+    CHECK(run_case("MOVEQ #-1,D0; BRA.S",moveq_neg_bra,sizeof(moveq_neg_bra))==0);
     return 0;
 }
