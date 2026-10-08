@@ -110,7 +110,7 @@ int main(void) {
      * Both paths converge to a BRA.S self-loop, avoiding ROM overrun. */
     for (unsigned ccr=0u;ccr<16u;++ccr) {
         for (unsigned cc=2u;cc<16u;++cc) {
-            uint8_t insn[] = {(uint8_t)(0x60u+cc),0x02u,0x60u,0xfeu,0x60u,0xfcu};
+            uint8_t insn[] = {(uint8_t)(0x60u+cc),0x02u,0x60u,0xfeu,0x60u,0xfeu};
             CHECK(run_case_sr("Bcc.S CCR matrix",insn,sizeof(insn),(uint16_t)ccr)==0);
         }
     }
