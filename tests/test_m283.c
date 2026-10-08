@@ -38,7 +38,7 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     CHECK(amivm_vm_init(&opt_vm,&cfg)==0);
     put32(ref_vm.rom,AMIVM_RAM_BASE+0x1000u);
     put32(ref_vm.rom+4u,AMIVM_ROM_BASE+0x100u);
-    /* BRA.S -2: a one-instruction loop with an exact instruction boundary. */
+    /* The fixture is a single branch instruction looping to its own PC. */
     memcpy(ref_vm.rom+0x100u,code,code_len);
     ref_vm.rom_used=0x100u+code_len;
     memcpy(opt_vm.rom,ref_vm.rom,ref_vm.rom_used);
