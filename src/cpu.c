@@ -578,6 +578,22 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         return 1;
     }
 
+    if ((opcode & 0xfff8u) == 0x4ea8u) { /* JSR d16(An) */
+        unsigned reg = (unsigned)(opcode & 7u);
+        uint16_t displacement;
+        uint32_t target, sp;
+        if (fetch16(cpu, vm, next_pc, &displacement) != 0)
+            return deliver_fault(cpu, vm, instruction_pc);
+        target = cpu->a[reg] + (uint32_t)(int32_t)(int16_t)displacement;
+        sp = cpu->a[7] - 4u;
+        if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu), next_pc + 2u))
+            return deliver_fault(cpu, vm, instruction_pc);
+        cpu->a[7] = sp;
+        save_active_sp(cpu);
+        cpu->pc = target;
+        return 1;
+    }
+
     if (opcode == OP_JSR_PC_DISP) {
         uint16_t displacement;
         uint32_t target, sp;
