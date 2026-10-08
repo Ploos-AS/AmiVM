@@ -40,3 +40,9 @@ The original-model compatibility promise is a v1.0 planning goal and may require
 4. Other compatible machines, including DraCo.
 
 Do not add post-v1.0 hardware to the first-release acceptance criteria.
+
+## Core engineering principle: performance AND compatibility
+AmiVM prioritizes both high execution performance and high functional compatibility. Correct CPU/FPU/MMU behavior, exception semantics, memory ordering and guest-visible device contracts are required; optimizations must not knowingly break supported software. Record compatibility regressions and benchmark regressions independently, and require both gates to pass.
+
+Cycle-accurate chipset/timing emulation is explicitly the responsibility of Amilea, not AmiVM. AmiVM should not spend its performance budget reproducing historical clock-by-clock behavior unless a narrowly scoped compatibility workaround is justified and measured. Workstation software, AmigaOS and AROS correctness matter more than raster-cycle fidelity.
+
