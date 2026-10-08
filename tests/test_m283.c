@@ -25,7 +25,7 @@ static int same_cpu(const struct amivm_cpu_state *a, const struct amivm_cpu_stat
            a->last_exception_vector==b->last_exception_vector;
 }
 
-static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr) {
+static int run_case_setup(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr, int set_a0) {
     struct amivm_config cfg;
     struct amivm_vm ref_vm, opt_vm;
     struct amivm_cpu_state ref_cpu, opt_cpu;
@@ -45,6 +45,10 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
     opt_vm.rom_used=ref_vm.rom_used;
     CHECK(amivm_cpu_reset(&ref_cpu,&ref_vm,backend)==0);
     CHECK(amivm_cpu_reset(&opt_cpu,&opt_vm,backend)==0);
+    if (set_a0) {
+        ref_cpu.a[0] = AMIVM_ROM_BASE + 0x10cu;
+        opt_cpu.a[0] = AMIVM_ROM_BASE + 0x10cu;
+    }
     ref_cpu.sr = (uint16_t)((ref_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     opt_cpu.sr = (uint16_t)((opt_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     amivm_exec_init(&engine,backend);
@@ -79,6 +83,10 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
     amivm_vm_destroy(&ref_vm);
     printf("M283 %s differential smoke: PASS\\n",name);
     return 0;
+}
+
+static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr) {
+    return run_case_setup(name,code,code_len,ccr,0);
 }
 
 static int run_case(const char *name, const uint8_t *code, size_t code_len) {
@@ -143,6 +151,16 @@ int main(void) {
     };
     CHECK(run_case("JSR PC-relative / RTS stack roundtrip",
                    jsr_pc_relative_rts,sizeof(jsr_pc_relative_rts))==0);
+    /* M289: JSR (A0) with A0 pointing at the RTS subroutine. */
+    static const uint8_t jsr_a0_rts[] = {
+        0x4eu,0x90u,             /* JSR (A0) -> +12 */
+        0x60u,0xfeu,             /* BRA.S -> self */
+        0x4eu,0x71u,0x4eu,0x71u, /* NOP padding */
+        0x4eu,0x71u,0x4eu,0x71u, /* NOP padding */
+        0x4eu,0x75u              /* RTS */
+    };
+    CHECK(run_case_setup("JSR (A0) / RTS stack roundtrip",
+                         jsr_a0_rts,sizeof(jsr_a0_rts),0u,1)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
