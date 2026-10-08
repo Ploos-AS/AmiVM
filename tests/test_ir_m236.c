@@ -68,8 +68,8 @@ int main(void)
 
     CHECK(run_bsr(short_forward, 1u, 0x00004012u, 0x00004002u) == 0);
     CHECK(run_bsr(short_back, 1u, 0x00004000u, 0x00004002u) == 0);
-    CHECK(run_bsr(word_forward, 2u, 0x00004012u, 0x00004004u) == 0);
-    CHECK(run_bsr(word_back, 2u, 0x00004000u, 0x00004004u) == 0);
+    CHECK(run_bsr(word_forward, 2u, 0x00004014u, 0x00004004u) == 0);
+    CHECK(run_bsr(word_back, 2u, 0x00004002u, 0x00004004u) == 0);
 
     puts("AmiVM M2.36 BSR IR stack tests: PASS");
     return 0;

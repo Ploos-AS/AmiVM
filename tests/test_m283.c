@@ -54,6 +54,23 @@ static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, u
         if (!same_cpu(&ref_cpu,&opt_cpu)) {
             fprintf(stderr,"M283 %s CPU divergence at step %u ref PC=%08x opt PC=%08x ref SR=%04x opt SR=%04x\n",
                     name,i,ref_cpu.pc,opt_cpu.pc,ref_cpu.sr,opt_cpu.sr);
+            fprintf(stderr,"M285 optimized path: JIT blocks=%llu IR blocks=%llu fallbacks=%llu A7 ref=%08x opt=%08x\\n",
+                    (unsigned long long)engine.stats.jit_blocks,
+                    (unsigned long long)engine.stats.ir_blocks,
+                    (unsigned long long)engine.stats.fallbacks,ref_cpu.a[7],opt_cpu.a[7]);
+            {
+                size_t slot=(size_t)(((AMIVM_ROM_BASE+0x100u)>>1u)&(AMIVM_EXEC_CACHE_ENTRIES-1u));
+                const struct amivm_exec_cache_entry *entry=&engine.cache[slot];
+                if (entry->ir_valid && entry->block.op_count) {
+                    const struct amivm_ir_op *op=&entry->block.ops[entry->block.op_count-1u];
+                    fprintf(stderr,"M285 decoded: opcode=%u guest_pc=%08x bytes=%u disp=%d JIT=%d\\n",
+                        (unsigned)op->opcode,op->guest_pc,(unsigned)op->instruction_bytes,
+                        op->imm,entry->jit_valid);
+                    fprintf(stderr,"M285 JIT arch=%d size=%zu bytes:",(int)entry->jit.arch,entry->jit.size);
+                    for (size_t k=0;k<entry->jit.size;++k) fprintf(stderr," %02x",entry->jit.bytes[k]);
+                    fprintf(stderr,"\\n");
+                }
+            }
             return 1;
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
@@ -74,8 +91,13 @@ int main(void) {
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     /* Reference 68040 uses the post-extension PC as the word-branch base. */
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
-    /* Reference backend currently implements BRA/BSR, not Bcc.
-     * Exercise data-register and condition-code changes before a BRA loop. */
+    /* BSR pushes return PC to RAM stack; RTS restores SP and resumes
+     * at the BRA.S loop. Differential RAM comparison checks stack writes. */
+    static const uint8_t bsr_rts[] = {0x61u,0x02u,0x60u,0xfeu,0x4eu,0x75u};
+    CHECK(run_case("BSR.S / RTS stack roundtrip",bsr_rts,sizeof(bsr_rts))==0);
+    static const uint8_t bsr_word_rts[] = {0x61u,0x00u,0x00u,0x02u,0x60u,0xfeu,0x4eu,0x75u};
+    CHECK(run_case("BSR.W / RTS stack roundtrip",bsr_word_rts,sizeof(bsr_word_rts))==0);
+    /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
     CHECK(run_case("MOVEQ #0,D0; BRA.S",moveq_zero_bra,sizeof(moveq_zero_bra))==0);
