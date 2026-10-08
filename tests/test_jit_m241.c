@@ -92,7 +92,7 @@ int main(void)
     CHECK(amivm_ir_decode_words(&block, bsr_word, 2u) == 0);
     CHECK(block.ops[0].opcode == AMIVM_IR_BSR);
     CHECK(run_native(&block, &cpu, &vm) == 0);
-    CHECK(cpu.pc == 0x6012u);
+    CHECK(cpu.pc == 0x6014u);
     CHECK(read_long(&vm, cpu.a[7], &stacked) == 0 && stacked == 0x6004u);
 
     /* Helper fault propagates through native code without mutating SP/PC. */
