@@ -97,6 +97,30 @@ int main(void) {
     CHECK(run_case("BSR.S / RTS stack roundtrip",bsr_rts,sizeof(bsr_rts))==0);
     static const uint8_t bsr_word_rts[] = {0x61u,0x00u,0x00u,0x02u,0x60u,0xfeu,0x4eu,0x75u};
     CHECK(run_case("BSR.W / RTS stack roundtrip",bsr_word_rts,sizeof(bsr_word_rts))==0);
+    /* M286: two nested BSR.S calls, then two RTS returns. Both stack
+     * frames and the restored stack pointer must match the reference. */
+    static const uint8_t nested_bsr_short[] = {
+        0x61u,0x04u, /* 0: BSR.S -> 6 */
+        0x60u,0xfeu, /* 2: BRA.S -> 2 */
+        0x4eu,0x71u, /* 4: NOP padding */
+        0x61u,0x04u, /* 6: BSR.S -> 12 */
+        0x4eu,0x75u, /* 8: RTS (outer) */
+        0x4eu,0x71u, /* 10: NOP padding */
+        0x4eu,0x75u  /* 12: RTS (inner) */
+    };
+    CHECK(run_case("nested BSR.S / RTS stack roundtrip",nested_bsr_short,sizeof(nested_bsr_short))==0);
+    /* Mixed BSR.W outer call and BSR.S inner call exercises both
+     * instruction lengths and two distinct stacked return addresses. */
+    static const uint8_t nested_bsr_mixed[] = {
+        0x61u,0x00u,0x00u,0x04u, /* 0: BSR.W -> 8 */
+        0x60u,0xfeu,             /* 4: BRA.S -> 4 */
+        0x4eu,0x71u,             /* 6: NOP padding */
+        0x61u,0x04u,             /* 8: BSR.S -> 14 */
+        0x4eu,0x75u,             /* 10: RTS (outer) */
+        0x4eu,0x71u,             /* 12: NOP padding */
+        0x4eu,0x75u              /* 14: RTS (inner) */
+    };
+    CHECK(run_case("nested BSR.W + BSR.S / RTS stack roundtrip",nested_bsr_mixed,sizeof(nested_bsr_mixed))==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
