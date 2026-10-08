@@ -245,7 +245,7 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
         new_sp = cpu->a[7] - 4u;
         if (write_stack_long(cpu, vm, new_sp, return_pc) != 0) return -4;
         cpu->a[7] = new_sp; sync_a7_bank(cpu);
-        cpu->pc = terminal->guest_pc + 2u + (uint32_t)terminal->imm; return 1;
+        cpu->pc = terminal->guest_pc + terminal->instruction_bytes + (uint32_t)terminal->imm; return 1;
     }
     if (read_stack_long(cpu, vm, cpu->a[7], &return_pc) != 0) return -4;
     cpu->a[7] += 4u; sync_a7_bank(cpu); cpu->pc = return_pc; return 1;
