@@ -132,6 +132,17 @@ int main(void) {
     };
     CHECK(run_case("JSR absolute long / RTS stack roundtrip",
                    jsr_abs_long_rts,sizeof(jsr_abs_long_rts))==0);
+    /* M288: PC-relative JSR d16(PC) into an RTS subroutine.
+     * Displacement is relative to the extension word at +2. */
+    static const uint8_t jsr_pc_relative_rts[] = {
+        0x4eu,0xbau,0x00u,0x0au, /* JSR 10(PC) -> +12 */
+        0x60u,0xfeu,             /* BRA.S -> self */
+        0x4eu,0x71u,0x4eu,0x71u, /* NOP padding */
+        0x4eu,0x71u,             /* NOP padding */
+        0x4eu,0x75u              /* RTS */
+    };
+    CHECK(run_case("JSR PC-relative / RTS stack roundtrip",
+                   jsr_pc_relative_rts,sizeof(jsr_pc_relative_rts))==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
