@@ -805,47 +805,28 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             }
             code->requires_context = 1;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
-            for (unsigned shift = 0u; shift < 64u; shift += 8u) {
-                rc = emit8(code, (uint8_t)(helper >> shift));
-                if (rc != AMIVM_JIT_OK) return rc;
-            }
-            rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
-            if (op->full_format) {
-                uint32_t encoded = (uint32_t)(op->index_reg & 7u) |
-                                   ((uint32_t)(op->index_is_addr & 1u) << 3u) |
-                                   ((uint32_t)(op->index_long & 1u) << 4u) |
-                                   ((uint32_t)(op->index_scale & 3u) << 5u) |
-                                   ((uint32_t)(op->reg & 7u) << 8u) |
-                                   ((uint32_t)(op->base_suppress & 1u) << 11u) |
-                                   ((uint32_t)(op->index_suppress & 1u) << 12u) |
-                                   ((uint32_t)(op->indirect_mode & 3u) << 13u);
-                rc = emit32(code, encoded); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0x41u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0xb8u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit32(code, (uint32_t)op->base_displacement); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0x41u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit8(code, 0xb9u); if (rc != AMIVM_JIT_OK) return rc;
-                rc = emit32(code, (uint32_t)op->outer_displacement); if (rc != AMIVM_JIT_OK) return rc;
-            } else {
-                rc = emit32(code, op->ea_mode == AMIVM_IR_EA_AN ? op->reg :
-                                   (op->ea_mode == AMIVM_IR_EA_D16_AN ? (uint32_t)op->imm :
-                                    ((uint32_t)(op->imm & 0xff) | ((uint32_t)(op->index_reg & 7u) << 8u) |
-                                     ((uint32_t)(op->index_is_addr & 1u) << 11u) | ((uint32_t)(op->index_long & 1u) << 12u) |
-                                     ((uint32_t)(op->index_scale & 3u) << 13u) | ((uint32_t)(op->reg & 7u) << 16u))));
-                if (rc != AMIVM_JIT_OK) return rc;
-            }          rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xecu); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, op->full_format ? 0x18u : 0x08u); if (rc != AMIVM_JIT_OK) return rc;
+            if (op->full_format) {
+                rc = emit8(code, 0x4cu); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x44u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x24u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x4cu); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x89u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x4cu); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x24u); if (rc != AMIVM_JIT_OK) return rc;
+                rc = emit8(code, 0x10u); if (rc != AMIVM_JIT_OK) return rc;
+            }
             rc = emit8(code, 0xffu); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xd0u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x48u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0x83u); if (rc != AMIVM_JIT_OK) return rc;
             rc = emit8(code, 0xc4u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0x08u); if (rc != AMIVM_JIT_OK) return rc;
-            rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;
-            code->guest_instructions = 1u;
+            rc = emit8(code, op->full_format ? 0x18u : 0x08u); if (rc != AMIVM_JIT_OK) return rc;
+            rc = emit8(code, 0xc3u); if (rc != AMIVM_JIT_OK) return rc;de->guest_instructions = 1u;
             code->guest_start_pc = block->guest_start_pc;
             code->guest_end_pc = block->guest_end_pc;
             return AMIVM_JIT_OK;
