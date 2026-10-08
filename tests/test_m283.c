@@ -64,7 +64,7 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
 
 int main(void) {
     static const uint8_t bra_short[] = {0x60u,0xfeu};
-    static const uint8_t bra_word[] = {0x60u,0x00u,0xffu,0xfcu};
+    static const uint8_t bra_word[] = {0x60u,0x00u,0xffu,0xfeu};
     CHECK(run_case("BRA.S",bra_short,sizeof(bra_short))==0);
     CHECK(run_case("BRA.W",bra_word,sizeof(bra_word))==0);
     return 0;
