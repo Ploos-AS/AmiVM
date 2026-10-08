@@ -25,7 +25,7 @@ static int same_cpu(const struct amivm_cpu_state *a, const struct amivm_cpu_stat
            a->last_exception_vector==b->last_exception_vector;
 }
 
-static int run_case(const char *name, const uint8_t *code, size_t code_len) {
+static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr) {
     struct amivm_config cfg;
     struct amivm_vm ref_vm, opt_vm;
     struct amivm_cpu_state ref_cpu, opt_cpu;
@@ -45,6 +45,8 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     opt_vm.rom_used=ref_vm.rom_used;
     CHECK(amivm_cpu_reset(&ref_cpu,&ref_vm,backend)==0);
     CHECK(amivm_cpu_reset(&opt_cpu,&opt_vm,backend)==0);
+    ref_cpu.sr = (uint16_t)((ref_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
+    opt_cpu.sr = (uint16_t)((opt_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     amivm_exec_init(&engine,backend);
     for (i=0;i<128u;++i) {
         CHECK(amivm_cpu_step(&ref_cpu,&ref_vm,backend)==1);
@@ -60,6 +62,10 @@ static int run_case(const char *name, const uint8_t *code, size_t code_len) {
     amivm_vm_destroy(&ref_vm);
     printf("M283 %s differential smoke: PASS\\n",name);
     return 0;
+}
+
+static int run_case(const char *name, const uint8_t *code, size_t code_len) {
+    return run_case_sr(name,code,code_len,0u);
 }
 
 int main(void) {
@@ -99,6 +105,14 @@ int main(void) {
     for (k=0u;k<sizeof(not_taken_cc)/sizeof(not_taken_cc[0]);++k) {
         uint8_t insn[] = {(uint8_t)(0x60u+not_taken_cc[k]),0x02u,0x60u,0xfeu};
         CHECK(run_case("Bcc.S not-taken matrix",insn,sizeof(insn))==0);
+    }
+    /* Each CCR combination must agree for every conditional branch.
+     * Both paths converge to a BRA.S self-loop, avoiding ROM overrun. */
+    for (unsigned ccr=0u;ccr<16u;++ccr) {
+        for (unsigned cc=2u;cc<16u;++cc) {
+            uint8_t insn[] = {(uint8_t)(0x60u+cc),0x02u,0x60u,0xfeu,0x60u,0xfcu};
+            CHECK(run_case_sr("Bcc.S CCR matrix",insn,sizeof(insn),(uint16_t)ccr)==0);
+        }
     }
     return 0;
 }
