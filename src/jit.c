@@ -839,7 +839,9 @@ int amivm_jit_compile(const struct amivm_ir_block *block,
             uintptr_t helper;
             uint32_t return_pc = op->guest_pc +
                                  (op->instruction_bytes ? op->instruction_bytes : 2u);
-            uint32_t target_pc = op->guest_pc + 2u + (uint32_t)op->imm;
+            uint32_t target_pc = op->guest_pc +
+                                 (op->instruction_bytes ? op->instruction_bytes : 2u) +
+                                 (uint32_t)op->imm;
             int (*helper_fn)(struct amivm_cpu_state *,
                              struct amivm_jit_context *,
                              uint32_t, uint32_t);
