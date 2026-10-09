@@ -314,6 +314,24 @@ int main(void) {
     CHECK(run_case_index("JSR postindexed indirect + word outer / RTS",
                          jsr_postindexed_outer_word,sizeof(jsr_postindexed_outer_word),
                          0u,1,2u,0u)==0);
+    /* M297: postindexed memory indirect with signed long outer displacement.
+     * Pointer at A0+0x14 (ROM+0x120) contains ROM+0x118;
+     * outer displacement -8 yields RTS at ROM+0x110. */
+    static const uint8_t jsr_postindexed_outer_long_negative[] = {
+        0x4eu,0xb0u,0x01u,0x67u,0x00u,0x14u,
+        0xffu,0xffu,0xffu,0xf8u,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x118u)
+    };
+    CHECK(run_case_setup("JSR postindexed long negative outer / RTS",
+                         jsr_postindexed_outer_long_negative,
+                         sizeof(jsr_postindexed_outer_long_negative),0u,1)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
