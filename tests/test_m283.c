@@ -58,6 +58,14 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
     for (i=0;i<128u;++i) {
         CHECK(amivm_cpu_step(&ref_cpu,&ref_vm,backend)==1);
         CHECK(amivm_exec_step(&engine,&opt_cpu,&opt_vm)==1);
+        /* M299: isolate the first JSR from subsequent RTS/branch traffic. */
+        if (i == 0u && strstr(name, "JSR") != NULL) {
+            printf("M299 FIRST JSR %s: jit=%llu ir=%llu fallbacks=%llu\\n",
+                   name,
+                   (unsigned long long)engine.stats.jit_blocks,
+                   (unsigned long long)engine.stats.ir_blocks,
+                   (unsigned long long)engine.stats.fallbacks);
+        }
         if (!same_cpu(&ref_cpu,&opt_cpu)) {
             fprintf(stderr,"M283 %s CPU divergence at step %u ref PC=%08x opt PC=%08x ref SR=%04x opt SR=%04x\n",
                     name,i,ref_cpu.pc,opt_cpu.pc,ref_cpu.sr,opt_cpu.sr);
