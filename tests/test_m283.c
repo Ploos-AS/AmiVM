@@ -139,9 +139,12 @@ static int check_indirect_pointer_fault(void) {
     CHECK(cpu.last_fault == AMIVM_CPU_FAULT_BUS ||
           cpu.last_fault == AMIVM_CPU_FAULT_MMU);
     CHECK(cpu.fault_address == 0xdead0014u);
-    /* Exception entry may push its own frame; check that the JSR\n     * return address was not written to its original stack slot. */
-    CHECK(vm.ram[0xffcu] == 0u && vm.ram[0xffdu] == 0u &&
-          vm.ram[0xffeu] == 0u && vm.ram[0xfffu] == 0u);
+    /* Exception entry may overwrite this slot; it must not contain
+     * the return PC that JSR would have pushed (ROM+0x106). */
+    CHECK(!((vm.ram[0xffcu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>24u)) &&
+            (vm.ram[0xffdu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>16u)) &&
+            (vm.ram[0xffeu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>8u)) &&
+            (vm.ram[0xfffu] == (uint8_t)(AMIVM_ROM_BASE+0x106u))));
     amivm_vm_destroy(&vm);
     return 0;
 }
