@@ -244,6 +244,15 @@ int main(void) {
     };
     CHECK(run_case_setup("JSR full extension word base displacement / RTS",
                          jsr_full_word_bd,sizeof(jsr_full_word_bd),0u,1)==0);
+    /* M295: 68020 full extension without memory indirect. All targets
+     * resolve to ROM+0x110 (offset +16), where RTS returns to BRA.S. */
+    static const uint8_t jsr_full_scaled_d1[] = {
+        0x4eu,0xb0u,0x15u,0x10u, /* D1.W x4, null base displacement */
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR full scaled D1.W x4",jsr_full_scaled_d1,
+                         sizeof(jsr_full_scaled_d1),0u,1,1u,0u)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
