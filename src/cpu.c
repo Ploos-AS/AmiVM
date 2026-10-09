@@ -633,7 +633,6 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
             if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu), next_pc + 2u))
                 return deliver_fault(cpu, vm, instruction_pc);
         }
-            return deliver_fault(cpu, vm, instruction_pc);
         cpu->a[7] = sp;
         save_active_sp(cpu);
         cpu->pc = target;
