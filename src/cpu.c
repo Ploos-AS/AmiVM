@@ -600,17 +600,39 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         uint32_t index, target, sp;
         if (fetch16(cpu, vm, next_pc, &ext) != 0)
             return deliver_fault(cpu, vm, instruction_pc);
-        /* Full-format extensions are 68020+ and not handled here. */
-        if ((ext & 0x0100u) != 0u) {
-            set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
-            return deliver_fault(cpu, vm, instruction_pc);
-        }
         index = (ext & 0x8000u) ? cpu->a[(ext >> 12u) & 7u] : cpu->d[(ext >> 12u) & 7u];
         if ((ext & 0x0800u) == 0u)
             index = (uint32_t)(int32_t)(int16_t)(index & 0xffffu);
-        target = cpu->a[reg] + index + (uint32_t)(int32_t)(int8_t)(ext & 0xffu);
-        sp = cpu->a[7] - 4u;
-        if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu), next_pc + 2u))
+        if ((ext & 0x0100u) != 0u) { /* 68020+ full extension, no memory indirect */
+            uint32_t base = (ext & 0x0080u) ? 0u : cpu->a[reg];
+            uint32_t displacement = 0u;
+            unsigned bd_size = (unsigned)((ext >> 4u) & 3u);
+            if ((ext & 0x000fu) != 0u || bd_size == 0u) {
+                set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
+                return deliver_fault(cpu, vm, instruction_pc);
+            }
+            if (bd_size == 2u) {
+                uint16_t word;
+                if (fetch16(cpu, vm, next_pc + 2u, &word) != 0)
+                    return deliver_fault(cpu, vm, instruction_pc);
+                displacement = (uint32_t)(int32_t)(int16_t)word;
+            } else if (bd_size == 3u) {
+                if (fetch32(cpu, vm, next_pc + 2u, &displacement) != 0)
+                    return deliver_fault(cpu, vm, instruction_pc);
+            }
+            if ((ext & 0x0040u) != 0u) index = 0u;
+            else index <<= (ext >> 9u) & 3u;
+            target = base + displacement + index;
+            sp = cpu->a[7] - 4u;
+            if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu),
+                             next_pc + 2u + (bd_size == 2u ? 2u : bd_size == 3u ? 4u : 0u)))
+                return deliver_fault(cpu, vm, instruction_pc);
+        } else {
+            target = cpu->a[reg] + index + (uint32_t)(int32_t)(int8_t)(ext & 0xffu);
+            sp = cpu->a[7] - 4u;
+            if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu), next_pc + 2u))
+                return deliver_fault(cpu, vm, instruction_pc);
+        }
             return deliver_fault(cpu, vm, instruction_pc);
         cpu->a[7] = sp;
         save_active_sp(cpu);
