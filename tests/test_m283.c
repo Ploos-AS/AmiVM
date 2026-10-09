@@ -332,6 +332,24 @@ int main(void) {
     CHECK(run_case_setup("JSR postindexed long negative outer / RTS",
                          jsr_postindexed_outer_long_negative,
                          sizeof(jsr_postindexed_outer_long_negative),0u,1)==0);
+    /* M297: preindexed D1.W contributes before pointer dereference.
+     * A0=ROM+0x10c, BD=0x12, D1.W=2 => pointer at ROM+0x120.
+     * Pointer ROM+0x118 plus signed long outer -8 => RTS at ROM+0x110. */
+    static const uint8_t jsr_preindexed_outer_long_negative[] = {
+        0x4eu,0xb0u,0x11u,0x23u,0x00u,0x12u,
+        0xffu,0xffu,0xffu,0xf8u,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x118u)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x118u)
+    };
+    CHECK(run_case_index("JSR preindexed long negative outer / RTS",
+                         jsr_preindexed_outer_long_negative,
+                         sizeof(jsr_preindexed_outer_long_negative),0u,1,2u,0u)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
