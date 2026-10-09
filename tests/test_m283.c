@@ -82,6 +82,15 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
     }
+    /* M299: record the execution-path baseline for every JSR fixture.
+     * Differential correctness alone does not show whether IR/JIT is used. */
+    if (strstr(name, "JSR") != NULL) {
+        printf("M299 %s execution: jit=%llu ir=%llu fallbacks=%llu\\n",
+               name,
+               (unsigned long long)engine.stats.jit_blocks,
+               (unsigned long long)engine.stats.ir_blocks,
+               (unsigned long long)engine.stats.fallbacks);
+    }
     amivm_vm_destroy(&opt_vm);
     amivm_vm_destroy(&ref_vm);
     printf("M283 %s differential smoke: PASS\\n",name);
