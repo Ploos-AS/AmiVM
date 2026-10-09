@@ -281,6 +281,39 @@ int main(void) {
     CHECK(run_case_index("JSR full index suppressed negative BD",
                          jsr_full_index_suppressed,sizeof(jsr_full_index_suppressed),
                          0u,1,0u,AMIVM_ROM_BASE+0x112u)==0);
+    /* M296: preindexed memory indirect, suppressed index, word BD.
+     * A0=ROM+0x10c, BD=0x14 => pointer at ROM+0x120.
+     * The pointer resolves to RTS at ROM+0x110. */
+    static const uint8_t jsr_preindexed_indirect[] = {
+        0x4eu,0xb0u,0x01u,0x61u,0x00u,0x14u,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,
+        (uint8_t)((AMIVM_ROM_BASE+0x110u)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x110u)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x110u)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x110u)
+    };
+    CHECK(run_case_setup("JSR preindexed memory indirect / RTS",
+                         jsr_preindexed_indirect,sizeof(jsr_preindexed_indirect),0u,1)==0);
+    /* M296: postindexed memory indirect with word outer displacement.
+     * A0+0x14 -> pointer at ROM+0x120. Pointer=ROM+0x10c,
+     * D1.W=2 and outer displacement=2 -> RTS at ROM+0x110. */
+    static const uint8_t jsr_postindexed_outer_word[] = {
+        0x4eu,0xb0u,0x11u,0x26u,0x00u,0x14u,0x00u,0x02u,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x10cu)
+    };
+    CHECK(run_case_index("JSR postindexed indirect + word outer / RTS",
+                         jsr_postindexed_outer_word,sizeof(jsr_postindexed_outer_word),
+                         0u,1,2u,0u)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
