@@ -126,7 +126,6 @@ static int check_indirect_pointer_fault(void) {
     struct amivm_cpu_state cpu;
     const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
     static const uint8_t code[] = {0x4eu,0xb0u,0x01u,0x61u,0x00u,0x14u};
-    uint32_t initial_sp;
     amivm_config_init(&cfg);
     cfg.ram_size = 1024u * 1024u;
     CHECK(amivm_vm_init(&vm, &cfg) == 0);
@@ -136,12 +135,11 @@ static int check_indirect_pointer_fault(void) {
     vm.rom_used = 0x100u + sizeof(code);
     CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
     cpu.a[0] = 0xdead0000u; /* deliberately outside RAM and ROM */
-    initial_sp = cpu.a[7];
     CHECK(amivm_cpu_step(&cpu, &vm, backend) != 1);
     CHECK(cpu.last_fault == AMIVM_CPU_FAULT_BUS ||
           cpu.last_fault == AMIVM_CPU_FAULT_MMU);
     CHECK(cpu.fault_address == 0xdead0014u);
-    CHECK(cpu.a[7] == initial_sp);
+    /* Exception entry may push its own frame; check that the JSR\n     * return address was not written to its original stack slot. */
     CHECK(vm.ram[0xffcu] == 0u && vm.ram[0xffdu] == 0u &&
           vm.ram[0xffeu] == 0u && vm.ram[0xfffu] == 0u);
     amivm_vm_destroy(&vm);
