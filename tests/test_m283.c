@@ -88,6 +88,67 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
     return 0;
 }
 
+/* M298: assert the actual stacked return PC, not just differential parity.
+ * The caller supplies a complete ROM fixture and expected JSR target. */
+static int check_jsr_return_pc(const uint8_t *code, size_t code_len,
+                               uint32_t expected_pc, uint32_t expected_return) {
+    struct amivm_config cfg;
+    struct amivm_vm vm;
+    struct amivm_cpu_state cpu;
+    const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
+    uint32_t stacked;
+    amivm_config_init(&cfg);
+    cfg.ram_size = 1024u * 1024u;
+    CHECK(amivm_vm_init(&vm, &cfg) == 0);
+    put32(vm.rom, AMIVM_RAM_BASE + 0x1000u);
+    put32(vm.rom + 4u, AMIVM_ROM_BASE + 0x100u);
+    memcpy(vm.rom + 0x100u, code, code_len);
+    vm.rom_used = 0x100u + code_len;
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.a[0] = AMIVM_ROM_BASE + 0x10cu;
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) == 1);
+    CHECK(cpu.pc == expected_pc);
+    CHECK(cpu.a[7] == AMIVM_RAM_BASE + 0xffcu);
+    stacked = ((uint32_t)vm.ram[0xffcu] << 24u) |
+              ((uint32_t)vm.ram[0xffdu] << 16u) |
+              ((uint32_t)vm.ram[0xffeu] << 8u) |
+              (uint32_t)vm.ram[0xfffu];
+    CHECK(stacked == expected_return);
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
+/* M298: an unmapped indirect pointer must fail before JSR pushes its
+ * return PC. No exception vector is installed, so exception entry fails. */
+static int check_indirect_pointer_fault(void) {
+    struct amivm_config cfg;
+    struct amivm_vm vm;
+    struct amivm_cpu_state cpu;
+    const struct amivm_cpu_backend *backend = amivm_cpu_reference_backend();
+    static const uint8_t code[] = {0x4eu,0xb0u,0x01u,0x61u,0x00u,0x14u};
+    amivm_config_init(&cfg);
+    cfg.ram_size = 1024u * 1024u;
+    CHECK(amivm_vm_init(&vm, &cfg) == 0);
+    put32(vm.rom, AMIVM_RAM_BASE + 0x1000u);
+    put32(vm.rom + 4u, AMIVM_ROM_BASE + 0x100u);
+    memcpy(vm.rom + 0x100u, code, sizeof(code));
+    vm.rom_used = 0x100u + sizeof(code);
+    CHECK(amivm_cpu_reset(&cpu, &vm, backend) == 0);
+    cpu.a[0] = 0xdead0000u; /* deliberately outside RAM and ROM */
+    CHECK(amivm_cpu_step(&cpu, &vm, backend) != 1);
+    CHECK(cpu.last_fault == AMIVM_CPU_FAULT_BUS ||
+          cpu.last_fault == AMIVM_CPU_FAULT_MMU);
+    CHECK(cpu.fault_address == 0xdead0014u);
+    /* Exception entry may overwrite this slot; it must not contain
+     * the return PC that JSR would have pushed (ROM+0x106). */
+    CHECK(!((vm.ram[0xffcu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>24u)) &&
+            (vm.ram[0xffdu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>16u)) &&
+            (vm.ram[0xffeu] == (uint8_t)((AMIVM_ROM_BASE+0x106u)>>8u)) &&
+            (vm.ram[0xfffu] == (uint8_t)(AMIVM_ROM_BASE+0x106u))));
+    amivm_vm_destroy(&vm);
+    return 0;
+}
+
 static int run_case_setup(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr, int set_a0) {
     return run_case_index(name,code,code_len,ccr,set_a0,0u,0u);
 }
@@ -350,6 +411,13 @@ int main(void) {
     CHECK(run_case_index("JSR preindexed long negative outer / RTS",
                          jsr_preindexed_outer_long_negative,
                          sizeof(jsr_preindexed_outer_long_negative),0u,1,2u,0u)==0);
+    /* M298: a full extension with word BD and signed long outer consumes
+     * 2 + 2 + 2 + 4 bytes, so JSR must push ROM+0x10a. */
+    CHECK(check_jsr_return_pc(jsr_postindexed_outer_long_negative,
+                              sizeof(jsr_postindexed_outer_long_negative),
+                              AMIVM_ROM_BASE+0x110u,
+                              AMIVM_ROM_BASE+0x10au)==0);
+    CHECK(check_indirect_pointer_fault()==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
