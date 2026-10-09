@@ -354,6 +354,14 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
             continue;
         }
 
+        /* M299: JSR (An), with no extension words or indirect reads. */
+        if ((op & 0xfff8u) == 0x4e90u) {
+            if (emit(block, AMIVM_IR_JSR, 0u, (uint8_t)(op & 7u), 0u,
+                     AMIVM_IR_EA_AN, 0, pc) != 0) return -2;
+            block->terminates = 1;
+            block->guest_end_pc = pc + 2u;
+            return 0;
+        }
         if (op == 0x4e71u) {
             if (emit(block, AMIVM_IR_NOP, 0u, 0u, 0u, AMIVM_IR_EA_NONE, 0, pc) != 0) return -2;
             pc += 2u;
@@ -732,6 +740,15 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
             cpu->pc = condition_true(op->condition, cpu->sr)
                           ? op->guest_pc + 2u + (uint32_t)op->imm
                           : op->guest_pc + 2u;
+            return 1;
+        case AMIVM_IR_JSR:
+            /* Resolve before touching the stack; this variant uses (An). */
+            address = cpu->a[op->src_reg];
+            if (ir_write(cpu, vm, cpu->a[7] - 4u, 4u,
+                         op->guest_pc + 2u) != 0) return -4;
+            cpu->a[7] -= 4u;
+            sync_a7_bank(cpu);
+            cpu->pc = address;
             return 1;
         case AMIVM_IR_EXIT:
             cpu->pc = op->guest_pc;
