@@ -62,9 +62,14 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
         if (i == 0u && strstr(name, "JSR") != NULL) {
             /* Until JSR is decoded into IR, the first instruction must
              * execute exactly once via the reference fallback path. */
-            CHECK(engine.stats.fallbacks == 1u);
+            if (strstr(name, "JSR (A0)") != NULL) {
+                CHECK(engine.stats.fallbacks == 0u);
+                CHECK(engine.stats.ir_blocks == 1u);
+            } else {
+                CHECK(engine.stats.fallbacks == 1u);
+                CHECK(engine.stats.ir_blocks == 0u);
+            }
             CHECK(engine.stats.jit_blocks == 0u);
-            CHECK(engine.stats.ir_blocks == 0u);
             printf("M299 FIRST JSR %s: jit=%llu ir=%llu fallbacks=%llu\\n",
                    name,
                    (unsigned long long)engine.stats.jit_blocks,
