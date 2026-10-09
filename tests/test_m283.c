@@ -25,7 +25,8 @@ static int same_cpu(const struct amivm_cpu_state *a, const struct amivm_cpu_stat
            a->last_exception_vector==b->last_exception_vector;
 }
 
-static int run_case_setup(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr, int set_a0) {
+static int run_case_index(const char *name, const uint8_t *code, size_t code_len,
+                          uint16_t ccr, int set_a0, uint32_t d1, uint32_t a1) {
     struct amivm_config cfg;
     struct amivm_vm ref_vm, opt_vm;
     struct amivm_cpu_state ref_cpu, opt_cpu;
@@ -49,6 +50,8 @@ static int run_case_setup(const char *name, const uint8_t *code, size_t code_len
         ref_cpu.a[0] = AMIVM_ROM_BASE + 0x10cu;
         opt_cpu.a[0] = AMIVM_ROM_BASE + 0x10cu;
     }
+    ref_cpu.d[1] = opt_cpu.d[1] = d1;
+    ref_cpu.a[1] = opt_cpu.a[1] = a1;
     ref_cpu.sr = (uint16_t)((ref_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     opt_cpu.sr = (uint16_t)((opt_cpu.sr & 0xffe0u) | (ccr & 0x001fu));
     amivm_exec_init(&engine,backend);
@@ -83,6 +86,10 @@ static int run_case_setup(const char *name, const uint8_t *code, size_t code_len
     amivm_vm_destroy(&ref_vm);
     printf("M283 %s differential smoke: PASS\\n",name);
     return 0;
+}
+
+static int run_case_setup(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr, int set_a0) {
+    return run_case_index(name,code,code_len,ccr,set_a0,0u,0u);
 }
 
 static int run_case_sr(const char *name, const uint8_t *code, size_t code_len, uint16_t ccr) {
@@ -197,6 +204,36 @@ int main(void) {
     };
     CHECK(run_case_setup("JSR d8(A0,D0.W) / RTS stack roundtrip",
                          jsr_indexed_d0_word_rts,sizeof(jsr_indexed_d0_word_rts),0u,1)==0);
+    /* M293: d8(A0,Xn) variants. A0=ROM+0x10c; each effective
+     * displacement plus index equals +4, reaching RTS at ROM+0x110. */
+    static const uint8_t jsr_d1_word_positive[] = {
+        0x4eu,0xb0u,0x10u,0x02u, 0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    static const uint8_t jsr_d1_long_negative[] = {
+        0x4eu,0xb0u,0x18u,0x06u, 0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    static const uint8_t jsr_a1_word_negative_disp[] = {
+        0x4eu,0xb0u,0x90u,0xfeu, 0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    static const uint8_t jsr_a1_long_positive[] = {
+        0x4eu,0xb0u,0x98u,0x02u, 0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR D1.W positive",jsr_d1_word_positive,
+                         sizeof(jsr_d1_word_positive),0u,1,2u,0u)==0);
+    CHECK(run_case_index("JSR D1.L negative",jsr_d1_long_negative,
+                         sizeof(jsr_d1_long_negative),0u,1,0xfffffffeu,0u)==0);
+    CHECK(run_case_index("JSR A1.W negative displacement",jsr_a1_word_negative_disp,
+                         sizeof(jsr_a1_word_negative_disp),0u,1,0u,6u)==0);
+    CHECK(run_case_index("JSR A1.L positive",jsr_a1_long_positive,
+                         sizeof(jsr_a1_long_positive),0u,1,0u,2u)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
