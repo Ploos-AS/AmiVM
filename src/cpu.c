@@ -603,29 +603,53 @@ static int reference_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
         index = (ext & 0x8000u) ? cpu->a[(ext >> 12u) & 7u] : cpu->d[(ext >> 12u) & 7u];
         if ((ext & 0x0800u) == 0u)
             index = (uint32_t)(int32_t)(int16_t)(index & 0xffffu);
-        if ((ext & 0x0100u) != 0u) { /* 68020+ full extension, no memory indirect */
+        if ((ext & 0x0100u) != 0u) { /* 68020+ full extension */
             uint32_t base = (ext & 0x0080u) ? 0u : cpu->a[reg];
             uint32_t displacement = 0u;
             unsigned bd_size = (unsigned)((ext >> 4u) & 3u);
-            if ((ext & 0x000fu) != 0u || bd_size == 0u) {
+            unsigned iis = (unsigned)(ext & 7u);
+            uint32_t outer = 0u;
+            uint32_t cursor = next_pc + 2u;
+            if ((ext & 0x0008u) != 0u || iis == 4u || bd_size == 0u) {
                 set_fault(cpu, AMIVM_CPU_FAULT_ILLEGAL, instruction_pc, opcode);
                 return deliver_fault(cpu, vm, instruction_pc);
             }
             if (bd_size == 2u) {
                 uint16_t word;
-                if (fetch16(cpu, vm, next_pc + 2u, &word) != 0)
+                if (fetch16(cpu, vm, cursor, &word) != 0)
                     return deliver_fault(cpu, vm, instruction_pc);
                 displacement = (uint32_t)(int32_t)(int16_t)word;
+                cursor += 2u;
             } else if (bd_size == 3u) {
-                if (fetch32(cpu, vm, next_pc + 2u, &displacement) != 0)
+                if (fetch32(cpu, vm, cursor, &displacement) != 0)
                     return deliver_fault(cpu, vm, instruction_pc);
+                cursor += 4u;
             }
             if ((ext & 0x0040u) != 0u) index = 0u;
             else index <<= (ext >> 9u) & 3u;
-            target = base + displacement + index;
+            if (iis == 2u || iis == 6u) {
+                uint16_t word;
+                if (fetch16(cpu, vm, cursor, &word) != 0)
+                    return deliver_fault(cpu, vm, instruction_pc);
+                outer = (uint32_t)(int32_t)(int16_t)word;
+                cursor += 2u;
+            } else if (iis == 3u || iis == 7u) {
+                if (fetch32(cpu, vm, cursor, &outer) != 0)
+                    return deliver_fault(cpu, vm, instruction_pc);
+                cursor += 4u;
+            }
+            if (iis == 0u) target = base + displacement + index;
+            else {
+                uint32_t pointer_address = base + displacement;
+                uint32_t pointer;
+                if (iis <= 3u) pointer_address += index; /* preindexed */
+                if (!cpu_read32(cpu, vm, pointer_address, is_supervisor(cpu), &pointer))
+                    return deliver_fault(cpu, vm, instruction_pc);
+                target = pointer + outer + (iis >= 5u ? index : 0u);
+            }
             sp = cpu->a[7] - 4u;
             if (!cpu_write32(cpu, vm, sp, is_supervisor(cpu),
-                             next_pc + 2u + (bd_size == 2u ? 2u : bd_size == 3u ? 4u : 0u)))
+                             cursor))
                 return deliver_fault(cpu, vm, instruction_pc);
         } else {
             target = cpu->a[reg] + index + (uint32_t)(int32_t)(int8_t)(ext & 0xffu);
