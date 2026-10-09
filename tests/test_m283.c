@@ -253,6 +253,34 @@ int main(void) {
     };
     CHECK(run_case_index("JSR full scaled D1.W x4",jsr_full_scaled_d1,
                          sizeof(jsr_full_scaled_d1),0u,1,1u,0u)==0);
+    /* M295: full extension, long negative base displacement with D1.W x8.
+     * A0=ROM+0x10c, D1=1, displacement=-4 => target ROM+0x110. */
+    static const uint8_t jsr_full_long_negative_bd[] = {
+        0x4eu,0xb0u,0x17u,0x30u,0xffu,0xffu,0xffu,0xfcu,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR full long negative BD, D1.W x8",
+                         jsr_full_long_negative_bd,sizeof(jsr_full_long_negative_bd),
+                         0u,1,1u,0u)==0);
+    /* Base suppressed, D1.L supplies absolute ROM address; no BD. */
+    static const uint8_t jsr_full_base_suppressed[] = {
+        0x4eu,0xb0u,0x19u,0x90u,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR full base suppressed, D1.L absolute",
+                         jsr_full_base_suppressed,sizeof(jsr_full_base_suppressed),
+                         0u,1,AMIVM_ROM_BASE+0x110u,0u)==0);
+    /* Index suppressed, negative word displacement, base A0+6. */
+    static const uint8_t jsr_full_index_suppressed[] = {
+        0x4eu,0xb1u,0x01u,0x60u,0xffu,0xfeu,
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR full index suppressed negative BD",
+                         jsr_full_index_suppressed,sizeof(jsr_full_index_suppressed),
+                         0u,1,0u,AMIVM_ROM_BASE+0x112u)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
