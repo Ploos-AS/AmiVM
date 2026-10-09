@@ -234,6 +234,16 @@ int main(void) {
                          sizeof(jsr_a1_word_negative_disp),0u,1,0u,6u)==0);
     CHECK(run_case_index("JSR A1.L positive",jsr_a1_long_positive,
                          sizeof(jsr_a1_long_positive),0u,1,0u,2u)==0);
+    /* M294: 68020 full extension, base A0 + signed word displacement.
+     * Index suppressed, no memory indirect: target ROM+0x110. */
+    static const uint8_t jsr_full_word_bd[] = {
+        0x4eu,0xb0u,0x01u,0x60u,0x00u,0x04u, /* JSR ([A0]+4), full ext */
+        0x60u,0xfeu,                         /* BRA.S self */
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x71u,0x4eu,0x75u              /* +16: RTS */
+    };
+    CHECK(run_case_setup("JSR full extension word base displacement / RTS",
+                         jsr_full_word_bd,sizeof(jsr_full_word_bd),0u,1)==0);
     /* Exercise data-register and condition-code changes before a BRA loop. */
     static const uint8_t moveq_zero_bra[] = {0x70u,0x00u,0x60u,0xfeu};
     static const uint8_t moveq_neg_bra[] = {0x70u,0xffu,0x60u,0xfeu};
