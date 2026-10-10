@@ -19,11 +19,13 @@ static int translate_long(struct amivm_jit_context *context, uint32_t logical,
                           int write, uint32_t physical[4])
 {
     unsigned i;
+    int supervisor;
     if (context == NULL || context->cpu == NULL || context->vm == NULL ||
         (logical & 1u) != 0u) return -4;
+    supervisor = supervisor_mode(context->cpu);
     for (i = 0u; i < 4u; ++i) {
         if (amivm_mmu_translate(context->cpu, context->vm, logical + i,
-                                write != 0, supervisor_mode(context->cpu),
+                                write != 0, supervisor,
                                 &physical[i]) != AMIVM_MMU_OK) return -4;
     }
     return 0;
