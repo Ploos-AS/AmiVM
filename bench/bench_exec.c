@@ -18,7 +18,7 @@ static void put32_be(uint8_t *p, uint32_t value)
     p[3] = (uint8_t)value;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     struct amivm_config config;
     struct amivm_vm vm;
@@ -34,6 +34,7 @@ int main(void)
     double seconds;
     double ips;
     double ns_per_instruction;
+    int branch_only = argc > 1 && argv[1][0] == 'b' && argv[1][1] == '\0';
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -43,7 +44,7 @@ int main(void)
     put32_be(&vm.rom[4], loop_pc);
     /* M300: JSR absolute-long -> RTS -> BRA back to call site.
      * This exercises the optimized call/return path under a stable loop. */
-    put16_be(&vm.rom[0x100], 0x4eb9u);
+    put16_be(&vm.rom[0x100], branch_only ? 0x60feu : 0x4eb9u);
     put32_be(&vm.rom[0x102], subroutine_pc);
     put16_be(&vm.rom[0x106], 0x60f8u);
     put16_be(&vm.rom[0x110], 0x4e75u);
@@ -66,7 +67,7 @@ int main(void)
     ips = seconds > 0.0 ? (double)exec.stats.instructions / seconds : 0.0;
     ns_per_instruction = exec.stats.instructions > 0u
         ? seconds * 1000000000.0 / (double)exec.stats.instructions : 0.0;
-    printf("AmiVM M300 JSR/RTS control-flow benchmark\n");
+    printf("AmiVM M303 scenario=%s\n", branch_only ? "branch" : "jsr-rts");
     printf("instructions=%llu seconds=%.6f ips=%.0f cache_hits=%llu cache_misses=%llu\n",
            (unsigned long long)exec.stats.instructions, seconds, ips,
            (unsigned long long)exec.stats.cache_hits,
@@ -86,8 +87,9 @@ int main(void)
      * last instruction was JSR, with one return address on stack. */
     if (exec.stats.instructions != budget || exec.stats.fallbacks != 0u ||
         exec.stats.jit_fallbacks != 0u || exec.stats.ir_blocks != 0u ||
-        exec.stats.jit_blocks != budget || cpu.pc != subroutine_pc ||
-        cpu.a[7] != initial_sp - 4u) {
+        exec.stats.jit_blocks != budget ||
+        cpu.pc != (branch_only ? loop_pc : subroutine_pc) ||
+        cpu.a[7] != (branch_only ? initial_sp : initial_sp - 4u)) {
         fprintf(stderr, "M301 JIT control-flow invariant failed: pc=%08x sp=%08x\n",
                 cpu.pc, cpu.a[7]);
         amivm_vm_destroy(&vm);
