@@ -63,7 +63,8 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
             /* Until JSR is decoded into IR, the first instruction must
              * execute exactly once via the reference fallback path. */
             if (strstr(name, "JSR (A0)") != NULL ||
-                strstr(name, "JSR d16(A0)") != NULL) {
+                strstr(name, "JSR d16(A0)") != NULL ||
+                strstr(name, "JSR absolute long") != NULL) {
                 CHECK(engine.stats.fallbacks == 0u);
                 CHECK(engine.stats.ir_blocks == 1u);
             } else {
@@ -349,6 +350,17 @@ int main(void) {
     };
     CHECK(run_case_index("JSR d16(A0) / RTS",jsr_d16_an,
                          sizeof(jsr_d16_an),0u,1,0u,0u)==0);
+    /* M299: absolute-long JSR targets RTS at ROM+0x10c; return at +0x106. */
+    static const uint8_t jsr_abs_long[] = {
+        0x4eu,0xb9u,
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x10cu),
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR absolute long / RTS",jsr_abs_long,
+                         sizeof(jsr_abs_long),0u,0,0u,0u)==0);
     /* M295: 68020 full extension without memory indirect. All targets
      * resolve to ROM+0x110 (offset +16), where RTS returns to BRA.S. */
     static const uint8_t jsr_full_scaled_d1[] = {
