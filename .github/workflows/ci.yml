@@ -16,5 +16,7 @@ jobs:
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: M299 JSR execution-path baseline
+        run: ctest --test-dir build -R '^amivm_m283$' --verbose
       - name: Machine description
         run: ./build/amivm --dump-machine

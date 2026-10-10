@@ -58,6 +58,18 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
     for (i=0;i<128u;++i) {
         CHECK(amivm_cpu_step(&ref_cpu,&ref_vm,backend)==1);
         CHECK(amivm_exec_step(&engine,&opt_cpu,&opt_vm)==1);
+        /* M299: isolate the first JSR from subsequent RTS/branch traffic. */
+        if (i == 0u && strstr(name, "JSR") != NULL) {
+            /* The canonical IR/JIT control extension already handles JSR.
+             * Record the actual path; do not assume a fallback or IR-only. */
+            CHECK(engine.stats.fallbacks == 0u);
+            CHECK(engine.stats.jit_blocks + engine.stats.ir_blocks == 1u);
+            printf("M299 FIRST JSR %s: jit=%llu ir=%llu fallbacks=%llu\\n",
+                   name,
+                   (unsigned long long)engine.stats.jit_blocks,
+                   (unsigned long long)engine.stats.ir_blocks,
+                   (unsigned long long)engine.stats.fallbacks);
+        }
         if (!same_cpu(&ref_cpu,&opt_cpu)) {
             fprintf(stderr,"M283 %s CPU divergence at step %u ref PC=%08x opt PC=%08x ref SR=%04x opt SR=%04x\n",
                     name,i,ref_cpu.pc,opt_cpu.pc,ref_cpu.sr,opt_cpu.sr);
@@ -81,6 +93,15 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
             return 1;
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
+    }
+    /* M299: record the execution-path counters for every JSR fixture.
+     * Differential correctness alone does not show whether IR/JIT is used. */
+    if (strstr(name, "JSR") != NULL) {
+        printf("M299 %s execution: jit=%llu ir=%llu fallbacks=%llu\\n",
+               name,
+               (unsigned long long)engine.stats.jit_blocks,
+               (unsigned long long)engine.stats.ir_blocks,
+               (unsigned long long)engine.stats.fallbacks);
     }
     amivm_vm_destroy(&opt_vm);
     amivm_vm_destroy(&ref_vm);
@@ -305,6 +326,33 @@ int main(void) {
     };
     CHECK(run_case_setup("JSR full extension word base displacement / RTS",
                          jsr_full_word_bd,sizeof(jsr_full_word_bd),0u,1)==0);
+    /* M299: JSR (A0) reaches RTS at ROM+0x10c, then BRA.S at +0x102. */
+    static const uint8_t jsr_an[] = {
+        0x4eu,0x90u,0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR (A0) / RTS",jsr_an,sizeof(jsr_an),
+                         0u,1,0u,0u)==0);
+    /* M299: signed d16(A0), return PC must skip extension word. */
+    static const uint8_t jsr_d16_an[] = {
+        0x4eu,0xa8u,0x00u,0x00u,0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR d16(A0) / RTS",jsr_d16_an,
+                         sizeof(jsr_d16_an),0u,1,0u,0u)==0);
+    /* M299: absolute-long JSR targets RTS at ROM+0x10c; return at +0x106. */
+    static const uint8_t jsr_abs_long[] = {
+        0x4eu,0xb9u,
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>24u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>16u),
+        (uint8_t)((AMIVM_ROM_BASE+0x10cu)>>8u),
+        (uint8_t)(AMIVM_ROM_BASE+0x10cu),
+        0x60u,0xfeu,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR absolute long / RTS",jsr_abs_long,
+                         sizeof(jsr_abs_long),0u,0,0u,0u)==0);
     /* M295: 68020 full extension without memory indirect. All targets
      * resolve to ROM+0x110 (offset +16), where RTS returns to BRA.S. */
     static const uint8_t jsr_full_scaled_d1[] = {
