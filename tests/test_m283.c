@@ -60,18 +60,10 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
         CHECK(amivm_exec_step(&engine,&opt_cpu,&opt_vm)==1);
         /* M299: isolate the first JSR from subsequent RTS/branch traffic. */
         if (i == 0u && strstr(name, "JSR") != NULL) {
-            /* Until JSR is decoded into IR, the first instruction must
-             * execute exactly once via the reference fallback path. */
-            if (strstr(name, "JSR (A0)") != NULL ||
-                strstr(name, "JSR d16(A0)") != NULL ||
-                strstr(name, "JSR absolute long") != NULL) {
-                CHECK(engine.stats.fallbacks == 0u);
-                CHECK(engine.stats.ir_blocks == 1u);
-            } else {
-                CHECK(engine.stats.fallbacks == 1u);
-                CHECK(engine.stats.ir_blocks == 0u);
-            }
-            CHECK(engine.stats.jit_blocks == 0u);
+            /* The canonical IR/JIT control extension already handles JSR.
+             * Record the actual path; do not assume a fallback or IR-only. */
+            CHECK(engine.stats.fallbacks == 0u);
+            CHECK(engine.stats.jit_blocks + engine.stats.ir_blocks == 1u);
             printf("M299 FIRST JSR %s: jit=%llu ir=%llu fallbacks=%llu\\n",
                    name,
                    (unsigned long long)engine.stats.jit_blocks,
@@ -102,7 +94,7 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
         }
         CHECK(memcmp(ref_vm.ram,opt_vm.ram,cfg.ram_size)==0);
     }
-    /* M299: record the execution-path baseline for every JSR fixture.
+    /* M299: record the execution-path counters for every JSR fixture.
      * Differential correctness alone does not show whether IR/JIT is used. */
     if (strstr(name, "JSR") != NULL) {
         printf("M299 %s execution: jit=%llu ir=%llu fallbacks=%llu\\n",
