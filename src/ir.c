@@ -354,36 +354,6 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
             continue;
         }
 
-        /* M299: absolute-long JSR carries a 32-bit target in two words. */
-        if (op == 0x4eb9u) {
-            uint32_t target;
-            if (i + 2u >= word_count) goto unsupported;
-            target = ((uint32_t)words[i + 1u] << 16u) | words[i + 2u];
-            if (emit(block, AMIVM_IR_JSR, 0u, 0u, 0u,
-                     AMIVM_IR_EA_ABS_L, (int32_t)target, pc) != 0) return -2;
-            block->ops[block->op_count - 1u].instruction_bytes = 6u;
-            block->terminates = 1;
-            block->guest_end_pc = pc + 6u;
-            return 0;
-        }
-        /* M299: JSR d16(An) consumes one signed displacement word. */
-        if ((op & 0xfff8u) == 0x4ea8u) {
-            if (i + 1u >= word_count) goto unsupported;
-            if (emit(block, AMIVM_IR_JSR, 0u, (uint8_t)(op & 7u), 0u,
-                     AMIVM_IR_EA_D16_AN, (int16_t)words[i + 1u], pc) != 0) return -2;
-            block->ops[block->op_count - 1u].instruction_bytes = 4u;
-            block->terminates = 1;
-            block->guest_end_pc = pc + 4u;
-            return 0;
-        }
-        /* M299: JSR (An), with no extension words or indirect reads. */
-        if ((op & 0xfff8u) == 0x4e90u) {
-            if (emit(block, AMIVM_IR_JSR, 0u, (uint8_t)(op & 7u), 0u,
-                     AMIVM_IR_EA_AN, 0, pc) != 0) return -2;
-            block->terminates = 1;
-            block->guest_end_pc = pc + 2u;
-            return 0;
-        }
         if (op == 0x4e71u) {
             if (emit(block, AMIVM_IR_NOP, 0u, 0u, 0u, AMIVM_IR_EA_NONE, 0, pc) != 0) return -2;
             pc += 2u;
@@ -762,19 +732,6 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
             cpu->pc = condition_true(op->condition, cpu->sr)
                           ? op->guest_pc + 2u + (uint32_t)op->imm
                           : op->guest_pc + 2u;
-            return 1;
-        case AMIVM_IR_JSR:
-            /* Resolve before touching the stack; this variant uses (An). */
-            address = cpu->a[op->src_reg];
-            if (op->ea_mode == AMIVM_IR_EA_D16_AN)
-                address += (uint32_t)op->imm;
-            else if (op->ea_mode == AMIVM_IR_EA_ABS_L)
-                address = (uint32_t)op->imm;
-            if (ir_write(cpu, vm, cpu->a[7] - 4u, 4u,
-                         op->guest_pc + instruction_bytes) != 0) return -4;
-            cpu->a[7] -= 4u;
-            sync_a7_bank(cpu);
-            cpu->pc = address;
             return 1;
         case AMIVM_IR_EXIT:
             cpu->pc = op->guest_pc;
