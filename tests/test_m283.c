@@ -332,6 +332,14 @@ int main(void) {
     };
     CHECK(run_case_setup("JSR full extension word base displacement / RTS",
                          jsr_full_word_bd,sizeof(jsr_full_word_bd),0u,1)==0);
+    /* M299: JSR (A0) reaches RTS at ROM+0x10c, then BRA.S at +0x102. */
+    static const uint8_t jsr_an[] = {
+        0x4eu,0x90u,0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR (A0) / RTS",jsr_an,sizeof(jsr_an),
+                         0u,1,0u,0u)==0);
     /* M295: 68020 full extension without memory indirect. All targets
      * resolve to ROM+0x110 (offset +16), where RTS returns to BRA.S. */
     static const uint8_t jsr_full_scaled_d1[] = {
