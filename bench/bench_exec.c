@@ -33,6 +33,7 @@ int main(void)
     clock_t end;
     double seconds;
     double ips;
+    double ns_per_instruction;
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -63,12 +64,19 @@ int main(void)
 
     seconds = (double)(end - begin) / (double)CLOCKS_PER_SEC;
     ips = seconds > 0.0 ? (double)exec.stats.instructions / seconds : 0.0;
+    ns_per_instruction = exec.stats.instructions > 0u
+        ? seconds * 1000000000.0 / (double)exec.stats.instructions : 0.0;
     printf("AmiVM M300 JSR/RTS control-flow benchmark\n");
     printf("instructions=%llu seconds=%.6f ips=%.0f cache_hits=%llu cache_misses=%llu\n",
            (unsigned long long)exec.stats.instructions, seconds, ips,
            (unsigned long long)exec.stats.cache_hits,
            (unsigned long long)exec.stats.cache_misses);
 
+    printf("ns_per_instruction=%.3f cache_hit_percent=%.3f\n",
+           ns_per_instruction,
+           exec.stats.cache_hits + exec.stats.cache_misses > 0u
+               ? 100.0 * (double)exec.stats.cache_hits /
+                 (double)(exec.stats.cache_hits + exec.stats.cache_misses) : 0.0);
     printf("jit_blocks=%llu ir_blocks=%llu fallbacks=%llu jit_fallbacks=%llu\n",
            (unsigned long long)exec.stats.jit_blocks,
            (unsigned long long)exec.stats.ir_blocks,
@@ -80,7 +88,7 @@ int main(void)
         exec.stats.jit_fallbacks != 0u || exec.stats.ir_blocks != 0u ||
         exec.stats.jit_blocks != budget || cpu.pc != subroutine_pc ||
         cpu.a[7] != initial_sp - 4u) {
-        fprintf(stderr, "M301 JIT control-flow invariant failed: pc=%08x sp=%08x\\n",
+        fprintf(stderr, "M301 JIT control-flow invariant failed: pc=%08x sp=%08x\n",
                 cpu.pc, cpu.a[7]);
         amivm_vm_destroy(&vm);
         return 1;
