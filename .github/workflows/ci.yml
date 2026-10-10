@@ -20,5 +20,7 @@ jobs:
         run: ctest --test-dir build -R '^amivm_m283$' --verbose
       - name: M300 JSR/RTS benchmark metrics
         run: ./build/amivm_exec_bench
+      - name: M303 branch-only comparison
+        run: ./build/amivm_exec_bench b
       - name: Machine description
         run: ./build/amivm --dump-machine
