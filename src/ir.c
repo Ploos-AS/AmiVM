@@ -354,6 +354,16 @@ int amivm_ir_decode_words(struct amivm_ir_block *block,
             continue;
         }
 
+        /* M299: JSR d16(An) consumes one signed displacement word. */
+        if ((op & 0xfff8u) == 0x4ea8u) {
+            if (i + 1u >= word_count) goto unsupported;
+            if (emit(block, AMIVM_IR_JSR, 0u, (uint8_t)(op & 7u), 0u,
+                     AMIVM_IR_EA_D16_AN, (int16_t)words[i + 1u], pc) != 0) return -2;
+            block->ops[block->op_count - 1u].instruction_bytes = 4u;
+            block->terminates = 1;
+            block->guest_end_pc = pc + 4u;
+            return 0;
+        }
         /* M299: JSR (An), with no extension words or indirect reads. */
         if ((op & 0xfff8u) == 0x4e90u) {
             if (emit(block, AMIVM_IR_JSR, 0u, (uint8_t)(op & 7u), 0u,
@@ -744,8 +754,10 @@ int amivm_ir_execute(const struct amivm_ir_block *block,
         case AMIVM_IR_JSR:
             /* Resolve before touching the stack; this variant uses (An). */
             address = cpu->a[op->src_reg];
+            if (op->ea_mode == AMIVM_IR_EA_D16_AN)
+                address += (uint32_t)op->imm;
             if (ir_write(cpu, vm, cpu->a[7] - 4u, 4u,
-                         op->guest_pc + 2u) != 0) return -4;
+                         op->guest_pc + instruction_bytes) != 0) return -4;
             cpu->a[7] -= 4u;
             sync_a7_bank(cpu);
             cpu->pc = address;
