@@ -74,7 +74,14 @@ int main(void)
            (unsigned long long)exec.stats.ir_blocks,
            (unsigned long long)exec.stats.fallbacks,
            (unsigned long long)exec.stats.jit_fallbacks);
-    if (exec.stats.instructions != budget || exec.stats.fallbacks != 0u) {
+    /* Each iteration is JSR, RTS, BRA. At budget % 3 == 1 the
+     * last instruction was JSR, with one return address on stack. */
+    if (exec.stats.instructions != budget || exec.stats.fallbacks != 0u ||
+        exec.stats.jit_fallbacks != 0u || exec.stats.ir_blocks != 0u ||
+        exec.stats.jit_blocks != budget || cpu.pc != subroutine_pc ||
+        cpu.a[7] != initial_sp - 4u) {
+        fprintf(stderr, "M301 JIT control-flow invariant failed: pc=%08x sp=%08x\\n",
+                cpu.pc, cpu.a[7]);
         amivm_vm_destroy(&vm);
         return 1;
     }
