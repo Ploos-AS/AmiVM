@@ -62,7 +62,8 @@ static int run_case_index(const char *name, const uint8_t *code, size_t code_len
         if (i == 0u && strstr(name, "JSR") != NULL) {
             /* Until JSR is decoded into IR, the first instruction must
              * execute exactly once via the reference fallback path. */
-            if (strstr(name, "JSR (A0)") != NULL) {
+            if (strstr(name, "JSR (A0)") != NULL ||
+                strstr(name, "JSR d16(A0)") != NULL) {
                 CHECK(engine.stats.fallbacks == 0u);
                 CHECK(engine.stats.ir_blocks == 1u);
             } else {
@@ -340,6 +341,14 @@ int main(void) {
     };
     CHECK(run_case_index("JSR (A0) / RTS",jsr_an,sizeof(jsr_an),
                          0u,1,0u,0u)==0);
+    /* M299: signed d16(A0), return PC must skip extension word. */
+    static const uint8_t jsr_d16_an[] = {
+        0x4eu,0xa8u,0x00u,0x04u,0x60u,0xfeu,
+        0x4eu,0x71u,0x4eu,0x71u,0x4eu,0x71u,
+        0x4eu,0x75u
+    };
+    CHECK(run_case_index("JSR d16(A0) / RTS",jsr_d16_an,
+                         sizeof(jsr_d16_an),0u,1,0u,0u)==0);
     /* M295: 68020 full extension without memory indirect. All targets
      * resolve to ROM+0x110 (offset +16), where RTS returns to BRA.S. */
     static const uint8_t jsr_full_scaled_d1[] = {
