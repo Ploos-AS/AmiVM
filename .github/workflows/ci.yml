@@ -18,9 +18,25 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: M299 JSR execution-path baseline
         run: ctest --test-dir build -R '^amivm_m283$' --verbose
-      - name: M300 JSR/RTS benchmark metrics
-        run: ./build/amivm_exec_bench
-      - name: M303 branch-only comparison
-        run: ./build/amivm_exec_bench b
+      - name: M305 repeated JIT benchmarks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scenario in jsr-rts branch; do
+            results=""
+            for iteration in 1 2 3 4 5 6 7; do
+              if [[ "$scenario" == "branch" ]]; then
+                output=$(./build/amivm_exec_bench b)
+              else
+                output=$(./build/amivm_exec_bench)
+              fi
+              printf '%s\n' "$output"
+              value=$(printf '%s\n' "$output" | sed -n 's/^ns_per_instruction=\([0-9.]*\).*/\1/p')
+              test -n "$value"
+              results="$results $value"
+            done
+            median=$(printf '%s\n' $results | sort -n | sed -n '4p')
+            printf 'M305 scenario=%s median_ns_per_instruction=%s samples=7\n' "$scenario" "$median"
+          done
       - name: Machine description
         run: ./build/amivm --dump-machine
