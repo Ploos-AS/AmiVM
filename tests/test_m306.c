@@ -41,6 +41,26 @@ int main(void)
     rc = amivm_jit_helper_stack_push_long(&ctx, 0xdeadbeefu);
     if (rc == 0 || cpu.a[7] != original_sp + 1u) goto fail;
 
+    /* Longword spans two 4 KiB pages: bytes at 0xffe..0x1001. */
+    cpu.a[7] = AMIVM_RAM_BASE + AMIVM_RAM_PAGE_SIZE + 2u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0xa1b2c3d4u);
+    if (rc != 0 || cpu.a[7] != AMIVM_RAM_BASE + AMIVM_RAM_PAGE_SIZE - 2u ||
+        cpu.isp != cpu.a[7]) goto fail;
+    value = 0u;
+    rc = amivm_jit_helper_stack_pop_long(&ctx, &value);
+    if (rc != 0 || value != 0xa1b2c3d4u ||
+        cpu.a[7] != AMIVM_RAM_BASE + AMIVM_RAM_PAGE_SIZE + 2u ||
+        cpu.isp != cpu.a[7]) goto fail;
+
+    /* A failed out-of-RAM pop must preserve SP and the output value. */
+    cpu.a[7] = AMIVM_RAM_BASE + (uint32_t)config.ram_size - 2u;
+    cpu.isp = cpu.a[7];
+    value = 0xfeedfaceu;
+    rc = amivm_jit_helper_stack_pop_long(&ctx, &value);
+    if (rc == 0 || cpu.a[7] != AMIVM_RAM_BASE + (uint32_t)config.ram_size - 2u ||
+        cpu.isp != cpu.a[7] || value != 0xfeedfaceu) goto fail;
+
     amivm_vm_destroy(&vm);
     puts("M306 stack translation invariants: PASS");
     return 0;
