@@ -33,11 +33,24 @@ static int translate_long(struct amivm_jit_context *context, uint32_t logical,
         return 0;
     }
     supervisor = supervisor_mode(context->cpu);
-    for (i = 0u; i < 4u; ++i) {
-        if (amivm_mmu_translate(context->cpu, context->vm, logical + i,
-                                write != 0, supervisor,
-                                &physical[i]) != AMIVM_MMU_OK) return -4;
+    /*
+     * A 32-bit aligned longword stays on one 4 KiB page unless its
+     * starting offset is 0xffe. Translate once and retain the physical
+     * page offset; the MMU descriptor and protection are identical.
+     * For a crossing longword, translate the second page separately.
+     */
+    if (amivm_mmu_translate(context->cpu, context->vm, logical,
+                            write != 0, supervisor, &physical[0]) != AMIVM_MMU_OK)
+        return -4;
+    if ((logical & (AMIVM_RAM_PAGE_SIZE - 1u)) <= AMIVM_RAM_PAGE_SIZE - 4u) {
+        for (i = 1u; i < 4u; ++i) physical[i] = physical[0] + i;
+        return 0;
     }
+    physical[1] = physical[0] + 1u;
+    if (amivm_mmu_translate(context->cpu, context->vm, logical + 2u,
+                            write != 0, supervisor, &physical[2]) != AMIVM_MMU_OK)
+        return -4;
+    physical[3] = physical[2] + 1u;
     return 0;
 }
 
