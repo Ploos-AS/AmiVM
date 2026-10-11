@@ -3,6 +3,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+static void put32_be(uint8_t *p, uint32_t v)
+{
+    p[0] = (uint8_t)(v >> 24u);
+    p[1] = (uint8_t)(v >> 16u);
+    p[2] = (uint8_t)(v >> 8u);
+    p[3] = (uint8_t)v;
+}
+
 int main(void)
 {
     struct amivm_config config;
@@ -60,6 +68,28 @@ int main(void)
     rc = amivm_jit_helper_stack_pop_long(&ctx, &value);
     if (rc == 0 || cpu.a[7] != AMIVM_RAM_BASE + (uint32_t)config.ram_size - 2u ||
         cpu.isp != cpu.a[7] || value != 0xfeedfaceu) goto fail;
+
+    /* MMU-enabled: two adjacent logical pages map to nonadjacent RAM pages. */
+    cpu.tc = 0x80000000u;
+    cpu.sr = 0x2000u;
+    cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+    put32_be(&vm.ram[0x2000u + 4u], (AMIVM_RAM_BASE + 0x3000u) | 1u);
+    put32_be(&vm.ram[0x3000u + 0u], (AMIVM_RAM_BASE + 0x8000u) | 1u);
+    put32_be(&vm.ram[0x3000u + 4u], (AMIVM_RAM_BASE + 0xa000u) | 1u);
+    cpu.a[7] = 0x00401002u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0x89abcdefu);
+    if (rc != 0 || cpu.a[7] != 0x00400ffeu) goto fail;
+    value = 0u;
+    rc = amivm_jit_helper_stack_pop_long(&ctx, &value);
+    if (rc != 0 || value != 0x89abcdefu || cpu.a[7] != 0x00401002u) goto fail;
+
+    /* A protected second page must reject the entire translation. */
+    put32_be(&vm.ram[0x3000u + 4u], (AMIVM_RAM_BASE + 0xa000u) | 3u);
+    cpu.a[7] = 0x00401002u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0x12345678u);
+    if (rc == 0 || cpu.a[7] != 0x00401002u || cpu.mmusr == 0u) goto fail;
 
     amivm_vm_destroy(&vm);
     puts("M306 stack translation invariants: PASS");
