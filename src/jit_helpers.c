@@ -22,6 +22,16 @@ static int translate_long(struct amivm_jit_context *context, uint32_t logical,
     int supervisor;
     if (context == NULL || context->cpu == NULL || context->vm == NULL ||
         (logical & 1u) != 0u) return -4;
+    /*
+     * With translation disabled, logical addresses are physical addresses.
+     * Preserve the MMUSR reset performed by amivm_mmu_translate().
+     * The byte-wise memory accesses below still validate RAM/MMIO bounds.
+     */
+    if ((context->cpu->tc & 0x80000000u) == 0u) {
+        context->cpu->mmusr = 0u;
+        for (i = 0u; i < 4u; ++i) physical[i] = logical + i;
+        return 0;
+    }
     supervisor = supervisor_mode(context->cpu);
     for (i = 0u; i < 4u; ++i) {
         if (amivm_mmu_translate(context->cpu, context->vm, logical + i,
