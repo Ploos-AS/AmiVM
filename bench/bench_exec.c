@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         put32_be(&vm.ram[0x2000u], rom_l2 | 1u);
         put32_be(&vm.ram[0x2000u + 64u * 4u], ram_l2 | 1u);
         put32_be(&vm.ram[0x3000u], AMIVM_ROM_BASE | 1u);
-        put32_be(&vm.ram[0x4000u + 4u], (AMIVM_RAM_BASE + 0x1000u) | 1u);
+        put32_be(&vm.ram[0x4000u], AMIVM_RAM_BASE | 1u);
         cpu.srp = root;
         cpu.tc = 0x80000000u;
     }
