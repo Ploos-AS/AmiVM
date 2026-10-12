@@ -60,7 +60,7 @@ int main(int argc, char **argv)
         const uint32_t root = AMIVM_RAM_BASE + 0x2000u;
         const uint32_t rom_l2 = AMIVM_RAM_BASE + 0x3000u;
         const uint32_t ram_l2 = AMIVM_RAM_BASE + 0x4000u;
-        put32_be(&vm.ram[0x2000u], rom_l2 | 1u);
+        put32_be(&vm.ram[0x2000u + (AMIVM_ROM_BASE >> 22u) * 4u], rom_l2 | 1u);
         put32_be(&vm.ram[0x2000u + 64u * 4u], ram_l2 | 1u);
         put32_be(&vm.ram[0x3000u + ((AMIVM_ROM_BASE >> 12u) & 0x3ffu) * 4u], AMIVM_ROM_BASE | 1u);
         put32_be(&vm.ram[0x4000u], AMIVM_RAM_BASE | 1u);
