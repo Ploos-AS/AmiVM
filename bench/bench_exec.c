@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     double ips;
     double ns_per_instruction;
     int branch_only = argc > 1 && argv[1][0] == 'b' && argv[1][1] == '\0';
+    int mmu_enabled = argc > 1 && argv[1][0] == 'm' && argv[1][1] == '\0';
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -54,6 +55,18 @@ int main(int argc, char **argv)
         amivm_vm_destroy(&vm);
         return 1;
     }
+    if (mmu_enabled) {
+        /* Identity-map the ROM code page and stack RAM page using separate L2 tables. */
+        const uint32_t root = AMIVM_RAM_BASE + 0x2000u;
+        const uint32_t rom_l2 = AMIVM_RAM_BASE + 0x3000u;
+        const uint32_t ram_l2 = AMIVM_RAM_BASE + 0x4000u;
+        put32_be(&vm.ram[0x2000u], rom_l2 | 1u);
+        put32_be(&vm.ram[0x2000u + 64u * 4u], ram_l2 | 1u);
+        put32_be(&vm.ram[0x3000u], AMIVM_ROM_BASE | 1u);
+        put32_be(&vm.ram[0x4000u + 4u], (AMIVM_RAM_BASE + 0x1000u) | 1u);
+        cpu.srp = root;
+        cpu.tc = 0x80000000u;
+    }
     amivm_exec_init(&exec, backend);
 
     begin = clock();
@@ -67,7 +80,7 @@ int main(int argc, char **argv)
     ips = seconds > 0.0 ? (double)exec.stats.instructions / seconds : 0.0;
     ns_per_instruction = exec.stats.instructions > 0u
         ? seconds * 1000000000.0 / (double)exec.stats.instructions : 0.0;
-    printf("AmiVM M303 scenario=%s\n", branch_only ? "branch" : "jsr-rts");
+    printf("AmiVM M303 scenario=%s\n", branch_only ? "branch" : (mmu_enabled ? "jsr-rts-mmu" : "jsr-rts"));
     printf("instructions=%llu seconds=%.6f ips=%.0f cache_hits=%llu cache_misses=%llu\n",
            (unsigned long long)exec.stats.instructions, seconds, ips,
            (unsigned long long)exec.stats.cache_hits,
