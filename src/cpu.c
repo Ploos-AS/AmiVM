@@ -78,6 +78,21 @@ static bool phys_read16(struct amivm_vm *vm, uint32_t addr, uint16_t *value)
 static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 {
     uint16_t hi, lo;
+    /*
+     * Page-table descriptors usually reside in RAM. Read them directly
+     * without four generic device dispatches; retain the existing
+     * path for non-RAM mappings and preserve alignment/bounds checks.
+     * This deliberately does not cache descriptors: guest updates to
+     * page tables must become visible on the very next translation.
+     */
+    if (vm != NULL && value != NULL && (addr & 1u) == 0u &&
+        addr >= AMIVM_RAM_BASE &&
+        (uint64_t)(addr - AMIVM_RAM_BASE) + 4u <= vm->ram_size) {
+        const uint8_t *p = vm->ram + (size_t)(addr - AMIVM_RAM_BASE);
+        *value = ((uint32_t)p[0] << 24u) | ((uint32_t)p[1] << 16u) |
+                 ((uint32_t)p[2] << 8u) | (uint32_t)p[3];
+        return true;
+    }
     if (value == NULL || !phys_read16(vm, addr, &hi) ||
         !phys_read16(vm, addr + 2u, &lo)) return false;
     *value = ((uint32_t)hi << 16u) | lo;
