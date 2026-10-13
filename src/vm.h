@@ -53,6 +53,8 @@ const struct amivm_device_desc *amivm_find_device(const char *name);
 
 bool amivm_read8(struct amivm_vm *vm, uint32_t addr, uint8_t *value);
 bool amivm_write8(struct amivm_vm *vm, uint32_t addr, uint8_t value);
+bool amivm_ram_write(struct amivm_vm *vm, uint32_t addr,
+                     const uint8_t *data, size_t length);
 bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
                                uint64_t *generation);
 void amivm_raise_irq(struct amivm_vm *vm, unsigned line);
