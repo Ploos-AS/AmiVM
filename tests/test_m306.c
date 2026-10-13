@@ -133,8 +133,41 @@ int main(void)
     if (rc != 0 || vm.ram[0xb000u] != 0x99u ||
         vm.ram[0xc000u] != 0xaau || cpu.usp != 0x00401000u) goto fail;
 
+    /*
+     * M313 cache contract: a changed L1 descriptor, an invalidated L2
+     * descriptor and a disabled MMU must all be observed immediately.
+     */
+    cpu.sr = 0x2000u;
+    cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+    cpu.a[7] = 0x00401004u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0x01020304u);
+    if (rc != 0 || vm.ram[0xb000u] != 0x01u) goto fail;
+    /* Replace the L1 table pointer while retaining the same logical page. */
+    put32_be(&vm.ram[0x7000u + 4u], (AMIVM_RAM_BASE + 0xc000u) | 1u);
+    put32_be(&vm.ram[0x2000u + 4u], (AMIVM_RAM_BASE + 0x7000u) | 1u);
+    cpu.a[7] = 0x00401004u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0x10203040u);
+    if (rc != 0 || vm.ram[0xc000u] != 0x10u ||
+        vm.ram[0xb000u] != 0x01u) goto fail;
+    /* Invalidating the L2 entry must fault instead of using a stale hit. */
+    put32_be(&vm.ram[0x7000u + 4u], 0u);
+    cpu.a[7] = 0x00401004u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0x55667788u);
+    if (rc == 0 || cpu.a[7] != 0x00401004u ||
+        vm.ram[0xc000u] != 0x10u || cpu.mmusr == 0u) goto fail;
+    /* Turning translation off must bypass stale table entries entirely. */
+    cpu.tc = 0u;
+    cpu.a[7] = AMIVM_RAM_BASE + 0xd004u;
+    cpu.isp = cpu.a[7];
+    rc = amivm_jit_helper_stack_push_long(&ctx, 0xabcdef12u);
+    if (rc != 0 || vm.ram[0xd000u] != 0xabu ||
+        cpu.mmusr != 0u) goto fail;
+
     amivm_vm_destroy(&vm);
-    puts("M312 MMU remap and stack invariants: PASS");
+    puts("M313 MMU cache invalidation contract: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
