@@ -166,8 +166,21 @@ int main(void)
     if (rc != 0 || vm.ram[0xd000u] != 0xabu ||
         cpu.mmusr != 0u) goto fail;
 
+    /*
+     * M314: VM writes to page-table RAM must advance generation counters.
+     * Direct host writes are deliberately not tracked by this API.
+     */
+    {
+        uint64_t before = 0u, after = 0u;
+        const uint32_t descriptor_addr = AMIVM_RAM_BASE + 0x7000u + 4u;
+        if (!amivm_ram_page_generation(&vm, descriptor_addr, &before)) goto fail;
+        if (!amivm_write8(&vm, descriptor_addr + 3u, 1u)) goto fail;
+        if (!amivm_ram_page_generation(&vm, descriptor_addr, &after) ||
+            after == before) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M313 MMU cache invalidation contract: PASS");
+    puts("M314 MMU generation tracking contract: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
