@@ -179,8 +179,25 @@ int main(void)
             after == before) goto fail;
     }
 
+    /* M316: bulk writes track both pages and reject partial out-of-range writes. */
+    {
+        const uint8_t bytes[4] = {0x12u, 0x34u, 0x56u, 0x78u};
+        uint64_t g0, g1, h0, h1;
+        const uint32_t start = AMIVM_RAM_BASE + 0xeffeu;
+        if (!amivm_ram_page_generation(&vm, start, &g0) ||
+            !amivm_ram_page_generation(&vm, start + 2u, &h0)) goto fail;
+        if (!amivm_ram_write(&vm, start, bytes, sizeof(bytes))) goto fail;
+        if (!amivm_ram_page_generation(&vm, start, &g1) ||
+            !amivm_ram_page_generation(&vm, start + 2u, &h1) ||
+            g1 == g0 || h1 == h0 ||
+            vm.ram[0xeffeu] != 0x12u || vm.ram[0xf001u] != 0x78u) goto fail;
+        if (amivm_ram_write(&vm, AMIVM_RAM_BASE + (uint32_t)vm.ram_size - 2u,
+                            bytes, sizeof(bytes)) ||
+            vm.ram[vm.ram_size - 2u] == 0x12u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M314 MMU generation tracking contract: PASS");
+    puts("M316 tracked RAM writes: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
