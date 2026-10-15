@@ -18,6 +18,16 @@ static void put32_be(uint8_t *p, uint32_t value)
     p[3] = (uint8_t)value;
 }
 
+/* MMU page-table setup must use tracked RAM writes, unlike ROM fixtures. */
+static int put32_ram(struct amivm_vm *vm, uint32_t offset, uint32_t value)
+{
+    const uint8_t bytes[4] = {
+        (uint8_t)(value >> 24u), (uint8_t)(value >> 16u),
+        (uint8_t)(value >> 8u), (uint8_t)value
+    };
+    return amivm_ram_write(vm, AMIVM_RAM_BASE + offset, bytes, sizeof(bytes)) ? 0 : -1;
+}
+
 int main(int argc, char **argv)
 {
     struct amivm_config config;
@@ -60,10 +70,14 @@ int main(int argc, char **argv)
         const uint32_t root = AMIVM_RAM_BASE + 0x2000u;
         const uint32_t rom_l2 = AMIVM_RAM_BASE + 0x3000u;
         const uint32_t ram_l2 = AMIVM_RAM_BASE + 0x4000u;
-        put32_be(&vm.ram[0x2000u + (AMIVM_ROM_BASE >> 22u) * 4u], rom_l2 | 1u);
-        put32_be(&vm.ram[0x2000u + 64u * 4u], ram_l2 | 1u);
-        put32_be(&vm.ram[0x3000u + ((AMIVM_ROM_BASE >> 12u) & 0x3ffu) * 4u], AMIVM_ROM_BASE | 1u);
-        put32_be(&vm.ram[0x4000u], AMIVM_RAM_BASE | 1u);
+        if (put32_ram(&vm, 0x2000u + (AMIVM_ROM_BASE >> 22u) * 4u, rom_l2 | 1u) != 0 ||
+            put32_ram(&vm, 0x2000u + 64u * 4u, ram_l2 | 1u) != 0 ||
+            put32_ram(&vm, 0x3000u + ((AMIVM_ROM_BASE >> 12u) & 0x3ffu) * 4u,
+                      AMIVM_ROM_BASE | 1u) != 0 ||
+            put32_ram(&vm, 0x4000u, AMIVM_RAM_BASE | 1u) != 0) {
+            amivm_vm_destroy(&vm);
+            return 1;
+        }
         cpu.srp = root;
         cpu.tc = 0x80000000u;
     }
