@@ -1,6 +1,6 @@
 # M315 — MMU translation cache: coherence requirements
 
-Status: design only; **no TLB is enabled**.
+Status: design and MMU instrumentation only; **no TLB is enabled**.
 
 ## Correctness gate
 
@@ -9,9 +9,11 @@ L2 remapping and invalidation, write-protection updates, SRP/URP changes,
 user/supervisor transitions, and MMU disable. Stack longwords crossing a
 4 KiB page boundary must translate and check permissions on both pages.
 
-**Critical gap:** tests and potentially host integrations modify `vm.ram[]`
-directly. Such writes bypass `ram_page_generation`; therefore a TLB keyed
-only on page generations is not coherent today.
+**Remaining integration requirement:** direct writes to `vm.ram[]` bypass
+`ram_page_generation` unless the caller invokes `amivm_ram_mark_dirty()`
+after mutation and before CPU translation. M316–M321 provide tracked writes,
+explicit dirty notification, and regression coverage, but external host/DMA
+callers still must honor the contract.
 
 ## Proposed entry and validation
 
@@ -32,7 +34,8 @@ Ensure reset and VM teardown cannot reuse stale entries.
    guest writes, DMA, host injection and tests.
 2. Introduce tracked bulk RAM writes and an explicit invalidation API.
    Migrate production mutation sites; test generation increments.
-3. Implement a small per-CPU cache **opt-in and off by default**, with hit,
+3. M322 added page-table walk and MMU-bypass counters; M323 ensures CPU reset
+   clears them. Implement a small per-CPU cache **opt-in and off by default**, with hit,
    miss and invalidation counters.
 4. Run remapping/protection/root-switch regression tests with cache both
    disabled and enabled, including tracked and explicitly invalidated writes.
