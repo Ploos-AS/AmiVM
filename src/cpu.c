@@ -454,6 +454,13 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->cacr = cpu->tc = cpu->urp = cpu->srp = cpu->mmusr = 0u;
     cpu->mmu_translation_walks = 0u;
     cpu->mmu_translation_bypasses = 0u;
+    cpu->tlb_enabled = false;
+    cpu->tlb_hits = cpu->tlb_misses = cpu->tlb_invalidations = 0u;
+    {
+        size_t tlb_index;
+        for (tlb_index = 0u; tlb_index < AMIVM_TLB_ENTRY_COUNT; ++tlb_index)
+            cpu->tlb[tlb_index].valid = false;
+    }
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
