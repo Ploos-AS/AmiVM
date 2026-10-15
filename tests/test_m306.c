@@ -230,8 +230,34 @@ int main(void)
             goto fail;
     }
 
+    /* M320: direct host writes can explicitly invalidate touched RAM pages. */
+    {
+        const uint32_t start = AMIVM_RAM_BASE + 0x13ffeu;
+        uint64_t first, second, untouched;
+        uint64_t after_first, after_second, after_untouched;
+        uint64_t global_before;
+        if (!amivm_ram_page_generation(&vm, start, &first) ||
+            !amivm_ram_page_generation(&vm, start + 2u, &second) ||
+            !amivm_ram_page_generation(&vm, start + 0x1002u, &untouched))
+            goto fail;
+        vm.ram[0x13ffeu] = 0xacu;
+        vm.ram[0x14001u] = 0xbdu;
+        global_before = vm.memory_write_generation;
+        if (!amivm_ram_mark_dirty(&vm, start, 4u) ||
+            !amivm_ram_page_generation(&vm, start, &after_first) ||
+            !amivm_ram_page_generation(&vm, start + 2u, &after_second) ||
+            !amivm_ram_page_generation(&vm, start + 0x1002u, &after_untouched) ||
+            after_first != first + 1u || after_second != second + 1u ||
+            after_untouched != untouched ||
+            vm.memory_write_generation != global_before + 2u) goto fail;
+        global_before = vm.memory_write_generation;
+        if (amivm_ram_mark_dirty(&vm, start, 0u) ||
+            amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + (uint32_t)vm.ram_size - 1u, 4u) ||
+            vm.memory_write_generation != global_before) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M319 RAM write generation invariants: PASS");
+    puts("M320 explicit RAM invalidation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
