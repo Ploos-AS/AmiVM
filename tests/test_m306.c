@@ -197,8 +197,41 @@ int main(void)
             vm.ram[vm.ram_size - 2u] == 0x12u) goto fail;
     }
 
+    /*
+     * M319: exact generation increments are required for predictable TLB
+     * validation. A rejected bulk write must change neither memory nor
+     * generation counters.
+     */
+    {
+        const uint8_t bytes[4] = {0x91u, 0x92u, 0x93u, 0x94u};
+        const uint32_t boundary = AMIVM_RAM_BASE + 0x11ffeu;
+        uint64_t first_before, second_before, untouched_before;
+        uint64_t first_after, second_after, untouched_after;
+        uint64_t global_before;
+        if (!amivm_ram_page_generation(&vm, boundary, &first_before) ||
+            !amivm_ram_page_generation(&vm, boundary + 2u, &second_before) ||
+            !amivm_ram_page_generation(&vm, boundary + 0x1002u, &untouched_before))
+            goto fail;
+        global_before = vm.memory_write_generation;
+        if (!amivm_ram_write(&vm, boundary, bytes, sizeof(bytes)) ||
+            !amivm_ram_page_generation(&vm, boundary, &first_after) ||
+            !amivm_ram_page_generation(&vm, boundary + 2u, &second_after) ||
+            !amivm_ram_page_generation(&vm, boundary + 0x1002u, &untouched_after) ||
+            first_after != first_before + 1u ||
+            second_after != second_before + 1u ||
+            untouched_after != untouched_before ||
+            vm.memory_write_generation != global_before + 2u) goto fail;
+        global_before = vm.memory_write_generation;
+        if (amivm_ram_write(&vm, boundary, bytes, 0u) ||
+            amivm_ram_write(&vm, AMIVM_RAM_BASE + (uint32_t)vm.ram_size - 1u,
+                            bytes, sizeof(bytes)) ||
+            vm.memory_write_generation != global_before ||
+            vm.ram[0x11ffeu] != 0x91u || vm.ram[0x12001u] != 0x94u)
+            goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M316 tracked RAM writes: PASS");
+    puts("M319 RAM write generation invariants: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
