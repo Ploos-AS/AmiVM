@@ -46,6 +46,23 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_TABLE_BUS = -4,
 };
 
+/* M324: bounded per-CPU TLB storage; translation lookup is not enabled yet. */
+#define AMIVM_TLB_ENTRY_COUNT 16u
+
+struct amivm_tlb_entry {
+    uint32_t logical_page;
+    uint32_t physical_page;
+    uint32_t root;
+    uint32_t tc;
+    uint32_t l1_descriptor_address;
+    uint32_t l2_descriptor_address;
+    uint64_t l1_generation;
+    uint64_t l2_generation;
+    bool supervisor;
+    bool write_protected;
+    bool valid;
+};
+
 struct amivm_cpu_state {
     uint32_t d[8];
     uint32_t a[8];
@@ -62,6 +79,11 @@ struct amivm_cpu_state {
     /* M322: translation counters; cache remains disabled by default. */
     uint64_t mmu_translation_walks;
     uint64_t mmu_translation_bypasses;
+    bool tlb_enabled;
+    uint64_t tlb_hits;
+    uint64_t tlb_misses;
+    uint64_t tlb_invalidations;
+    struct amivm_tlb_entry tlb[AMIVM_TLB_ENTRY_COUNT];
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;
