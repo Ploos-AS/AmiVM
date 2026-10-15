@@ -59,6 +59,9 @@ struct amivm_cpu_state {
     uint32_t urp;
     uint32_t srp;
     uint32_t mmusr;
+    /* M322: translation counters; cache remains disabled by default. */
+    uint64_t mmu_translation_walks;
+    uint64_t mmu_translation_bypasses;
     uint8_t sfc;
     uint8_t dfc;
     uint16_t sr;

@@ -285,8 +285,27 @@ int main(void)
             physical != mapped) goto fail;
     }
 
+    /* M322: count real table walks and MMU-disabled bypasses separately. */
+    {
+        uint32_t physical = 0u;
+        const uint64_t walks = cpu.mmu_translation_walks;
+        const uint64_t bypasses = cpu.mmu_translation_bypasses;
+        cpu.tc = 0u;
+        if (amivm_mmu_translate(&cpu, &vm, AMIVM_RAM_BASE, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE ||
+            cpu.mmu_translation_bypasses != bypasses + 1u ||
+            cpu.mmu_translation_walks != walks) goto fail;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.mmu_translation_bypasses != bypasses + 1u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M321 host MMU dirty notification: PASS");
+    puts("M322 MMU translation counters: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",

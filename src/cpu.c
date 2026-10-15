@@ -110,9 +110,12 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     if (cpu == NULL || vm == NULL || physical == NULL) return AMIVM_MMU_FAULT_TABLE_BUS;
     cpu->mmusr = 0u;
     if ((cpu->tc & TC_ENABLE) == 0u) {
+        cpu->mmu_translation_bypasses++;
         *physical = logical;
         return AMIVM_MMU_OK;
     }
+    /* Count attempted page-table walks, including faults. */
+    cpu->mmu_translation_walks++;
 
     root = (supervisor ? cpu->srp : cpu->urp) & PAGE_MASK;
     if (root == 0u) {
