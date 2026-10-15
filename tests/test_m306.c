@@ -256,8 +256,37 @@ int main(void)
             vm.memory_write_generation != global_before) goto fail;
     }
 
+    /*
+     * M321: host-written MMU descriptors must be explicitly marked dirty.
+     * Reuse the existing supervisor mapping, restore its L2 descriptor
+     * through raw RAM, and prove translation observes the new target.
+     */
+    {
+        const uint32_t descriptor = AMIVM_RAM_BASE + 0x7004u;
+        const uint32_t logical = 0x00401000u;
+        uint64_t before, after;
+        uint32_t physical = 0u;
+        const uint32_t mapped = AMIVM_RAM_BASE + 0xb000u;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.sr = 0x2000u;
+        /* Restore the L1 pointer to the 0x7000 L2 table. */
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0)
+            goto fail;
+        if (!amivm_ram_page_generation(&vm, descriptor, &before)) goto fail;
+        vm.ram[0x7004u] = (uint8_t)((mapped | 1u) >> 24u);
+        vm.ram[0x7005u] = (uint8_t)((mapped | 1u) >> 16u);
+        vm.ram[0x7006u] = (uint8_t)((mapped | 1u) >> 8u);
+        vm.ram[0x7007u] = (uint8_t)(mapped | 1u);
+        if (!amivm_ram_mark_dirty(&vm, descriptor, 4u) ||
+            !amivm_ram_page_generation(&vm, descriptor, &after) ||
+            after != before + 1u ||
+            amivm_mmu_translate(&cpu, &vm, logical, true, true, &physical) != AMIVM_MMU_OK ||
+            physical != mapped) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M320 explicit RAM invalidation: PASS");
+    puts("M321 host MMU dirty notification: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
