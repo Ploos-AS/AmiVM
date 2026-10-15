@@ -227,6 +227,25 @@ bool amivm_ram_write(struct amivm_vm *vm, uint32_t addr,
     return true;
 }
 
+/*
+ * Explicit generation invalidation for host/DMA writers that modify
+ * vm->ram directly. The caller must mark the entire affected range
+ * after mutation and before any CPU translation can observe it.
+ */
+bool amivm_ram_mark_dirty(struct amivm_vm *vm, uint32_t addr, size_t length)
+{
+    size_t offset, first_page, last_page, page;
+    if (vm == NULL || vm->ram == NULL || addr < AMIVM_RAM_BASE ||
+        length == 0u) return false;
+    offset = (size_t)(addr - AMIVM_RAM_BASE);
+    if (offset > vm->ram_size || length > vm->ram_size - offset) return false;
+    first_page = offset / AMIVM_RAM_PAGE_SIZE;
+    last_page = (offset + length - 1u) / AMIVM_RAM_PAGE_SIZE;
+    for (page = first_page; page <= last_page; ++page)
+        bump_write_generation(vm, AMIVM_RAM_BASE + (uint32_t)(page * AMIVM_RAM_PAGE_SIZE));
+    return true;
+}
+
 bool amivm_ram_page_generation(const struct amivm_vm *vm, uint32_t addr,
                                uint64_t *generation)
 {
