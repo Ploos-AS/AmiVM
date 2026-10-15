@@ -452,6 +452,8 @@ static int reference_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm)
     cpu->pc = initial_pc;
     cpu->vbr = AMIVM_ROM_BASE;
     cpu->cacr = cpu->tc = cpu->urp = cpu->srp = cpu->mmusr = 0u;
+    cpu->mmu_translation_walks = 0u;
+    cpu->mmu_translation_bypasses = 0u;
     cpu->sfc = cpu->dfc = 0u;
     cpu->sr = (uint16_t)(SR_S | SR_IPL);
     cpu->stopped = false;
