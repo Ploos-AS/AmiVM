@@ -304,8 +304,25 @@ int main(void)
             cpu.mmu_translation_bypasses != bypasses + 1u) goto fail;
     }
 
+    /* M324: reset invalidates every TLB entry and disables opt-in caching. */
+    {
+        size_t i;
+        vm.rom_used = vm.rom_used < 8u ? 8u : vm.rom_used;
+        cpu.tlb_enabled = true;
+        cpu.tlb_hits = 7u;
+        cpu.tlb_misses = 8u;
+        cpu.tlb_invalidations = 9u;
+        cpu.tlb[0].valid = true;
+        if (amivm_cpu_reset(&cpu, &vm, amivm_cpu_reference_backend()) != 0 ||
+            cpu.tlb_enabled || cpu.tlb_hits != 0u || cpu.tlb_misses != 0u ||
+            cpu.tlb_invalidations != 0u || cpu.mmu_translation_walks != 0u ||
+            cpu.mmu_translation_bypasses != 0u) goto fail;
+        for (i = 0u; i < AMIVM_TLB_ENTRY_COUNT; ++i)
+            if (cpu.tlb[i].valid) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M322 MMU translation counters: PASS");
+    puts("M324 TLB state reset: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
