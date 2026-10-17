@@ -321,8 +321,37 @@ int main(void)
             if (cpu.tlb[i].valid) goto fail;
     }
 
+    /* M325: opt-in TLB hits, tracked remap invalidation and WP faults. */
+    {
+        const uint32_t logical = 0x00401000u;
+        const uint32_t descriptor = AMIVM_RAM_BASE + 0x7004u;
+        uint32_t physical = 0u;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.tlb_misses != 1u || cpu.tlb_hits != 0u) goto fail;
+        if (amivm_mmu_translate(&cpu, &vm, logical + 2u, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb002u ||
+            cpu.tlb_hits != 1u || cpu.mmu_translation_walks != 1u) goto fail;
+        if (put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xc000u) | 3u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.tlb_invalidations != 1u || cpu.tlb_misses != 2u) goto fail;
+        if (amivm_mmu_translate(&cpu, &vm, logical, true, true, &physical) !=
+                AMIVM_MMU_FAULT_WRITE_PROTECT ||
+            cpu.tlb_hits != 2u) goto fail;
+        /* Restore writable mapping and verify the stale WP entry is rejected. */
+        if (put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, true, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.tlb_invalidations != 2u) goto fail;
+        (void)descriptor;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M324 TLB state reset: PASS");
+    puts("M325 opt-in TLB lookup: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",

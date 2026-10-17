@@ -99,6 +99,15 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
     return true;
 }
 
+/* Cache only RAM descriptors wholly contained in one tracked 4 KiB page. */
+static bool tlb_descriptor_generation(const struct amivm_vm *vm,
+                                      uint32_t address, uint64_t *generation)
+{
+    if ((address & (AMIVM_RAM_PAGE_SIZE - 1u)) > AMIVM_RAM_PAGE_SIZE - 4u)
+        return false;
+    return amivm_ram_page_generation(vm, address, generation);
+}
+
 int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                         uint32_t logical, bool write, bool supervisor,
                         uint32_t *physical)
@@ -106,6 +115,8 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
     uint32_t root, l1, l2, l1_addr, l2_addr;
     uint32_t i1 = logical >> 22u;
     uint32_t i2 = (logical >> 12u) & 0x3ffu;
+    struct amivm_tlb_entry *entry = NULL;
+    uint64_t l1_gen = 0u, l2_gen = 0u;
 
     if (cpu == NULL || vm == NULL || physical == NULL) return AMIVM_MMU_FAULT_TABLE_BUS;
     cpu->mmusr = 0u;
@@ -114,10 +125,34 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         *physical = logical;
         return AMIVM_MMU_OK;
     }
+    root = (supervisor ? cpu->srp : cpu->urp) & PAGE_MASK;
+    if (cpu->tlb_enabled) {
+        size_t slot = (size_t)(logical >> 12u) % AMIVM_TLB_ENTRY_COUNT;
+        entry = &cpu->tlb[slot];
+        if (entry->valid && entry->logical_page == (logical & PAGE_MASK) &&
+            entry->root == root && entry->tc == cpu->tc &&
+            entry->supervisor == supervisor) {
+            uint64_t current_l1, current_l2;
+            if (tlb_descriptor_generation(vm, entry->l1_descriptor_address, &current_l1) &&
+                tlb_descriptor_generation(vm, entry->l2_descriptor_address, &current_l2) &&
+                current_l1 == entry->l1_generation &&
+                current_l2 == entry->l2_generation) {
+                cpu->tlb_hits++;
+                if (write && entry->write_protected) {
+                    cpu->mmusr = MMUSR_WP;
+                    return AMIVM_MMU_FAULT_WRITE_PROTECT;
+                }
+                *physical = entry->physical_page | (logical & 0xfffu);
+                return AMIVM_MMU_OK;
+            }
+            entry->valid = false;
+            cpu->tlb_invalidations++;
+        }
+        cpu->tlb_misses++;
+    }
     /* Count attempted page-table walks, including faults. */
     cpu->mmu_translation_walks++;
 
-    root = (supervisor ? cpu->srp : cpu->urp) & PAGE_MASK;
     if (root == 0u) {
         cpu->mmusr = MMUSR_ROOT;
         return AMIVM_MMU_FAULT_ROOT;
@@ -147,6 +182,21 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         return AMIVM_MMU_FAULT_WRITE_PROTECT;
     }
 
+    if (entry != NULL &&
+        tlb_descriptor_generation(vm, l1_addr, &l1_gen) &&
+        tlb_descriptor_generation(vm, l2_addr, &l2_gen)) {
+        entry->logical_page = logical & PAGE_MASK;
+        entry->physical_page = l2 & PAGE_MASK;
+        entry->root = root;
+        entry->tc = cpu->tc;
+        entry->supervisor = supervisor;
+        entry->write_protected = (l2 & DESC_WP) != 0u;
+        entry->l1_descriptor_address = l1_addr;
+        entry->l2_descriptor_address = l2_addr;
+        entry->l1_generation = l1_gen;
+        entry->l2_generation = l2_gen;
+        entry->valid = true;
+    }
     *physical = (l2 & PAGE_MASK) | (logical & 0xfffu);
     return AMIVM_MMU_OK;
 }
