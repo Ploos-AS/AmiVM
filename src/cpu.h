@@ -46,7 +46,7 @@ enum amivm_mmu_result {
     AMIVM_MMU_FAULT_TABLE_BUS = -4,
 };
 
-/* M324: bounded per-CPU TLB storage; translation lookup is not enabled yet. */
+/* Bounded per-CPU, opt-in TLB storage; disabled by default. */
 #define AMIVM_TLB_ENTRY_COUNT 16u
 
 struct amivm_tlb_entry {
@@ -106,6 +106,8 @@ int amivm_cpu_reset(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                     const struct amivm_cpu_backend *backend);
 int amivm_cpu_step(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                    const struct amivm_cpu_backend *backend);
+/* Invalidate cached translations after VM replacement or host MMU changes. */
+void amivm_mmu_tlb_flush(struct amivm_cpu_state *cpu);
 int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
                         uint32_t logical, bool write, bool supervisor,
                         uint32_t *physical);

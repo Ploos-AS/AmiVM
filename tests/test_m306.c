@@ -383,8 +383,32 @@ int main(void)
                 AMIVM_MMU_FAULT_PAGE || cpu.mmusr == 0u) goto fail;
     }
 
+    /* M332: explicit flush must force a new walk and preserve opt-in mode. */
+    {
+        uint32_t physical = 0u;
+        uint64_t walks, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        if (put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0)
+            goto fail;
+        cpu.tlb_enabled = true;
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        amivm_mmu_tlb_flush(&cpu);
+        if (!cpu.tlb_enabled || cpu.tlb_invalidations != invalidations + 1u)
+            goto fail;
+        amivm_mmu_tlb_flush(&cpu);
+        if (cpu.tlb_invalidations != invalidations + 1u) goto fail;
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.mmu_translation_walks != walks + 1u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M326 TLB context isolation: PASS");
+    puts("M332 explicit TLB flush: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",

@@ -100,6 +100,18 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 }
 
 /* Cache only RAM descriptors wholly contained in one tracked 4 KiB page. */
+void amivm_mmu_tlb_flush(struct amivm_cpu_state *cpu)
+{
+    size_t i;
+    if (cpu == NULL) return;
+    for (i = 0u; i < AMIVM_TLB_ENTRY_COUNT; ++i) {
+        if (cpu->tlb[i].valid) {
+            cpu->tlb[i].valid = false;
+            cpu->tlb_invalidations++;
+        }
+    }
+}
+
 static bool tlb_descriptor_generation(const struct amivm_vm *vm,
                                       uint32_t address, uint64_t *generation)
 {
