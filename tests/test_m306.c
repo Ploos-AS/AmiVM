@@ -350,8 +350,41 @@ int main(void)
         (void)descriptor;
     }
 
+    /* M326: TLB must not leak across privilege, root, or MMU mode. */
+    {
+        const uint32_t logical = 0x00401000u;
+        uint32_t physical = 0u;
+        uint64_t misses, bypasses;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.urp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        misses = cpu.tlb_misses;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, false, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.tlb_misses != misses + 1u) goto fail;
+        cpu.srp = 0u;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) !=
+                AMIVM_MMU_FAULT_ROOT || cpu.mmusr == 0u) goto fail;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tc = 0u;
+        bypasses = cpu.mmu_translation_bypasses;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != logical || cpu.mmu_translation_bypasses != bypasses + 1u)
+            goto fail;
+        cpu.tc = 0x80000000u;
+        if (amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        /* Invalid L2 descriptors must fault, never reuse a stale hit. */
+        if (put32_be(&vm, 0x7004u, 0u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true, &physical) !=
+                AMIVM_MMU_FAULT_PAGE || cpu.mmusr == 0u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M325 opt-in TLB lookup: PASS");
+    puts("M326 TLB context isolation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
