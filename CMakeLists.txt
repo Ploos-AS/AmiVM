@@ -28,3 +28,10 @@ foreach(test_name IN LISTS AMIVM_TESTS)
  add_test(NAME amivm_${test_name} COMMAND amivm_${test_name}_tests)
 endforeach()
 add_test(NAME amivm_exec_benchmark_smoke COMMAND amivm_exec_bench)
+
+# M336: concurrent VM initialization regression (pthread-backed test only).
+find_package(Threads REQUIRED)
+add_executable(amivm_m336_tests tests/test_m336.c)
+target_link_libraries(amivm_m336_tests PRIVATE amivm_core Threads::Threads)
+target_compile_options(amivm_m336_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_m336 COMMAND amivm_m336_tests)
