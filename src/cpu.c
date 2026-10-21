@@ -152,7 +152,7 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         entry = &cpu->tlb[slot];
         if (entry->valid && entry->logical_page == (logical & PAGE_MASK) &&
             entry->root == root && entry->tc == cpu->tc &&
-            entry->vm_identity == vm && entry->supervisor == supervisor) {
+            entry->vm_instance_id == vm->instance_id && entry->supervisor == supervisor) {
             uint64_t current_l1, current_l2;
             if (tlb_descriptor_generation(vm, entry->l1_descriptor_address, &current_l1) &&
                 tlb_descriptor_generation(vm, entry->l2_descriptor_address, &current_l2) &&
@@ -210,7 +210,7 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         entry->physical_page = l2 & PAGE_MASK;
         entry->root = root;
         entry->tc = cpu->tc;
-        entry->vm_identity = vm;
+        entry->vm_instance_id = vm->instance_id;
         entry->supervisor = supervisor;
         entry->write_protected = (l2 & DESC_WP) != 0u;
         entry->l1_descriptor_address = l1_addr;
