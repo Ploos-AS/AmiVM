@@ -54,6 +54,7 @@ struct amivm_tlb_entry {
     uint32_t physical_page;
     uint32_t root;
     uint32_t tc;
+    uint64_t vm_instance_id;
     uint32_t l1_descriptor_address;
     uint32_t l2_descriptor_address;
     uint64_t l1_generation;

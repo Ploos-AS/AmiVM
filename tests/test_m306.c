@@ -429,6 +429,15 @@ int main(void)
             goto fail;
         }
         walks = cpu.mmu_translation_walks;
+        /* M334: VM identity prevents stale hits even without explicit flush. */
+        if (amivm_mmu_translate(&cpu, &other, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.mmu_translation_walks != walks + 1u) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
+        walks = cpu.mmu_translation_walks;
         amivm_mmu_tlb_flush(&cpu);
         if (amivm_mmu_translate(&cpu, &other, 0x00401000u, false, true,
                                 &physical) != AMIVM_MMU_OK ||
@@ -441,7 +450,7 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("M333 VM-switch TLB flush: PASS");
+    puts("M334 VM identity TLB isolation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
