@@ -407,8 +407,41 @@ int main(void)
             cpu.mmu_translation_walks != walks + 1u) goto fail;
     }
 
+    /* M333: reusing a CPU with a different VM requires an explicit flush. */
+    {
+        struct amivm_vm other;
+        uint32_t physical = 0u;
+        uint64_t walks;
+        if (amivm_vm_init(&other, &config) != 0) goto fail;
+        if (put32_be(&other, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&other, 0x7004u, (AMIVM_RAM_BASE + 0xc000u) | 1u) != 0) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        /* Populate the old VM's cache entry before switching. */
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
+        walks = cpu.mmu_translation_walks;
+        amivm_mmu_tlb_flush(&cpu);
+        if (amivm_mmu_translate(&cpu, &other, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.mmu_translation_walks != walks + 1u) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
+        amivm_vm_destroy(&other);
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M332 explicit TLB flush: PASS");
+    puts("M333 VM-switch TLB flush: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
