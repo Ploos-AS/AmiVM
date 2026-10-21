@@ -446,6 +446,25 @@ int main(void)
             amivm_vm_destroy(&other);
             goto fail;
         }
+        /* M338: switching back without flushing must recover the original
+           mapping, even when the same direct-mapped TLB slot was replaced. */
+        walks = cpu.mmu_translation_walks;
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.mmu_translation_walks != walks + 1u) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
+        /* A subsequent lookup within the original VM must now hit. */
+        walks = cpu.mmu_translation_walks;
+        if (amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.mmu_translation_walks != walks) {
+            amivm_vm_destroy(&other);
+            goto fail;
+        }
         amivm_vm_destroy(&other);
     }
 
@@ -488,7 +507,7 @@ int main(void)
     }
 
     amivm_vm_destroy(&vm);
-    puts("M337 VM lifetime reuse isolation: PASS");
+    puts("M338 TLB VM round-trip isolation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
