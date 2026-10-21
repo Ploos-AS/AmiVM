@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Unique per initialized VM lifetime within the process (single-threaded init). */
+static uint64_t next_vm_instance_id = 1u;
+
 static const struct amivm_device_desc amivm_devices[] = {
     {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u},
     {"timer", AMIVM_TIMER_BASE, AMIVM_MMIO_PAGE_SIZE, 2u},
@@ -77,6 +80,8 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->memory_write_generation = 1u;
+    vm->instance_id = next_vm_instance_id++;
+    if (next_vm_instance_id == 0u) next_vm_instance_id = 1u;
     if (config->rom_path != NULL && amivm_vm_load_rom(vm, config->rom_path) != 0) {
         amivm_vm_destroy(vm);
         return -1;
