@@ -39,6 +39,7 @@ struct amivm_vm {
     uint32_t irq_pending;
     uint64_t timer_ticks;
     uint64_t memory_write_generation;
+    uint64_t instance_id;
 };
 
 void amivm_config_init(struct amivm_config *config);
