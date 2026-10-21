@@ -67,3 +67,12 @@ performance conclusions.
 Before enabling the cache by default, validate host/DMA dirty
 notifications, page-table descriptors spanning boundaries, VM reuse,
 and representative guest workloads.
+
+## VM switching (M333)
+
+TLB entries are owned by the CPU, not by the VM. Any host reusing the same
+CPU state with a different `amivm_vm` must call `amivm_mmu_tlb_flush(cpu)`
+**before** translation against the new VM. Page-generation counters alone
+do not distinguish two independent VM instances. M333 adds a regression
+with different mappings in two VMs. Automatic VM identity binding remains
+a future improvement; the explicit flush contract is mandatory meanwhile.
