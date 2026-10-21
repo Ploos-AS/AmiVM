@@ -1,11 +1,12 @@
 #include "vm.h"
 
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Unique per initialized VM lifetime within the process (single-threaded init). */
-static uint64_t next_vm_instance_id = 1u;
+/* C11 atomic allocation permits concurrent VM initialization. ID zero is reserved. */
+static atomic_uint_fast64_t next_vm_instance_id = ATOMIC_VAR_INIT(1u);
 
 static const struct amivm_device_desc amivm_devices[] = {
     {"vmserial", AMIVM_VMSERIAL_BASE, AMIVM_MMIO_PAGE_SIZE, 1u},
@@ -80,8 +81,13 @@ int amivm_vm_init(struct amivm_vm *vm, const struct amivm_config *config)
         return -1;
     }
     vm->memory_write_generation = 1u;
-    vm->instance_id = next_vm_instance_id++;
-    if (next_vm_instance_id == 0u) next_vm_instance_id = 1u;
+    vm->instance_id = atomic_fetch_add_explicit(&next_vm_instance_id, 1u,
+                                                 memory_order_relaxed);
+    /* Refuse wrapped IDs rather than risk aliasing an older VM lifetime. */
+    if (vm->instance_id == 0u || vm->instance_id == UINT64_MAX) {
+        amivm_vm_destroy(vm);
+        return -1;
+    }
     if (config->rom_path != NULL && amivm_vm_load_rom(vm, config->rom_path) != 0) {
         amivm_vm_destroy(vm);
         return -1;
