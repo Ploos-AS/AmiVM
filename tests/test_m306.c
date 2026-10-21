@@ -449,8 +449,46 @@ int main(void)
         amivm_vm_destroy(&other);
     }
 
+    /* M337: destroying and reinitializing at the same VM address must
+       not allow stale TLB entries to match a new VM lifetime. */
+    {
+        struct amivm_vm reused;
+        uint64_t previous_id, walks;
+        uint32_t physical = 0u;
+        if (amivm_vm_init(&reused, &config) != 0) goto fail;
+        if (put32_be(&reused, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&reused, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0) {
+            amivm_vm_destroy(&reused);
+            goto fail;
+        }
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        if (amivm_mmu_translate(&cpu, &reused, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) {
+            amivm_vm_destroy(&reused);
+            goto fail;
+        }
+        previous_id = reused.instance_id;
+        walks = cpu.mmu_translation_walks;
+        amivm_vm_destroy(&reused);
+        if (amivm_vm_init(&reused, &config) != 0) goto fail;
+        if (reused.instance_id == previous_id ||
+            put32_be(&reused, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&reused, 0x7004u, (AMIVM_RAM_BASE + 0xd000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &reused, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xd000u ||
+            cpu.mmu_translation_walks != walks + 1u) {
+            amivm_vm_destroy(&reused);
+            goto fail;
+        }
+        amivm_vm_destroy(&reused);
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M334 VM identity TLB isolation: PASS");
+    puts("M337 VM lifetime reuse isolation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
