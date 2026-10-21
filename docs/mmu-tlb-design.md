@@ -76,3 +76,11 @@ CPU state with a different `amivm_vm` must call `amivm_mmu_tlb_flush(cpu)`
 do not distinguish two independent VM instances. M333 adds a regression
 with different mappings in two VMs. Automatic VM identity binding remains
 a future improvement; the explicit flush contract is mandatory meanwhile.
+
+## M334 VM lifetime isolation
+
+Each initialized VM receives a process-local lifetime ID. TLB entries carry
+this ID, and lookup rejects entries from a different VM even if the page-table
+root and generation counters happen to match. Explicit flush remains useful
+for deterministic cache cleanup. VM initialization is currently single-threaded;
+parallel VM creation would require synchronizing the ID allocator.
