@@ -103,9 +103,18 @@ static bool phys_read32(struct amivm_vm *vm, uint32_t addr, uint32_t *value)
 static bool tlb_descriptor_generation(const struct amivm_vm *vm,
                                       uint32_t address, uint64_t *generation)
 {
-    if ((address & (AMIVM_RAM_PAGE_SIZE - 1u)) > AMIVM_RAM_PAGE_SIZE - 4u)
+    size_t offset, page;
+    if (vm == NULL || generation == NULL || vm->ram_page_generation == NULL ||
+        address < AMIVM_RAM_BASE ||
+        (address & (AMIVM_RAM_PAGE_SIZE - 1u)) > AMIVM_RAM_PAGE_SIZE - 4u)
         return false;
-    return amivm_ram_page_generation(vm, address, generation);
+    offset = (size_t)(address - AMIVM_RAM_BASE);
+    if (offset >= vm->ram_size || vm->ram_size - offset < 4u)
+        return false;
+    page = offset / AMIVM_RAM_PAGE_SIZE;
+    if (page >= vm->ram_page_count) return false;
+    *generation = vm->ram_page_generation[page];
+    return true;
 }
 
 int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
