@@ -107,7 +107,7 @@ int main(int argc, char **argv)
            exec.stats.cache_hits + exec.stats.cache_misses > 0u
                ? 100.0 * (double)exec.stats.cache_hits /
                  (double)(exec.stats.cache_hits + exec.stats.cache_misses) : 0.0);
-    printf("mmu_walks=%llu mmu_bypasses=%llu tlb_hits=%llu tlb_misses=%llu tlb_invalidations=%llu\\n",
+    printf("mmu_walks=%llu mmu_bypasses=%llu tlb_hits=%llu tlb_misses=%llu tlb_invalidations=%llu\n",
            (unsigned long long)cpu.mmu_translation_walks,
            (unsigned long long)cpu.mmu_translation_bypasses,
            (unsigned long long)cpu.tlb_hits,
