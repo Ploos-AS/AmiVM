@@ -46,11 +46,11 @@ jobs:
             elif [[ "$scenario" == "jsr-rts-mmu-tlb" ]]; then
               mmu_on_median="$median"
             fi
+          done
           # Report only: shared-runner comparison, no unstable performance gate.
           awk -v off="$mmu_off_median" -v on="$mmu_on_median" 'BEGIN {
             if (off <= 0 || on <= 0) exit 1
             printf "M330 tlb_relative_percent=%.2f (negative=faster) off_ns=%.3f on_ns=%.3f\n", 100 * (on / off - 1), off, on
           }'
-          done
       - name: Machine description
         run: ./build/amivm --dump-machine
