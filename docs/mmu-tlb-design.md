@@ -82,5 +82,5 @@ a future improvement; the explicit flush contract is mandatory meanwhile.
 Each initialized VM receives a process-local lifetime ID. TLB entries carry
 this ID, and lookup rejects entries from a different VM even if the page-table
 root and generation counters happen to match. Explicit flush remains useful
-for deterministic cache cleanup. VM initialization is currently single-threaded;
-parallel VM creation would require synchronizing the ID allocator.
+for deterministic cache cleanup. M335 uses C11 atomic allocation, so concurrent VM initialization cannot
+assign duplicate IDs. Exhaustion at 64-bit wrap is rejected.
