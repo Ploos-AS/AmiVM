@@ -1,6 +1,6 @@
 # M315 — MMU translation cache: coherence requirements
 
-Status: design and MMU instrumentation only; **no TLB is enabled**.
+Status: 16-slot per-CPU TLB implemented and **disabled by default**. Opt-in testing and CI benchmarks are available.
 
 ## Correctness gate
 
@@ -46,3 +46,24 @@ Ensure reset and VM teardown cannot reuse stale entries.
 
 Do not enable a TLB by default until all supported RAM mutation paths
 preserve cache coherence and all MMU regression tests pass with caching.
+
+## M327 CI benchmark baseline (run 1956)
+
+The same GitHub Actions runner measured seven executions per scenario.
+These are medians for the JSR/RTS/BRA microbenchmark, not a general
+Amiga workload and not a basis for enabling TLB by default.
+
+| Mode | Median ns/instruction | Page-table walks | TLB hits | TLB misses |
+| --- | ---: | ---: | ---: | ---: |
+| MMU, TLB off | 27.583 | 667051 | 0 | 0 |
+| MMU, TLB on | 27.185 | 6 | 667045 | 6 |
+
+The measured difference is approximately 1.44% lower ns/instruction
+with TLB on, despite nearly eliminating page-table walks. This suggests
+generation-validation overhead and other execution costs dominate this
+microbenchmark. Re-run on multiple runners/workloads before drawing
+performance conclusions.
+
+Before enabling the cache by default, validate host/DMA dirty
+notifications, page-table descriptors spanning boundaries, VM reuse,
+and representative guest workloads.
