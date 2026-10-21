@@ -22,11 +22,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for scenario in jsr-rts branch jsr-rts-mmu; do
+          for scenario in jsr-rts branch jsr-rts-mmu jsr-rts-mmu-tlb; do
             results=""
             for iteration in 1 2 3 4 5 6 7; do
               if [[ "$scenario" == "branch" ]]; then
                 output=$(./build/amivm_exec_bench b)
+              elif [[ "$scenario" == "jsr-rts-mmu-tlb" ]]; then
+                output=$(./build/amivm_exec_bench t)
               elif [[ "$scenario" == "jsr-rts-mmu" ]]; then
                 output=$(./build/amivm_exec_bench m)
               else

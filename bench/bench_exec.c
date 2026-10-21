@@ -45,7 +45,8 @@ int main(int argc, char **argv)
     double ips;
     double ns_per_instruction;
     int branch_only = argc > 1 && argv[1][0] == 'b' && argv[1][1] == '\0';
-    int mmu_enabled = argc > 1 && argv[1][0] == 'm' && argv[1][1] == '\0';
+    int tlb_enabled = argc > 1 && argv[1][0] == 't' && argv[1][1] == '\0';
+    int mmu_enabled = tlb_enabled || (argc > 1 && argv[1][0] == 'm' && argv[1][1] == '\0');
 
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
         }
         cpu.srp = root;
         cpu.tc = 0x80000000u;
+        cpu.tlb_enabled = tlb_enabled;
     }
     amivm_exec_init(&exec, backend);
 
@@ -94,7 +96,7 @@ int main(int argc, char **argv)
     ips = seconds > 0.0 ? (double)exec.stats.instructions / seconds : 0.0;
     ns_per_instruction = exec.stats.instructions > 0u
         ? seconds * 1000000000.0 / (double)exec.stats.instructions : 0.0;
-    printf("AmiVM M303 scenario=%s\n", branch_only ? "branch" : (mmu_enabled ? "jsr-rts-mmu" : "jsr-rts"));
+    printf("AmiVM M303 scenario=%s\n", branch_only ? "branch" : (tlb_enabled ? "jsr-rts-mmu-tlb" : (mmu_enabled ? "jsr-rts-mmu" : "jsr-rts")));
     printf("instructions=%llu seconds=%.6f ips=%.0f cache_hits=%llu cache_misses=%llu\n",
            (unsigned long long)exec.stats.instructions, seconds, ips,
            (unsigned long long)exec.stats.cache_hits,
@@ -105,6 +107,12 @@ int main(int argc, char **argv)
            exec.stats.cache_hits + exec.stats.cache_misses > 0u
                ? 100.0 * (double)exec.stats.cache_hits /
                  (double)(exec.stats.cache_hits + exec.stats.cache_misses) : 0.0);
+    printf("mmu_walks=%llu mmu_bypasses=%llu tlb_hits=%llu tlb_misses=%llu tlb_invalidations=%llu\n",
+           (unsigned long long)cpu.mmu_translation_walks,
+           (unsigned long long)cpu.mmu_translation_bypasses,
+           (unsigned long long)cpu.tlb_hits,
+           (unsigned long long)cpu.tlb_misses,
+           (unsigned long long)cpu.tlb_invalidations);
     printf("jit_blocks=%llu ir_blocks=%llu fallbacks=%llu jit_fallbacks=%llu\n",
            (unsigned long long)exec.stats.jit_blocks,
            (unsigned long long)exec.stats.ir_blocks,
