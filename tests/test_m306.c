@@ -565,8 +565,53 @@ int main(void)
             cpu.tlb_invalidations != invalidations + 1u) goto fail;
     }
 
+    /* M341: one dirty notification invalidates two distinct cached pages
+       whose L2 descriptors reside in the same modified RAM page. */
+    {
+        const uint32_t logical_a = 0x00401000u;
+        const uint32_t logical_b = 0x00402000u;
+        const uint32_t old_a = (AMIVM_RAM_BASE + 0xb000u) | 1u;
+        const uint32_t old_b = (AMIVM_RAM_BASE + 0xc000u) | 1u;
+        const uint32_t new_a = (AMIVM_RAM_BASE + 0xd000u) | 1u;
+        const uint32_t new_b = (AMIVM_RAM_BASE + 0xe000u) | 1u;
+        uint32_t physical = 0u;
+        uint64_t walks, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        amivm_mmu_tlb_flush(&cpu);
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7004u, old_a) != 0 ||
+            put32_be(&vm, 0x7008u, old_b) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical_a, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            amivm_mmu_translate(&cpu, &vm, logical_b, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        vm.ram[0x7004u] = (uint8_t)(new_a >> 24u);
+        vm.ram[0x7005u] = (uint8_t)(new_a >> 16u);
+        vm.ram[0x7006u] = (uint8_t)(new_a >> 8u);
+        vm.ram[0x7007u] = (uint8_t)new_a;
+        vm.ram[0x7008u] = (uint8_t)(new_b >> 24u);
+        vm.ram[0x7009u] = (uint8_t)(new_b >> 16u);
+        vm.ram[0x700au] = (uint8_t)(new_b >> 8u);
+        vm.ram[0x700bu] = (uint8_t)new_b;
+        if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x7004u, 8u) ||
+            amivm_mmu_translate(&cpu, &vm, logical_a, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xd000u ||
+            amivm_mmu_translate(&cpu, &vm, logical_b, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xe000u ||
+            cpu.mmu_translation_walks != walks + 2u ||
+            cpu.tlb_invalidations != invalidations + 2u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M340 cross-page DMA TLB notification: PASS");
+    puts("M341 multi-entry DMA TLB invalidation: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
