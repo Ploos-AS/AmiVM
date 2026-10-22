@@ -546,7 +546,7 @@ int main(void)
         cpu.tlb_enabled = true;
         if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
             put32_be(&vm, 0x7ffcu, old_descriptor) != 0 ||
-            amivm_mmu_translate(&cpu, &vm, 0x004ff000u, false, true,
+            amivm_mmu_translate(&cpu, &vm, 0x007ff000u, false, true,
                                 &physical) != AMIVM_MMU_OK ||
             physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
         walks = cpu.mmu_translation_walks;
@@ -558,7 +558,7 @@ int main(void)
         /* Touch the adjacent page as part of the same simulated DMA burst. */
         vm.ram[0x8000u] ^= 1u;
         if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x7ffcu, 5u) ||
-            amivm_mmu_translate(&cpu, &vm, 0x004ff000u, false, true,
+            amivm_mmu_translate(&cpu, &vm, 0x007ff000u, false, true,
                                 &physical) != AMIVM_MMU_OK ||
             physical != AMIVM_RAM_BASE + 0xd000u ||
             cpu.mmu_translation_walks != walks + 1u ||
