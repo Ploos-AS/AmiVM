@@ -506,8 +506,36 @@ int main(void)
         amivm_vm_destroy(&reused);
     }
 
+    /* M339: host/DMA edits to an L2 descriptor require a dirty notification.
+       The next translation must invalidate the cached mapping and rewalk. */
+    {
+        uint32_t physical = 0u;
+        uint64_t walks, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        /* Direct RAM writes emulate a host/DMA writer bypassing the VM API. */
+        vm.ram[0x7004u] = (uint8_t)(((AMIVM_RAM_BASE + 0xc000u) | 1u) >> 24u);
+        vm.ram[0x7005u] = (uint8_t)(((AMIVM_RAM_BASE + 0xc000u) | 1u) >> 16u);
+        vm.ram[0x7006u] = (uint8_t)(((AMIVM_RAM_BASE + 0xc000u) | 1u) >> 8u);
+        vm.ram[0x7007u] = (uint8_t)((AMIVM_RAM_BASE + 0xc000u) | 1u);
+        if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x7004u, 4u) ||
+            amivm_mmu_translate(&cpu, &vm, 0x00401000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.tlb_invalidations != invalidations + 1u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M338 TLB VM round-trip isolation: PASS");
+    puts("M339 TLB DMA dirty notification: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
