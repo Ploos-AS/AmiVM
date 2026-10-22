@@ -534,8 +534,39 @@ int main(void)
             cpu.tlb_invalidations != invalidations + 1u) goto fail;
     }
 
+    /* M340: a single DMA dirty notification spanning two RAM pages must
+       invalidate cached L2 descriptors on either touched page. */
+    {
+        uint32_t physical = 0u;
+        uint64_t walks, invalidations;
+        const uint32_t old_descriptor = (AMIVM_RAM_BASE + 0xb000u) | 1u;
+        const uint32_t new_descriptor = (AMIVM_RAM_BASE + 0xd000u) | 1u;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7ffcu, old_descriptor) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, 0x004ff000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        vm.ram[0x7ffcu] = (uint8_t)(new_descriptor >> 24u);
+        vm.ram[0x7ffdu] = (uint8_t)(new_descriptor >> 16u);
+        vm.ram[0x7ffeu] = (uint8_t)(new_descriptor >> 8u);
+        vm.ram[0x7fffu] = (uint8_t)new_descriptor;
+        /* Touch the adjacent page as part of the same simulated DMA burst. */
+        vm.ram[0x8000u] ^= 1u;
+        if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x7ffcu, 5u) ||
+            amivm_mmu_translate(&cpu, &vm, 0x004ff000u, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xd000u ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.tlb_invalidations != invalidations + 1u) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M339 TLB DMA dirty notification: PASS");
+    puts("M340 cross-page DMA TLB notification: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
