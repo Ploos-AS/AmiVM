@@ -610,8 +610,36 @@ int main(void)
             cpu.tlb_invalidations != invalidations + 2u) goto fail;
     }
 
+    /* M342: a dirty notification on unrelated RAM must preserve a cached
+       MMU translation and must not increment the invalidation counter. */
+    {
+        const uint32_t logical = 0x00401000u;
+        uint32_t physical = 0u;
+        uint64_t walks, hits, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        amivm_mmu_tlb_flush(&cpu);
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        hits = cpu.tlb_hits;
+        invalidations = cpu.tlb_invalidations;
+        vm.ram[0x9000u] ^= 1u;
+        if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x9000u, 1u) ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.mmu_translation_walks != walks ||
+            cpu.tlb_hits != hits + 1u ||
+            cpu.tlb_invalidations != invalidations) goto fail;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M341 multi-entry DMA TLB invalidation: PASS");
+    puts("M342 selective DMA TLB retention: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
