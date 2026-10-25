@@ -701,8 +701,53 @@ int main(void)
         cpu.tlb_descriptor_revalidation = false;
     }
 
+    /* M349: opt-in revalidation must not mask L1 replacement, page
+       invalidation or write-protection faults after descriptor changes. */
+    {
+        const uint32_t logical = 0x00401000u;
+        uint32_t physical = 0u;
+        uint64_t walks, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        cpu.tlb_descriptor_revalidation = true;
+        amivm_mmu_tlb_flush(&cpu);
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0 ||
+            put32_be(&vm, 0x8004u, (AMIVM_RAM_BASE + 0xc000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x8000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.tlb_invalidations != invalidations + 1u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        if (put32_be(&vm, 0x8004u, 0u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_FAULT_PAGE ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.tlb_invalidations != invalidations + 1u) goto fail;
+        if (put32_be(&vm, 0x8004u, (AMIVM_RAM_BASE + 0xc000u) | 3u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        invalidations = cpu.tlb_invalidations;
+        if (amivm_mmu_translate(&cpu, &vm, logical, true, true,
+                                &physical) != AMIVM_MMU_FAULT_WRITE_PROTECT ||
+            cpu.mmu_translation_walks != walks ||
+            cpu.tlb_invalidations != invalidations) goto fail;
+        cpu.tlb_descriptor_revalidation = false;
+    }
+
     amivm_vm_destroy(&vm);
-    puts("M343 same-page DMA coherence: PASS");
+    puts("M349 descriptor revalidation faults: PASS");
     return 0;
 fail:
     fprintf(stderr, "M306 stack translation invariants: FAIL (rc=%d sp=%08x)\n",
