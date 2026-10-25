@@ -93,3 +93,39 @@ page's generation, invalidating the cached translation on its next lookup,
 even if the descriptor bytes themselves are unchanged. Writes to unrelated
 RAM pages retain the cached translation (M342). Descriptor-granular tracking
 would require a separate design and benchmark before changing this contract.
+
+## M344: finer-grained coherence options (design only)
+
+The current page-generation check is the correctness baseline. M341 proves
+that a single dirty notification invalidates multiple translations sharing
+a descriptor page; M342 proves unrelated RAM pages do not invalidate entries;
+M343 confirms conservative invalidation on unrelated bytes within a descriptor
+page. No optimization is authorized by these tests alone.
+
+Possible alternatives, in increasing implementation complexity:
+
+1. **Keep page generations.** Zero additional per-descriptor metadata,
+   conservative invalidation for any write on a descriptor's RAM page.
+   Recommended until a representative workload shows measurable cost.
+2. **Validate descriptor words on generation mismatch.** Keep the existing
+   page generation and store the raw L1/L2 descriptor values with each TLB
+   entry. On a generation mismatch, re-read both descriptor words and retain
+   the translation only if the values match. Still require safe bounds checks,
+   matching VM lifetime, root, TC, privilege and write-protection semantics.
+   This adds memory reads on generation changes and must not bypass fault
+   reporting. A change away and back between lookups can retain a mapping
+   only if the final descriptors are identical and all relevant translation
+   context remains unchanged.
+3. **Descriptor-granular generation tracking.** Maintain generations for
+   descriptor-sized regions and update every overlapping region on guest,
+   host and DMA writes. Handle unaligned/cross-page descriptors and all
+   mutation paths. This adds memory and write-path overhead; do not implement
+   without measured benefit.
+
+Before any implementation: add a benchmark with writes to unrelated bytes
+*within* active descriptor pages; measure TLB hits, invalidations, page walks
+and ns/instruction in paired on/off runs. Add regressions for L1 and L2
+updates, invalid/valid transitions, write-protection, cross-page dirty
+ranges, VM switching, reset, and direct host writes with explicit dirty
+notification. Keep TLB disabled by default until the complete correctness
+gate passes.
