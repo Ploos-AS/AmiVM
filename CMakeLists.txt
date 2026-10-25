@@ -41,3 +41,9 @@ add_executable(amivm_tlb_dma_bench bench/bench_tlb_dma.c)
 target_link_libraries(amivm_tlb_dma_bench PRIVATE amivm_core)
 target_compile_options(amivm_tlb_dma_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_tlb_dma_benchmark_smoke COMMAND amivm_tlb_dma_bench)
+
+# M353: stable TLB hits with experimental descriptor revalidation off/on.
+add_executable(amivm_tlb_stable_bench bench/bench_tlb_stable.c)
+target_link_libraries(amivm_tlb_stable_bench PRIVATE amivm_core)
+target_compile_options(amivm_tlb_stable_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_tlb_stable_benchmark_smoke COMMAND amivm_tlb_stable_bench)
