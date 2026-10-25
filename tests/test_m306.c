@@ -665,6 +665,42 @@ int main(void)
             cpu.tlb_invalidations != invalidations + 1u) goto fail;
     }
 
+    /* M348: opt-in descriptor revalidation preserves an unchanged L2
+       mapping after a same-page DMA write, but never hides remapping. */
+    {
+        const uint32_t logical = 0x00401000u;
+        uint32_t physical = 0u;
+        uint64_t walks, hits, invalidations;
+        cpu.tc = 0x80000000u;
+        cpu.srp = AMIVM_RAM_BASE + 0x2000u;
+        cpu.tlb_enabled = true;
+        cpu.tlb_descriptor_revalidation = true;
+        amivm_mmu_tlb_flush(&cpu);
+        if (put32_be(&vm, 0x2004u, (AMIVM_RAM_BASE + 0x7000u) | 1u) != 0 ||
+            put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xb000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u) goto fail;
+        walks = cpu.mmu_translation_walks;
+        hits = cpu.tlb_hits;
+        invalidations = cpu.tlb_invalidations;
+        vm.ram[0x7100u] ^= 1u;
+        if (!amivm_ram_mark_dirty(&vm, AMIVM_RAM_BASE + 0x7100u, 1u) ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xb000u ||
+            cpu.mmu_translation_walks != walks ||
+            cpu.tlb_hits != hits + 1u ||
+            cpu.tlb_invalidations != invalidations) goto fail;
+        if (put32_be(&vm, 0x7004u, (AMIVM_RAM_BASE + 0xc000u) | 1u) != 0 ||
+            amivm_mmu_translate(&cpu, &vm, logical, false, true,
+                                &physical) != AMIVM_MMU_OK ||
+            physical != AMIVM_RAM_BASE + 0xc000u ||
+            cpu.mmu_translation_walks != walks + 1u ||
+            cpu.tlb_invalidations != invalidations + 1u) goto fail;
+        cpu.tlb_descriptor_revalidation = false;
+    }
+
     amivm_vm_destroy(&vm);
     puts("M343 same-page DMA coherence: PASS");
     return 0;
