@@ -202,3 +202,36 @@ Next qualification gates:
   VM switching/reuse, dirty ranges and explicit flush with the
   experimental mode enabled.
 - Preserve a clear rollback path to conservative page generations.
+
+## M355: stable TLB hit qualification
+
+CI run **2088** (M354) measured seven paired runs of one million
+stable TLB hits per mode, alternating the on/off execution order.
+The relative differences (revalidation on versus off) were:
+
+| Pair | Difference |
+| --- | ---: |
+| 1 | -1.6224% |
+| 2 | +0.6912% |
+| 3 | -1.5509% |
+| 4 | +0.5691% |
+| 5 | -0.1730% |
+| 6 | -1.0022% |
+| 7 | +43.9177% |
+
+The **median paired difference was -0.1730%**. Six of seven
+pairs were within approximately -1.7% to +0.7%; the seventh
+was a substantial positive outlier. These results do **not**
+establish a stable speedup, a regression, or statistical equivalence.
+The microbenchmark has one hot translation and does not cover
+realistic instruction/data mixes, guest workloads or CPU contention.
+
+**Decision:** keep descriptor revalidation experimental and
+**disabled by default**; TLB itself also remains disabled by default.
+The DMA-dirty microbenchmark showed a possible benefit, while
+stable-hit measurements show no reproducible overhead in this
+single CI run. More evidence is needed before changing defaults.
+
+Next gates: collect additional paired runs on independent runners,
+report distribution/spread and outliers, alternate order, add mixed
+dirty/clean workloads, and retain the MMU correctness regressions.
