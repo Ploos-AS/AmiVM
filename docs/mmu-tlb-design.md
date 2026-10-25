@@ -168,3 +168,37 @@ The proposed experiment should:
 Do not enable the experimental behavior by default on the strength of
 this microbenchmark. Assess both steady-state TLB hit overhead and
 dirty-heavy workload performance before considering promotion.
+
+## M352: three-way DMA/TLB evaluation
+
+CI run **2074** (M351, seven repeated runs on one GitHub Actions
+runner) produced the following medians for the synthetic DMA workload:
+
+| Scenario | Median ns/iteration |
+| --- | ---: |
+| Dirty unrelated RAM page, ordinary TLB | 15.100 |
+| Dirty same descriptor RAM page, page-generation invalidation | 25.740 |
+| Dirty same descriptor RAM page, opt-in descriptor-value revalidation | 22.140 |
+
+Descriptor revalidation was **13.99% faster** than conservative
+same-page invalidation, but **46.62% slower** than the unrelated-page
+baseline in this run. Each iteration includes a host RAM byte mutation,
+dirty notification, and translation; the benchmark does not measure
+general application performance. The scenario ordering is fixed, so
+cache and run-order effects remain possible despite seven repetitions.
+
+**Decision:** retain the opt-in implementation for further study;
+**do not enable TLB or descriptor revalidation by default**. The observed
+gain in a dirty-heavy microbenchmark does not establish a net win for
+ordinary TLB hits or guest execution.
+
+Next qualification gates:
+
+- Benchmark ordinary stable TLB hits with revalidation on and off to
+  detect overhead when generations do not change.
+- Interleave or alternate benchmark order, repeat on more than one
+  runner, and report distributions rather than only one median.
+- Exercise write-protection, descriptor invalidation, L1/L2 changes,
+  VM switching/reuse, dirty ranges and explicit flush with the
+  experimental mode enabled.
+- Preserve a clear rollback path to conservative page generations.
