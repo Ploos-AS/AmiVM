@@ -59,6 +59,8 @@ struct amivm_tlb_entry {
     uint32_t l2_descriptor_address;
     uint64_t l1_generation;
     uint64_t l2_generation;
+    uint32_t l1_descriptor_value;
+    uint32_t l2_descriptor_value;
     bool supervisor;
     bool write_protected;
     bool valid;
@@ -81,6 +83,8 @@ struct amivm_cpu_state {
     uint64_t mmu_translation_walks;
     uint64_t mmu_translation_bypasses;
     bool tlb_enabled;
+    /* Experimental: revalidate unchanged descriptors after dirty notifications. */
+    bool tlb_descriptor_revalidation;
     uint64_t tlb_hits;
     uint64_t tlb_misses;
     uint64_t tlb_invalidations;
