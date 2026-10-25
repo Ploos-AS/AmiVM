@@ -14,7 +14,7 @@ static bool put32(struct amivm_vm *vm, uint32_t offset, uint32_t value)
     return amivm_ram_write(vm, AMIVM_RAM_BASE + offset, bytes, sizeof(bytes));
 }
 
-static int run_case(struct amivm_vm *vm, bool same_page)
+static int run_case(struct amivm_vm *vm, bool same_page, bool revalidate)
 {
     struct amivm_cpu_state cpu = {0};
     const uint32_t logical = 0x00401000u;
@@ -27,6 +27,7 @@ static int run_case(struct amivm_vm *vm, bool same_page)
     cpu.tc = 0x80000000u;
     cpu.srp = AMIVM_RAM_BASE + 0x2000u;
     cpu.tlb_enabled = true;
+    cpu.tlb_descriptor_revalidation = revalidate;
     start = clock();
     for (i = 0u; i < iterations; ++i) {
         vm->ram[dirty_offset] ^= 1u;
@@ -40,11 +41,16 @@ static int run_case(struct amivm_vm *vm, bool same_page)
     printf("scenario=%s iterations=%u ns_per_iteration=%.3f "
            "mmu_walks=%" PRIu64 " tlb_hits=%" PRIu64
            " tlb_misses=%" PRIu64 " tlb_invalidations=%" PRIu64 "\n",
-           same_page ? "same-descriptor-page" : "unrelated-page",
+           revalidate ? "same-descriptor-page-revalidate" :
+               (same_page ? "same-descriptor-page" : "unrelated-page"),
            iterations, (double)(end - start) * 1e9 /
                ((double)CLOCKS_PER_SEC * (double)iterations),
            cpu.mmu_translation_walks, cpu.tlb_hits,
            cpu.tlb_misses, cpu.tlb_invalidations);
+    if (same_page && revalidate)
+        return cpu.mmu_translation_walks == 1u &&
+               cpu.tlb_hits == iterations - 1u &&
+               cpu.tlb_invalidations == 0u ? 0 : -1;
     if (same_page)
         return cpu.mmu_translation_walks == iterations &&
                cpu.tlb_invalidations == iterations - 1u ? 0 : -1;
@@ -67,9 +73,11 @@ int main(void)
         amivm_vm_destroy(&vm);
         return 1;
     }
-    rc = run_case(&vm, false);
+    rc = run_case(&vm, false, false);
     if (rc == 0)
-        rc = run_case(&vm, true);
+        rc = run_case(&vm, true, false);
+    if (rc == 0)
+        rc = run_case(&vm, true, true);
     amivm_vm_destroy(&vm);
     if (rc != 0)
         fputs("M345 DMA TLB benchmark invariant failed\n", stderr);
