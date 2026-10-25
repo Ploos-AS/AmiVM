@@ -129,3 +129,42 @@ updates, invalid/valid transitions, write-protection, cross-page dirty
 ranges, VM switching, reset, and direct host writes with explicit dirty
 notification. Keep TLB disabled by default until the complete correctness
 gate passes.
+
+## M347: measured DMA coherence cost and next experiment
+
+CI run 2052 (M346, seven repetitions on one GitHub Actions runner)
+reported a median of **15.040 ns/iteration** for dirty notifications
+to unrelated RAM and **25.170 ns/iteration** for writes elsewhere on
+the cached L2 descriptor's RAM page, a **67.35% relative increase**.
+Each iteration includes a direct host byte mutation, dirty notification
+and one MMU translation. The synthetic benchmark deliberately forces a
+page-table rewalk in the latter case; it is not an estimate of real-world
+Amiga performance. These figures should not be compared across runners.
+
+**Decision:** keep the existing page-generation coherence mechanism as
+the default implementation. Prototype descriptor-value revalidation only
+as an **additional opt-in** behavior while retaining the current TLB
+enablement gate. In particular, the current code's cached L1/L2 descriptor
+addresses and page generations are sufficient to detect *when* a candidate
+needs revalidation, but do not establish that its values are unchanged.
+
+The proposed experiment should:
+
+1. Store both raw descriptor words when filling a TLB entry, without
+   caching faults or write-protection failures.
+2. On a generation mismatch, safely re-read the L1 and L2 descriptor
+   words. Reuse the cached mapping only when both words match the
+   stored values and the existing VM ID, root, TC and privilege keys match.
+   Refresh the cached generations after a successful revalidation.
+3. Invalidate and perform the ordinary walk on any changed descriptor
+   or failed read, preserving MMUSR and write-protection behavior.
+4. Add a separate benchmark mode that enables this opt-in strategy,
+   with paired seven-sample comparisons and no unstable speed gate.
+5. Test descriptor remapping, invalidation, protection, L1 replacement,
+   L2 replacement, DMA ranges crossing pages, VM lifetime changes,
+   CPU reset, and explicit TLB flush. Preserve M343's conservative
+   expectation when the experimental strategy is disabled.
+
+Do not enable the experimental behavior by default on the strength of
+this microbenchmark. Assess both steady-state TLB hit overhead and
+dirty-heavy workload performance before considering promotion.
