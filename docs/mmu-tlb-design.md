@@ -84,3 +84,12 @@ this ID, and lookup rejects entries from a different VM even if the page-table
 root and generation counters happen to match. Explicit flush remains useful
 for deterministic cache cleanup. M335 uses C11 atomic allocation, so concurrent VM initialization cannot
 assign duplicate IDs. Exhaustion at 64-bit wrap is rejected.
+
+## M343 page-granular dirty tracking
+
+TLB descriptor coherence is deliberately conservative: any tracked host/DMA
+write on the RAM page containing a cached L1 or L2 descriptor changes that
+page's generation, invalidating the cached translation on its next lookup,
+even if the descriptor bytes themselves are unchanged. Writes to unrelated
+RAM pages retain the cached translation (M342). Descriptor-granular tracking
+would require a separate design and benchmark before changing this contract.
