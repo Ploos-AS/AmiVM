@@ -35,3 +35,9 @@ add_executable(amivm_m336_tests tests/test_m336.c)
 target_link_libraries(amivm_m336_tests PRIVATE amivm_core Threads::Threads)
 target_compile_options(amivm_m336_tests PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_m336 COMMAND amivm_m336_tests)
+
+# M345: compare same-descriptor-page and unrelated-page DMA dirty notifications.
+add_executable(amivm_tlb_dma_bench bench/bench_tlb_dma.c)
+target_link_libraries(amivm_tlb_dma_bench PRIVATE amivm_core)
+target_compile_options(amivm_tlb_dma_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_tlb_dma_benchmark_smoke COMMAND amivm_tlb_dma_bench)
