@@ -2,6 +2,7 @@
 #include "vm.h"
 
 #include <inttypes.h>
+#include <string.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -47,7 +48,7 @@ static int measure(struct amivm_vm *vm, bool revalidate)
            cpu.tlb_invalidations == 0u ? 0 : -1;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     struct amivm_config config;
     struct amivm_vm vm;
@@ -60,8 +61,17 @@ int main(void)
         amivm_vm_destroy(&vm);
         return 1;
     }
-    rc = measure(&vm, false);
-    if (rc == 0) rc = measure(&vm, true);
+    if (argc > 2 || (argc == 2 && strcmp(argv[1], "reverse") != 0)) {
+        amivm_vm_destroy(&vm);
+        return 2;
+    }
+    if (argc == 2) {
+        rc = measure(&vm, true);
+        if (rc == 0) rc = measure(&vm, false);
+    } else {
+        rc = measure(&vm, false);
+        if (rc == 0) rc = measure(&vm, true);
+    }
     amivm_vm_destroy(&vm);
     if (rc != 0) fputs("M353 stable TLB benchmark invariant failed\n", stderr);
     return rc == 0 ? 0 : 1;
