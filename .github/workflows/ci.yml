@@ -88,8 +88,8 @@ jobs:
           for iteration in 1 2 3 4 5 6 7; do
             output=$(./build/amivm_tlb_dma_bench)
             printf '%s\n' "$output"
-            same=$(printf '%s\n' "$output" | sed -n 's/^scenario=same-descriptor-page .*ns_per_iteration=\\([0-9.]*\\).*/\\1/p')
-            unrelated=$(printf '%s\n' "$output" | sed -n 's/^scenario=unrelated-page .*ns_per_iteration=\\([0-9.]*\\).*/\\1/p')
+            same=$(printf '%s\n' "$output" | sed -n 's/^scenario=same-descriptor-page .*ns_per_iteration=\([0-9.]*\).*/\1/p')
+            unrelated=$(printf '%s\n' "$output" | sed -n 's/^scenario=unrelated-page .*ns_per_iteration=\([0-9.]*\).*/\1/p')
             test -n "$same" && test -n "$unrelated"
             same_samples="$same_samples $same"
             unrelated_samples="$unrelated_samples $unrelated"
