@@ -79,27 +79,31 @@ jobs:
           done
           median=$(printf '%s\n' $ratios | sort -n | sed -n '4p')
           printf 'M331 paired_median_relative_percent=%s samples=7 (negative=faster)\n' "$median"
-      - name: M346 repeated DMA/TLB coherence benchmark
+      - name: M351 three-way DMA/TLB coherence benchmark
         shell: bash
         run: |
           set -euo pipefail
           same_samples=""
           unrelated_samples=""
+          revalidated_samples=""
           for iteration in 1 2 3 4 5 6 7; do
             output=$(./build/amivm_tlb_dma_bench)
             printf '%s\n' "$output"
             same=$(printf '%s\n' "$output" | sed -n 's/^scenario=same-descriptor-page .*ns_per_iteration=\([0-9.]*\).*/\1/p')
             unrelated=$(printf '%s\n' "$output" | sed -n 's/^scenario=unrelated-page .*ns_per_iteration=\([0-9.]*\).*/\1/p')
-            test -n "$same" && test -n "$unrelated"
+            revalidated=$(printf '%s\n' "$output" | sed -n 's/^scenario=same-descriptor-page-revalidate .*ns_per_iteration=\([0-9.]*\).*/\1/p')
+            test -n "$same" && test -n "$unrelated" && test -n "$revalidated"
             same_samples="$same_samples $same"
             unrelated_samples="$unrelated_samples $unrelated"
+            revalidated_samples="$revalidated_samples $revalidated"
           done
           same_median=$(printf '%s\n' $same_samples | sort -n | sed -n '4p')
           unrelated_median=$(printf '%s\n' $unrelated_samples | sort -n | sed -n '4p')
-          printf 'M346 same_page_median_ns=%s unrelated_page_median_ns=%s samples=7\n' "$same_median" "$unrelated_median"
-          awk -v same="$same_median" -v unrelated="$unrelated_median" 'BEGIN {
-            if (same <= 0 || unrelated <= 0) exit 1
-            printf "M346 same_page_overhead_percent=%.2f (report only)\n", 100 * (same / unrelated - 1)
+          revalidated_median=$(printf '%s\n' $revalidated_samples | sort -n | sed -n '4p')
+          printf 'M351 same_page_ns=%s unrelated_page_ns=%s revalidated_ns=%s samples=7\n' "$same_median" "$unrelated_median" "$revalidated_median"
+          awk -v same="$same_median" -v unrelated="$unrelated_median" -v revalidated="$revalidated_median" 'BEGIN {
+            if (same <= 0 || unrelated <= 0 || revalidated <= 0) exit 1
+            printf "M351 revalidated_vs_same_percent=%.2f revalidated_vs_unrelated_percent=%.2f (report only)\n", 100 * (revalidated / same - 1), 100 * (revalidated / unrelated - 1)
           }'
       - name: Machine description
         run: ./build/amivm --dump-machine
