@@ -79,5 +79,27 @@ jobs:
           done
           median=$(printf '%s\n' $ratios | sort -n | sed -n '4p')
           printf 'M331 paired_median_relative_percent=%s samples=7 (negative=faster)\n' "$median"
+      - name: M346 repeated DMA/TLB coherence benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          same_samples=""
+          unrelated_samples=""
+          for iteration in 1 2 3 4 5 6 7; do
+            output=$(./build/amivm_tlb_dma_bench)
+            printf '%s\n' "$output"
+            same=$(printf '%s\n' "$output" | sed -n 's/^scenario=same-descriptor-page .*ns_per_iteration=\\([0-9.]*\\).*/\\1/p')
+            unrelated=$(printf '%s\n' "$output" | sed -n 's/^scenario=unrelated-page .*ns_per_iteration=\\([0-9.]*\\).*/\\1/p')
+            test -n "$same" && test -n "$unrelated"
+            same_samples="$same_samples $same"
+            unrelated_samples="$unrelated_samples $unrelated"
+          done
+          same_median=$(printf '%s\n' $same_samples | sort -n | sed -n '4p')
+          unrelated_median=$(printf '%s\n' $unrelated_samples | sort -n | sed -n '4p')
+          printf 'M346 same_page_median_ns=%s unrelated_page_median_ns=%s samples=7\n' "$same_median" "$unrelated_median"
+          awk -v same="$same_median" -v unrelated="$unrelated_median" 'BEGIN {
+            if (same <= 0 || unrelated <= 0) exit 1
+            printf "M346 same_page_overhead_percent=%.2f (report only)\n", 100 * (same / unrelated - 1)
+          }'
       - name: Machine description
         run: ./build/amivm --dump-machine
