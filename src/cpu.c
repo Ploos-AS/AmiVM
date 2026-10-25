@@ -156,8 +156,16 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
             uint64_t current_l1, current_l2;
             if (tlb_descriptor_generation(vm, entry->l1_descriptor_address, &current_l1) &&
                 tlb_descriptor_generation(vm, entry->l2_descriptor_address, &current_l2) &&
-                current_l1 == entry->l1_generation &&
-                current_l2 == entry->l2_generation) {
+                ((current_l1 == entry->l1_generation &&
+                  current_l2 == entry->l2_generation) ||
+                 (cpu->tlb_descriptor_revalidation &&
+                  phys_read32(vm, entry->l1_descriptor_address, &l1) &&
+                  phys_read32(vm, entry->l2_descriptor_address, &l2) &&
+                  l1 == entry->l1_descriptor_value &&
+                  l2 == entry->l2_descriptor_value))) {
+                /* Refresh tracked generations after successful revalidation. */
+                entry->l1_generation = current_l1;
+                entry->l2_generation = current_l2;
                 cpu->tlb_hits++;
                 if (write && entry->write_protected) {
                     cpu->mmusr = MMUSR_WP;
@@ -217,6 +225,8 @@ int amivm_mmu_translate(struct amivm_cpu_state *cpu, struct amivm_vm *vm,
         entry->l2_descriptor_address = l2_addr;
         entry->l1_generation = l1_gen;
         entry->l2_generation = l2_gen;
+        entry->l1_descriptor_value = l1;
+        entry->l2_descriptor_value = l2;
         entry->valid = true;
     }
     *physical = (l2 & PAGE_MASK) | (logical & 0xfffu);
