@@ -235,3 +235,38 @@ single CI run. More evidence is needed before changing defaults.
 Next gates: collect additional paired runs on independent runners,
 report distribution/spread and outliers, alternate order, add mixed
 dirty/clean workloads, and retain the MMU correctness regressions.
+
+## M358: mixed DMA/TLB workload evaluation
+
+CI run **2102** (M357) completed seven paired measurements of the
+synthetic mixed workload (100,000 translations per mode: approximately
+90% without a dirty notification, 5% unrelated RAM-page dirty, and
+5% same-descriptor-page dirty). The pairs alternated measurement order.
+
+| Pair | Conservative ns/iteration | Revalidation ns/iteration | Relative difference |
+| --- | ---: | ---: | ---: |
+| 1 | 12.960 | 12.730 | -1.7747% |
+| 2 | 13.090 | 13.180 | +0.6875% |
+| 3 | 13.450 | 12.970 | -3.5688% |
+| 4 | 16.810 | 15.070 | -10.3510% |
+| 5 | 13.200 | 13.270 | +0.5303% |
+| 6 | 12.930 | 13.320 | +3.0162% |
+| 7 | 13.410 | 12.780 | -4.6980% |
+
+Median paired relative difference: **-1.7747%**. Revalidation was
+faster in four of seven pairs. These results show a possible small
+benefit under this particular workload, not a reproducible
+guest-level speedup. Host scheduling, short measurement durations,
+one hot translation, and the fixed 90/5/5 mixture limit the
+inference. The measured iteration includes dirty notification
+overhead, not only TLB translation.
+
+**Decision:** retain opt-in descriptor revalidation and the
+conservative generation-based path; keep both TLB and revalidation
+disabled by default. Do not impose a performance CI gate based on
+these noisy microbenchmarks.
+
+Next gates: increase timing duration and test multiple dirty ratios,
+interleave independent repetitions across runners, include actual
+guest instruction/data translation patterns, and keep correctness
+tests for remaps, protection and VM lifetime.
