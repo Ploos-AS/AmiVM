@@ -129,5 +129,29 @@ jobs:
           done
           median=$(printf '%s\n' $ratios | sort -n | sed -n '4p')
           printf 'M354 paired_median_relative_percent=%s samples=7 (negative=faster, report only)\n' "$median"
+      - name: M357 paired mixed DMA/TLB comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          ratios=""
+          for iteration in 1 2 3 4 5 6 7; do
+            if (( iteration % 2 == 1 )); then
+              output=$(./build/amivm_tlb_mixed_bench)
+            else
+              output=$(./build/amivm_tlb_mixed_bench reverse)
+            fi
+            printf '%s\n' "$output"
+            off=$(printf '%s\n' "$output" | sed -n 's/^scenario=mixed-conservative .*ns_per_iteration=\([0-9.]*\).*/\1/p')
+            on=$(printf '%s\n' "$output" | sed -n 's/^scenario=mixed-revalidate .*ns_per_iteration=\([0-9.]*\).*/\1/p')
+            test -n "$off" && test -n "$on"
+            ratio=$(awk -v off="$off" -v on="$on" 'BEGIN {
+              if (off <= 0 || on <= 0) exit 1
+              printf "%.4f", 100 * (on / off - 1)
+            }')
+            printf 'M357 pair=%s conservative_ns=%s revalidated_ns=%s relative_percent=%s\n' "$iteration" "$off" "$on" "$ratio"
+            ratios="$ratios $ratio"
+          done
+          median=$(printf '%s\n' $ratios | sort -n | sed -n '4p')
+          printf 'M357 paired_median_relative_percent=%s samples=7 (negative=faster, report only)\n' "$median"
       - name: Machine description
         run: ./build/amivm --dump-machine
