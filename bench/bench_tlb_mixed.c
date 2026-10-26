@@ -15,14 +15,14 @@ static bool put32(struct amivm_vm *vm, uint32_t offset, uint32_t value)
     return amivm_ram_write(vm, AMIVM_RAM_BASE + offset, bytes, sizeof(bytes));
 }
 
-static int run_case(struct amivm_vm *vm, bool revalidate)
+static int run_case(struct amivm_vm *vm, bool revalidate, unsigned same_interval)
 {
     struct amivm_cpu_state cpu = {0};
     const uint32_t logical = 0x00401000u;
     const uint32_t expected = AMIVM_RAM_BASE + 0xb000u;
     const unsigned iterations = 100000u;
-    const unsigned same_page_updates = (iterations - 1u) / 20u;
-    const unsigned unrelated_updates = (iterations - 1u) / 10u - same_page_updates;
+    const unsigned same_page_updates = (iterations - 1u) / same_interval;
+    const unsigned unrelated_updates = (iterations - 1u) / (same_interval / 2u) - same_page_updates;
     uint32_t physical = 0u;
     clock_t start, end;
     unsigned i;
@@ -32,11 +32,11 @@ static int run_case(struct amivm_vm *vm, bool revalidate)
     cpu.tlb_descriptor_revalidation = revalidate;
     start = clock();
     for (i = 0u; i < iterations; ++i) {
-        if (i > 0u && i % 20u == 0u) {
+        if (i > 0u && i % same_interval == 0u) {
             vm->ram[0x7100u] ^= 1u;
             if (!amivm_ram_mark_dirty(vm, AMIVM_RAM_BASE + 0x7100u, 1u))
                 return -1;
-        } else if (i > 0u && i % 10u == 0u) {
+        } else if (i > 0u && i % (same_interval / 2u) == 0u) {
             vm->ram[0x9000u] ^= 1u;
             if (!amivm_ram_mark_dirty(vm, AMIVM_RAM_BASE + 0x9000u, 1u))
                 return -1;
@@ -46,11 +46,11 @@ static int run_case(struct amivm_vm *vm, bool revalidate)
             physical != expected) return -1;
     }
     end = clock();
-    printf("scenario=%s iterations=%u ns_per_iteration=%.3f "
+    printf("scenario=%s same_interval=%u iterations=%u ns_per_iteration=%.3f "
            "mmu_walks=%" PRIu64 " tlb_hits=%" PRIu64
            " tlb_invalidations=%" PRIu64 "\n",
            revalidate ? "mixed-revalidate" : "mixed-conservative",
-           iterations, (double)(end - start) * 1e9 /
+           same_interval, iterations, (double)(end - start) * 1e9 /
                ((double)CLOCKS_PER_SEC * (double)iterations),
            cpu.mmu_translation_walks, cpu.tlb_hits, cpu.tlb_invalidations);
     return cpu.mmu_translation_walks == (revalidate ? 1u : same_page_updates + 1u) &&
@@ -64,6 +64,15 @@ int main(int argc, char **argv)
     struct amivm_config config;
     struct amivm_vm vm;
     int rc;
+    bool reverse = false;
+    unsigned same_interval = 20u;
+    int arg;
+    for (arg = 1; arg < argc; ++arg) {
+        if (strcmp(argv[arg], "reverse") == 0) reverse = true;
+        else if (strcmp(argv[arg], "low") == 0) same_interval = 200u;
+        else if (strcmp(argv[arg], "high") == 0) same_interval = 4u;
+        else return 2;
+    }
     amivm_config_init(&config);
     config.ram_size = 1024u * 1024u;
     if (amivm_vm_init(&vm, &config) != 0) return 1;
@@ -72,16 +81,12 @@ int main(int argc, char **argv)
         amivm_vm_destroy(&vm);
         return 1;
     }
-    if (argc > 2 || (argc == 2 && strcmp(argv[1], "reverse") != 0)) {
-        amivm_vm_destroy(&vm);
-        return 2;
-    }
-    if (argc == 2) {
-        rc = run_case(&vm, true);
-        if (rc == 0) rc = run_case(&vm, false);
+    if (reverse) {
+        rc = run_case(&vm, true, same_interval);
+        if (rc == 0) rc = run_case(&vm, false, same_interval);
     } else {
-        rc = run_case(&vm, false);
-        if (rc == 0) rc = run_case(&vm, true);
+        rc = run_case(&vm, false, same_interval);
+        if (rc == 0) rc = run_case(&vm, true, same_interval);
     }
     amivm_vm_destroy(&vm);
     if (rc != 0) fputs("M356 mixed DMA/TLB benchmark invariant failed\n", stderr);
