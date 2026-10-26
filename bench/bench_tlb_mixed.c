@@ -2,6 +2,7 @@
 #include "vm.h"
 
 #include <inttypes.h>
+#include <string.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -58,7 +59,7 @@ static int run_case(struct amivm_vm *vm, bool revalidate)
            unrelated_updates > 0u ? 0 : -1;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     struct amivm_config config;
     struct amivm_vm vm;
@@ -71,8 +72,17 @@ int main(void)
         amivm_vm_destroy(&vm);
         return 1;
     }
-    rc = run_case(&vm, false);
-    if (rc == 0) rc = run_case(&vm, true);
+    if (argc > 2 || (argc == 2 && strcmp(argv[1], "reverse") != 0)) {
+        amivm_vm_destroy(&vm);
+        return 2;
+    }
+    if (argc == 2) {
+        rc = run_case(&vm, true);
+        if (rc == 0) rc = run_case(&vm, false);
+    } else {
+        rc = run_case(&vm, false);
+        if (rc == 0) rc = run_case(&vm, true);
+    }
     amivm_vm_destroy(&vm);
     if (rc != 0) fputs("M356 mixed DMA/TLB benchmark invariant failed\n", stderr);
     return rc == 0 ? 0 : 1;
