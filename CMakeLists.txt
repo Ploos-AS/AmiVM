@@ -47,3 +47,9 @@ add_executable(amivm_tlb_stable_bench bench/bench_tlb_stable.c)
 target_link_libraries(amivm_tlb_stable_bench PRIVATE amivm_core)
 target_compile_options(amivm_tlb_stable_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
 add_test(NAME amivm_tlb_stable_benchmark_smoke COMMAND amivm_tlb_stable_bench)
+
+# M356: mixed stable-hit, unrelated DMA and same-descriptor-page dirty workload.
+add_executable(amivm_tlb_mixed_bench bench/bench_tlb_mixed.c)
+target_link_libraries(amivm_tlb_mixed_bench PRIVATE amivm_core)
+target_compile_options(amivm_tlb_mixed_bench PRIVATE $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Werror>)
+add_test(NAME amivm_tlb_mixed_benchmark_smoke COMMAND amivm_tlb_mixed_bench)
